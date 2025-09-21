@@ -18,8 +18,7 @@ LABEL \
 
 # Expose the port
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/ || exit 1
+HEALTHCHECK --start-period=10s CMD exec gosu node node /usr/src/app/docker_healthcheck.cjs
 
 # Set entrypoint
 ENTRYPOINT ["/run.sh"]
