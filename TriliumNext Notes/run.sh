@@ -19,5 +19,5 @@ export TRILIUM_ROOT_PATH="${TRILIUM_BASE_URL}"
 # Change to app directory and start with proper host binding
 cd "$APP_DIR"
 echo "Starting TriliumNext Notes with ingress configuration..."
-exec su -s /bin/sh -c "node src/main --host 0.0.0.0 --port 8080" node
+exec su -s /bin/sh -c "node ./main.cjs --host 0.0.0.0 --port 8080" node
 
