@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.09.22
+- startup and health check hopefully fixed :D
+Thanks @GraphicHealer
+
 # v2025.09.17
 - bump version to v0.98.1
 - If there are still some startup issues, this will be fixes with next version.
