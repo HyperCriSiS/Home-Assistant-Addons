@@ -1,5 +1,8 @@
 # Changelog
 
+# v2026.07.07
+- Update to Trilium v0.103.0 (sync protocol version 39)
+
 # v2025.11.30
 - Update to v0.99.5
 - Change Name to Trilium Notes
