@@ -7,7 +7,7 @@ LABEL \
     io.hass.name="Trilium Notes" \
     io.hass.description="Hierarchical note-taking application" \
     io.hass.version="${BUILD_VERSION}" \
-    io.hass.type="addon" \
+    io.hass.type="app" \
     io.hass.arch="${BUILD_ARCH}" \
     org.opencontainers.image.source="https://github.com/HyperCriSiS/Home-Assistant-Addons" \
     org.opencontainers.image.version="${BUILD_VERSION}"
