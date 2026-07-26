@@ -41,8 +41,8 @@ jobs:
 
       - name: Validate metadata consistency
         id: metadata
-        shell: python
         run: |
+          python3 - <<'PY'
           import os
           import pathlib
           import re
@@ -69,6 +69,7 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"addon_version={version}\n")
               output.write(f"upstream_version={match.group(1)}\n")
+          PY
 
       - name: Build add-on image
         run: |
