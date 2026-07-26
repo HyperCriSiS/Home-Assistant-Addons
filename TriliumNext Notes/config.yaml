@@ -1,9 +1,11 @@
 ---
 name: "Trilium Notes"
-version: "v2026.07.07"
+version: "v2026.07.26"
 slug: trilium
-description: "Hierarchical note-taking application with encryption, Markdown support, and personal knowledge base features"
-url: "https://github.com/triliumnext/trilium"
+description: >-
+  Hierarchical note-taking application with encryption, Markdown support,
+  synchronization, and personal knowledge base features.
+url: "https://github.com/HyperCriSiS/Home-Assistant-Addons"
 ingress: true
 ingress_port: 8080
 ingress_stream: true
@@ -22,22 +24,21 @@ map:
     path: /home/node/trilium-data
 ports:
   "8080/tcp": 8080
+ports_description:
+  "8080/tcp": "Trilium web interface (not required for Ingress)"
 options:
-# language: en
   timezone: "Europe/Berlin"
-  log_level: "info"
-  https_only: false
+  log_retention_days: 90
 schema:
-#  language: |
-#    list(ar|br|ca|cs|de|en|eo|es|fa|fr|hi|it|ja|ko|kz|nl|pl|pt|ru|sv|tl|tr|uk|uz|vi|zh)
-  timezone: |
-    list(Europe/Berlin|America/New_York|UTC|Asia/Berlin|Europe/London|Asia/Tokyo|Australia/Sydney)
-  log_level: "list(trace|debug|info|notice|warning|error|fatal)"
-  https_only: "bool"
+  timezone: str
+  log_retention_days: "int(1,3650)"
+  # Kept temporarily for compatibility with existing installations.
+  log_level: "list(trace|debug|info|notice|warning|error|fatal)?"
+  https_only: "bool?"
 environment:
   TRILIUM_DATA_DIR: "/home/node/trilium-data"
+  TRILIUM_NETWORK_HOST: "0.0.0.0"
+  TRILIUM_NETWORK_PORT: "8080"
+  TRILIUM_NETWORK_TRUSTEDREVERSEPROXY: "true"
+  TRILIUM_LOGGING_RETENTIONDAYS: "{{ options.log_retention_days }}"
   TZ: "{{ options.timezone }}"
-  NODE_ENV: "production" 
-  HOST: "0.0.0.0"
-  TRILIUM_LOG_LEVEL: "{{ options.log_level }}"
-#  TRILIUM_LANGUAGE: "{{ options.language }}"
