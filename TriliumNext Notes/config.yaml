@@ -12,6 +12,7 @@ ingress_stream: true
 panel_icon: mdi:notebook-multiple
 panel_title: Trilium Notes
 webui: "http://[HOST]:[PORT:8080]/"
+watchdog: "tcp://[HOST]:[PORT:8080]"
 arch:
   - amd64
   - aarch64
