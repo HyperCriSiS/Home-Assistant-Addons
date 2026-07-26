@@ -6,6 +6,7 @@
 - Migrate away from the obsolete `build.yaml` mechanism and pin the upstream image directly in the Dockerfile.
 - Use Trilium's upstream startup command and health check instead of maintaining a custom wrapper.
 - Configure the current Trilium environment variables for host, port, trusted reverse proxy, and log retention.
+- Add a Home Assistant TCP watchdog for automatic supervision of the Trilium service.
 - Add automated validation, image build, container health smoke tests, and Dependabot updates.
 - Deprecate the non-functional `log_level` and `https_only` options while retaining schema compatibility for existing installations.
 
