@@ -71,6 +71,34 @@ jobs:
               output.write(f"upstream_version={match.group(1)}\n")
           PY
 
+      - name: Validate upstream image architectures
+        env:
+          UPSTREAM_VERSION: ${{ steps.metadata.outputs.upstream_version }}
+        run: |
+          docker manifest inspect \
+            "docker.io/triliumnext/trilium:${UPSTREAM_VERSION}" \
+            > /tmp/trilium-manifest.json
+
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/trilium-manifest.json", encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+
+          linux_arches = {
+              item.get("platform", {}).get("architecture")
+              for item in manifest.get("manifests", [])
+              if item.get("platform", {}).get("os") == "linux"
+          }
+          required = {"amd64", "arm64"}
+          missing = required - linux_arches
+          if missing:
+              raise SystemExit(
+                  "Pinned Trilium image is missing required Linux architectures: "
+                  + ", ".join(sorted(missing))
+              )
+          PY
+
       - name: Build add-on image
         run: |
           docker build --pull \
