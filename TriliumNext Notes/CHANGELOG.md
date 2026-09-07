@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.09.07
+
+- Update Trilium Notes to v0.105.0.
+- Keep Home Assistant Ingress, TCP watchdog, persistent data mapping, and current Trilium environment configuration unchanged.
+- Note upstream ARM64 change: the v0.105.0 Docker image uses Debian 13 and requires a host with sufficiently recent `libseccomp` support for the `clone3` syscall.
+- Extend CI validation to verify that the pinned upstream Docker image publishes both `amd64` and `arm64` Linux manifests before building and smoke-testing the add-on.
+
 ## v2026.07.26
 
 - Update Trilium Notes to v0.104.1.
