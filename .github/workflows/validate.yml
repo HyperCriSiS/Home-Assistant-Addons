@@ -1,0 +1,140 @@
+---
+name: Validate add-on
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate and smoke-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install validation tools
+        run: python3 -m pip install --disable-pip-version-check --no-cache-dir pyyaml yamllint
+
+      - name: Lint YAML
+        run: >-
+          yamllint
+          "TriliumNext Notes/config.yaml"
+          ".github/workflows/validate.yml"
+          ".github/dependabot.yml"
+          ".yamllint"
+
+      - name: Validate metadata consistency
+        id: metadata
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import re
+          import yaml
+
+          addon_dir = pathlib.Path("TriliumNext Notes")
+          config = yaml.safe_load((addon_dir / "config.yaml").read_text())
+          dockerfile = (addon_dir / "Dockerfile").read_text()
+          changelog = (addon_dir / "CHANGELOG.md").read_text()
+
+          required_arches = {"amd64", "aarch64"}
+          actual_arches = set(config.get("arch", []))
+          if actual_arches != required_arches:
+              raise SystemExit(f"Unexpected architectures: {sorted(actual_arches)}")
+
+          version = config["version"]
+          if not changelog.startswith(f"# Changelog\n\n## {version}\n"):
+              raise SystemExit("The first changelog entry must match config.yaml version")
+
+          match = re.search(r"^FROM docker\.io/triliumnext/trilium:(v[^\s]+)$", dockerfile, re.MULTILINE)
+          if not match:
+              raise SystemExit("Dockerfile must pin a versioned Trilium image")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"addon_version={version}\n")
+              output.write(f"upstream_version={match.group(1)}\n")
+          PY
+
+      - name: Validate upstream image architectures
+        env:
+          UPSTREAM_VERSION: ${{ steps.metadata.outputs.upstream_version }}
+        run: |
+          docker manifest inspect \
+            "docker.io/triliumnext/trilium:${UPSTREAM_VERSION}" \
+            > /tmp/trilium-manifest.json
+
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/trilium-manifest.json", encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+
+          linux_arches = {
+              item.get("platform", {}).get("architecture")
+              for item in manifest.get("manifests", [])
+              if item.get("platform", {}).get("os") == "linux"
+          }
+          required = {"amd64", "arm64"}
+          missing = required - linux_arches
+          if missing:
+              raise SystemExit(
+                  "Pinned Trilium image is missing required Linux architectures: "
+                  + ", ".join(sorted(missing))
+              )
+          PY
+
+      - name: Build add-on image
+        run: |
+          docker build --pull \
+            --build-arg BUILD_VERSION="${{ steps.metadata.outputs.addon_version }}" \
+            --build-arg BUILD_ARCH=amd64 \
+            --tag trilium-addon:test \
+            "TriliumNext Notes"
+
+      - name: Smoke-test container health
+        run: |
+          set -eu
+          docker run --detach --name trilium-addon-test trilium-addon:test
+
+          for attempt in $(seq 1 60); do
+            status="$(
+              docker inspect \
+                --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+                trilium-addon-test
+            )"
+            case "$status" in
+              healthy)
+                docker logs trilium-addon-test
+                exit 0
+                ;;
+              unhealthy)
+                docker logs trilium-addon-test
+                exit 1
+                ;;
+            esac
+            sleep 2
+          done
+
+          docker logs trilium-addon-test
+          echo "Container did not become healthy in time" >&2
+          exit 1
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs trilium-addon-test 2>/dev/null || true

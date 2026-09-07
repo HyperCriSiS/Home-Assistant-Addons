@@ -1,25 +1,46 @@
 # Changelog
 
-# v2026.07.07
-- Update to Trilium v0.103.0 (sync protocol version 39)
+## v2026.09.07
 
-# v2025.11.30
-- Update to v0.99.5
-- Change Name to Trilium Notes
-- Fix startup parameter
+- Update Trilium Notes to v0.105.0.
+- Keep Home Assistant Ingress, TCP watchdog, persistent data mapping, and current Trilium environment configuration unchanged.
+- Note upstream ARM64 change: the v0.105.0 Docker image uses Debian 13 and requires a host with sufficiently recent `libseccomp` support for the `clone3` syscall.
+- Extend CI validation to verify that the pinned upstream Docker image publishes both `amd64` and `arm64` Linux manifests before building and smoke-testing the add-on.
 
-# v2025.09.22
-- startup and health check hopefully fixed :D - Thanks @GraphicHealer
+## v2026.07.26
 
-# v2025.09.17
-- bump version to v0.98.1
-- If there are still some startup issues, this will be fixes with next version.
+- Update Trilium Notes to v0.104.1.
+- Migrate away from the obsolete `build.yaml` mechanism and pin the upstream image directly in the Dockerfile.
+- Use Trilium's upstream startup command and health check instead of maintaining a custom wrapper.
+- Configure the current Trilium environment variables for host, port, trusted reverse proxy, and log retention.
+- Add a Home Assistant TCP watchdog for automatic supervision of the Trilium service.
+- Add automated validation, image build, container health smoke tests, and Dependabot updates.
+- Deprecate the non-functional `log_level` and `https_only` options while retaining schema compatibility for existing installations.
 
-# v2025.03.13
-- Changed timezone and log-level options
-- New Logo with proper name
-- Fixed name in all files 
+## v2026.07.07
 
-# v2025.03.12
+- Update to Trilium v0.103.0 (sync protocol version 39).
 
-- Initial release
+## v2025.11.30
+
+- Update to v0.99.5.
+- Change name to Trilium Notes.
+- Fix startup parameter.
+
+## v2025.09.22
+
+- Fix startup and health check.
+
+## v2025.09.17
+
+- Update to v0.98.1.
+
+## v2025.03.13
+
+- Add timezone and log-level options.
+- Add new logo with the correct name.
+- Fix naming across files.
+
+## v2025.03.12
+
+- Initial release.
