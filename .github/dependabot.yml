@@ -1,0 +1,26 @@
+---
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: "/TriliumNext Notes"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: "/.github/tests/e2e"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

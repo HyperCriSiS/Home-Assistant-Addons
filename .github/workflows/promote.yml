@@ -1,0 +1,80 @@
+---
+name: Promote dev to main
+
+on:
+  workflow_run:
+    workflows:
+      - Validate add-on
+      - HAOS integration
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: promote-dev-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Maintain release pull request
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          vars.HAOS_E2E_ENABLED != 'true' &&
+          github.event.workflow_run.name == 'Validate add-on' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'dev'
+        ) ||
+        (
+          vars.HAOS_E2E_ENABLED == 'true' &&
+          github.event.workflow_run.name == 'HAOS integration' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Create or update dev to main pull request
+        id: pr
+        run: |
+          pr_number="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base main \
+            --head dev \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -z "${pr_number}" ]]; then
+            if [[ "$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev" --jq '.ahead_by')" == "0" ]]; then
+              echo "dev has nothing to promote"
+              exit 0
+            fi
+
+            pr_url="$(gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head dev \
+              --title "chore: promote validated dev to main" \
+              --body "Automated release PR. dev has passed the configured validation pipeline before promotion.")"
+            pr_number="${pr_url##*/}"
+          fi
+
+          echo "number=${pr_number}" >> "${GITHUB_OUTPUT}"
+
+      - name: Enable automatic release to main
+        if: steps.pr.outputs.number != '' && vars.AUTO_RELEASE_TO_MAIN == 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr merge "${PR_NUMBER}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --merge \
+            --auto

@@ -1,0 +1,148 @@
+---
+name: Validate add-on
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate, build and integration-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install validation tools
+        run: |
+          python3 -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            'pyyaml==6.0.2' \
+            'websockets==15.0.1' \
+            'yamllint==1.37.1'
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Lint YAML
+        run: |
+          find . \
+            -type f \
+            \( -name '*.yml' -o -name '*.yaml' \) \
+            -not -path './.git/*' \
+            -print0 \
+            | xargs -0 yamllint
+
+      - name: Lint GitHub Actions
+        run: |
+          actionlint_bin="$(go env GOPATH)/bin/actionlint"
+          "${actionlint_bin}"
+
+      - name: Lint Dockerfile
+        run: |
+          image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
+          digest="sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5"
+          docker run --rm -i "${image}@${digest}" \
+            < "TriliumNext Notes/Dockerfile"
+
+      - name: Validate metadata consistency
+        id: metadata
+        run: python3 .github/scripts/validate_metadata.py
+
+      - name: Validate upstream image architectures
+        env:
+          UPSTREAM_VERSION: ${{ steps.metadata.outputs.upstream_version }}
+        run: |
+          docker manifest inspect \
+            "docker.io/triliumnext/trilium:${UPSTREAM_VERSION}" \
+            > /tmp/trilium-manifest.json
+
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/trilium-manifest.json", encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+
+          linux_arches = {
+              item.get("platform", {}).get("architecture")
+              for item in manifest.get("manifests", [])
+              if item.get("platform", {}).get("os") == "linux"
+          }
+          required = {"amd64", "arm64"}
+          missing = required - linux_arches
+          if missing:
+              raise SystemExit(
+                  "Pinned Trilium image is missing required Linux architectures: "
+                  + ", ".join(sorted(missing))
+              )
+          print(f"Available Linux architectures: {sorted(linux_arches)}")
+          PY
+
+      - name: Validate amd64 and aarch64 builds
+        env:
+          ADDON_VERSION: ${{ steps.metadata.outputs.addon_version }}
+        run: |
+          docker buildx create \
+            --driver docker-container \
+            --name trilium-ci \
+            --use
+
+          docker buildx build \
+            --pull \
+            --platform linux/amd64 \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
+            --build-arg BUILD_ARCH=amd64 \
+            --output type=cacheonly \
+            "TriliumNext Notes"
+
+          docker buildx build \
+            --pull \
+            --platform linux/arm64 \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
+            --build-arg BUILD_ARCH=aarch64 \
+            --output type=cacheonly \
+            "TriliumNext Notes"
+
+      - name: Build native test image
+        env:
+          ADDON_VERSION: ${{ steps.metadata.outputs.addon_version }}
+        run: |
+          docker build --pull \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
+            --build-arg BUILD_ARCH=amd64 \
+            --tag trilium-addon:test \
+            "TriliumNext Notes"
+
+      - name: Install browser test dependencies
+        working-directory: .github/tests/e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Functional, Ingress, WebSocket and browser tests
+        run: bash .github/scripts/integration-test.sh trilium-addon:test
+
+      - name: Persistence and upgrade test
+        run: bash .github/scripts/upgrade-test.sh trilium-addon:test
+
+      - name: Show Docker state on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker network ls || true
+          docker volume ls || true
