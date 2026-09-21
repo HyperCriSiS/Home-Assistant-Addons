@@ -1,6 +1,6 @@
 ---
 name: "Trilium Notes"
-version: "v2026.09.07"
+version: "v2026.09.21"
 slug: trilium
 description: >-
   Hierarchical note-taking application with encryption, Markdown support,
@@ -40,6 +40,6 @@ environment:
   TRILIUM_DATA_DIR: "/home/node/trilium-data"
   TRILIUM_NETWORK_HOST: "0.0.0.0"
   TRILIUM_NETWORK_PORT: "8080"
-  TRILIUM_NETWORK_TRUSTEDREVERSEPROXY: "true"
+  TRILIUM_NETWORK_TRUSTEDREVERSEPROXY: "172.30.32.2"
   TRILIUM_LOGGING_RETENTIONDAYS: "{{ options.log_retention_days }}"
   TZ: "{{ options.timezone }}"
