@@ -18,67 +18,47 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate and smoke-test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    name: Validate, build and integration-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Install validation tools
-        run: python3 -m pip install --disable-pip-version-check --no-cache-dir pyyaml yamllint
+        run: |
+          python3 -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            'pyyaml==6.0.2' \
+            'websockets==15.0.1' \
+            'yamllint==1.37.1'
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
       - name: Lint YAML
-        run: >-
-          yamllint
-          "TriliumNext Notes/config.yaml"
-          ".github/workflows/validate.yml"
-          ".github/dependabot.yml"
-          ".yamllint"
+        run: |
+          find . \
+            -type f \
+            \( -name '*.yml' -o -name '*.yaml' \) \
+            -not -path './.git/*' \
+            -print0 \
+            | xargs -0 yamllint
+
+      - name: Lint GitHub Actions
+        run: "$(go env GOPATH)/bin/actionlint"
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6 # v3.4.0
+        with:
+          dockerfile: "TriliumNext Notes/Dockerfile"
 
       - name: Validate metadata consistency
         id: metadata
-        run: |
-          python3 - <<'PY'
-          import os
-          import pathlib
-          import re
-          import yaml
-
-          addon_dir = pathlib.Path("TriliumNext Notes")
-          config = yaml.safe_load((addon_dir / "config.yaml").read_text())
-          dockerfile = (addon_dir / "Dockerfile").read_text()
-          changelog = (addon_dir / "CHANGELOG.md").read_text()
-
-          required_arches = {"amd64", "aarch64"}
-          actual_arches = set(config.get("arch", []))
-          if actual_arches != required_arches:
-              raise SystemExit(f"Unexpected architectures: {sorted(actual_arches)}")
-
-          trusted_proxy = config.get("environment", {}).get(
-              "TRILIUM_NETWORK_TRUSTEDREVERSEPROXY"
-          )
-          if trusted_proxy != "172.30.32.2":
-              raise SystemExit(
-                  "TRILIUM_NETWORK_TRUSTEDREVERSEPROXY must trust only "
-                  "the Home Assistant Ingress proxy at 172.30.32.2"
-              )
-
-          version = config["version"]
-          if not changelog.startswith(f"# Changelog\n\n## {version}\n"):
-              raise SystemExit("The first changelog entry must match config.yaml version")
-
-          match = re.search(r"^FROM docker\.io/triliumnext/trilium:(v[^\s]+)$", dockerfile, re.MULTILINE)
-          if not match:
-              raise SystemExit("Dockerfile must pin a versioned Trilium image")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"addon_version={version}\n")
-              output.write(f"upstream_version={match.group(1)}\n")
-          PY
+        run: python3 .github/scripts/validate_metadata.py
 
       - name: Validate upstream image architectures
         env:
@@ -106,44 +86,59 @@ jobs:
                   "Pinned Trilium image is missing required Linux architectures: "
                   + ", ".join(sorted(missing))
               )
+          print(f"Available Linux architectures: {sorted(linux_arches)}")
           PY
 
-      - name: Build add-on image
+      - name: Validate amd64 and aarch64 builds
+        env:
+          ADDON_VERSION: ${{ steps.metadata.outputs.addon_version }}
+        run: |
+          docker buildx create \
+            --driver docker-container \
+            --name trilium-ci \
+            --use
+
+          docker buildx build \
+            --pull \
+            --platform linux/amd64 \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
+            --build-arg BUILD_ARCH=amd64 \
+            --output type=cacheonly \
+            "TriliumNext Notes"
+
+          docker buildx build \
+            --pull \
+            --platform linux/arm64 \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
+            --build-arg BUILD_ARCH=aarch64 \
+            --output type=cacheonly \
+            "TriliumNext Notes"
+
+      - name: Build native test image
+        env:
+          ADDON_VERSION: ${{ steps.metadata.outputs.addon_version }}
         run: |
           docker build --pull \
-            --build-arg BUILD_VERSION="${{ steps.metadata.outputs.addon_version }}" \
+            --build-arg "BUILD_VERSION=${ADDON_VERSION}" \
             --build-arg BUILD_ARCH=amd64 \
             --tag trilium-addon:test \
             "TriliumNext Notes"
 
-      - name: Smoke-test container health
+      - name: Install browser test dependencies
+        working-directory: .github/tests/e2e
         run: |
-          set -eu
-          docker run --detach --name trilium-addon-test trilium-addon:test
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
 
-          for attempt in $(seq 1 60); do
-            status="$(
-              docker inspect \
-                --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
-                trilium-addon-test
-            )"
-            case "$status" in
-              healthy)
-                docker logs trilium-addon-test
-                exit 0
-                ;;
-              unhealthy)
-                docker logs trilium-addon-test
-                exit 1
-                ;;
-            esac
-            sleep 2
-          done
+      - name: Functional, Ingress, WebSocket and browser tests
+        run: bash .github/scripts/integration-test.sh trilium-addon:test
 
-          docker logs trilium-addon-test
-          echo "Container did not become healthy in time" >&2
-          exit 1
+      - name: Persistence and upgrade test
+        run: bash .github/scripts/upgrade-test.sh trilium-addon:test
 
-      - name: Show container logs on failure
+      - name: Show Docker state on failure
         if: failure()
-        run: docker logs trilium-addon-test 2>/dev/null || true
+        run: |
+          docker ps -a || true
+          docker network ls || true
+          docker volume ls || true
