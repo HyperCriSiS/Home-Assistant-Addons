@@ -38,7 +38,7 @@ jobs:
       }}
     runs-on: ubuntu-24.04
     env:
-      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Create or update dev to main pull request

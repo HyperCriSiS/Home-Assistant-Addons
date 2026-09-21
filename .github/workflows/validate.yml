@@ -55,8 +55,9 @@ jobs:
 
       - name: Lint Dockerfile
         run: |
-          docker run --rm -i \
-            ghcr.io/hadolint/hadolint:v2.15.0-debian@sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5 \
+          image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
+          digest="sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5"
+          docker run --rm -i "${image}@${digest}" \
             < "TriliumNext Notes/Dockerfile"
 
       - name: Validate metadata consistency
