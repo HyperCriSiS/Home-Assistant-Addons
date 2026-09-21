@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -49,10 +49,12 @@ jobs:
             | xargs -0 yamllint
 
       - name: Lint GitHub Actions
-        run: "$(go env GOPATH)/bin/actionlint"
+        run: |
+          actionlint_bin="$(go env GOPATH)/bin/actionlint"
+          "${actionlint_bin}"
 
       - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6 # v3.4.0
+        uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6  # v3.4.0
         with:
           dockerfile: "TriliumNext Notes/Dockerfile"
 
