@@ -54,9 +54,10 @@ jobs:
           "${actionlint_bin}"
 
       - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6  # v3.4.0
-        with:
-          dockerfile: "TriliumNext Notes/Dockerfile"
+        run: |
+          docker run --rm -i \
+            ghcr.io/hadolint/hadolint:v2.15.0-debian@sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5 \
+            < "TriliumNext Notes/Dockerfile"
 
       - name: Validate metadata consistency
         id: metadata
