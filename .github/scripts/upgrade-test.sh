@@ -75,9 +75,20 @@ determine_previous_image() {
   # Legacy Home Assistant add-on layout: Dockerfile uses ARG BUILD_FROM and
   # build.yaml contains the architecture-specific upstream images.
   build_yaml="$(git show "${ref}:TriliumNext Notes/build.yaml" 2>/dev/null || true)"
-  image="$(sed -nE \
-    's#^[[:space:]]*amd64:[[:space:]]*["'"']?(docker\.io/triliumnext/trilium:v[^"'"'[:space:]]+)["'"']?[[:space:]]*$#\1#p' \
-    <<<"${build_yaml}" | head -n1)"
+  image="$(python3 -c '
+import sys
+import yaml
+
+payload = yaml.safe_load(sys.stdin.read()) or {}
+build_from = payload.get("build_from") or {}
+amd64 = str(build_from.get("amd64") or "")
+aarch64 = str(build_from.get("aarch64") or "")
+
+if not amd64 or amd64 != aarch64:
+    raise SystemExit(1)
+
+print(amd64)
+' <<<"${build_yaml}" 2>/dev/null || true)"
 
   if [[ -n "${image}" ]]; then
     printf '%s\n' "${image}"
