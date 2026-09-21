@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.09.21
+
+- Restrict Trilium reverse-proxy trust to the Home Assistant Ingress proxy at `172.30.32.2` instead of trusting arbitrary forwarded clients.
+- Fix `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` from `express-rate-limit` when Trilium is accessed through Home Assistant Ingress.
+- Avoid the insecure `trustedReverseProxy=true` configuration, which can allow spoofed `X-Forwarded-For` values and trigger `ERR_ERL_PERMISSIVE_TRUST_PROXY`.
+- Add CI validation to prevent accidentally reverting the trusted-proxy setting.
+
 ## v2026.09.07
 
 - Update Trilium Notes to v0.105.0.
