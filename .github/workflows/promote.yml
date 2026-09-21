@@ -22,22 +22,20 @@ jobs:
   promote:
     name: Maintain release pull request
     if: >-
-      ${
-        {
-          github.event_name == 'workflow_dispatch' ||
-          (
-            vars.HAOS_E2E_ENABLED != 'true' &&
-            github.event.workflow_run.name == 'Validate add-on' &&
-            github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'dev'
-          ) ||
-          (
-            vars.HAOS_E2E_ENABLED == 'true' &&
-            github.event.workflow_run.name == 'HAOS integration' &&
-            github.event.workflow_run.conclusion == 'success'
-          )
-        }
-      }
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          vars.HAOS_E2E_ENABLED != 'true' &&
+          github.event.workflow_run.name == 'Validate add-on' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'dev'
+        ) ||
+        (
+          vars.HAOS_E2E_ENABLED == 'true' &&
+          github.event.workflow_run.name == 'HAOS integration' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
