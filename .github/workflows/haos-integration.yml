@@ -20,18 +20,16 @@ jobs:
   haos:
     name: Test on dedicated Home Assistant OS
     if: >-
-      ${
-        {
-          vars.HAOS_E2E_ENABLED == 'true' &&
+      ${{
+        vars.HAOS_E2E_ENABLED == 'true' &&
+        (
+          github.event_name == 'workflow_dispatch' ||
           (
-            github.event_name == 'workflow_dispatch' ||
-            (
-              github.event.workflow_run.conclusion == 'success' &&
-              github.event.workflow_run.head_branch == 'dev'
-            )
+            github.event.workflow_run.conclusion == 'success' &&
+            github.event.workflow_run.head_branch == 'dev'
           )
-        }
-      }
+        )
+      }}
     runs-on:
       - self-hosted
       - linux
