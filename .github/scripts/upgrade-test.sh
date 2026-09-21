@@ -56,18 +56,52 @@ print(payload)
 '
 }
 
+determine_previous_image() {
+  local ref="origin/${BASE_BRANCH}"
+  local dockerfile
+  local build_yaml
+  local image
+
+  dockerfile="$(git show "${ref}:TriliumNext Notes/Dockerfile" 2>/dev/null || true)"
+  image="$(sed -nE \
+    's#^FROM[[:space:]]+(docker\.io/triliumnext/trilium:v[^[:space:]]+)$#\1#p' \
+    <<<"${dockerfile}" | head -n1)"
+
+  if [[ -n "${image}" ]]; then
+    printf '%s\n' "${image}"
+    return 0
+  fi
+
+  # Legacy Home Assistant add-on layout: Dockerfile uses ARG BUILD_FROM and
+  # build.yaml contains the architecture-specific upstream images.
+  build_yaml="$(git show "${ref}:TriliumNext Notes/build.yaml" 2>/dev/null || true)"
+  image="$(sed -nE \
+    's#^[[:space:]]*amd64:[[:space:]]*["'"']?(docker\.io/triliumnext/trilium:v[^"'"'[:space:]]+)["'"']?[[:space:]]*$#\1#p' \
+    <<<"${build_yaml}" | head -n1)"
+
+  if [[ -n "${image}" ]]; then
+    printf '%s\n' "${image}"
+    return 0
+  fi
+
+  return 1
+}
+
 if ! git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
   git fetch --depth=1 origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}"
 fi
 
-previous_dockerfile="$(git show "origin/${BASE_BRANCH}:TriliumNext Notes/Dockerfile" 2>/dev/null || true)"
-previous_version="$(sed -nE 's#^FROM docker\.io/triliumnext/trilium:(v[^[:space:]]+)$#\1#p' <<<"${previous_dockerfile}" | head -n1)"
-if [[ -z "${previous_version}" ]]; then
-  echo "Could not determine previous Trilium version from origin/${BASE_BRANCH}" >&2
+if ! previous_image="$(determine_previous_image)"; then
+  echo "Could not determine previous Trilium image from origin/${BASE_BRANCH}" >&2
+  echo "Checked both Dockerfile and legacy build.yaml layouts" >&2
   exit 1
 fi
 
-previous_image="docker.io/triliumnext/trilium:${previous_version}"
+if [[ ! "${previous_image}" =~ ^docker\.io/triliumnext/trilium:v[0-9] ]]; then
+  echo "Refusing unexpected previous Trilium image: ${previous_image}" >&2
+  exit 1
+fi
+
 echo "Upgrade test: ${previous_image} -> ${CURRENT_IMAGE}"
 docker pull "${previous_image}" >/dev/null
 docker volume create "${VOLUME}" >/dev/null
@@ -80,7 +114,10 @@ if python3 -c 'import json,sys; raise SystemExit(0 if not json.loads(sys.argv[1]
     --header 'Content-Type: application/json' \
     --data '{"locale":"en"}' \
     "${BASE_URL}/api/setup/new-document?skipDemoDb=1")"
-  [[ "${code}" == "204" ]] || { echo "Old version initialization failed with HTTP ${code}" >&2; exit 1; }
+  [[ "${code}" == "204" ]] || {
+    echo "Old version initialization failed with HTTP ${code}" >&2
+    exit 1
+  }
 fi
 assert_initialized
 docker exec "${CONTAINER}" test -s /home/node/trilium-data/document.db
