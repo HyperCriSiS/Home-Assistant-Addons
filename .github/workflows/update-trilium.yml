@@ -1,0 +1,156 @@
+---
+name: Update Trilium
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-trilium
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Detect, test and propose Trilium updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+      AUTO_MERGE_TO_DEV: ${{ vars.AUTO_MERGE_TO_DEV || 'true' }}
+
+    steps:
+      - name: Check out dev branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect latest stable Trilium release
+        id: version
+        run: |
+          current="$(sed -nE 's#^FROM docker\.io/triliumnext/trilium:(v[^[:space:]]+)$#\1#p' \
+            'TriliumNext Notes/Dockerfile')"
+          latest="$(gh api repos/TriliumNext/Trilium/releases/latest --jq '.tag_name')"
+
+          if [[ -z "${current}" || -z "${latest}" ]]; then
+            echo "Could not determine current/latest Trilium version" >&2
+            exit 1
+          fi
+
+          echo "Current: ${current}"
+          echo "Latest:  ${latest}"
+          echo "current=${current}" >> "${GITHUB_OUTPUT}"
+          echo "latest=${latest}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${current}" == "${latest}" ]]; then
+            echo "update=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "update=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Verify upstream image before changing files
+        if: steps.version.outputs.update == 'true'
+        env:
+          LATEST: ${{ steps.version.outputs.latest }}
+        run: docker manifest inspect "docker.io/triliumnext/trilium:${LATEST}" >/dev/null
+
+      - name: Update add-on files
+        if: steps.version.outputs.update == 'true'
+        env:
+          LATEST: ${{ steps.version.outputs.latest }}
+        run: python3 .github/scripts/update_trilium.py --upstream "${LATEST}"
+
+      - name: Create update branch and pull request
+        if: steps.version.outputs.update == 'true'
+        id: pr
+        env:
+          LATEST: ${{ steps.version.outputs.latest }}
+        run: |
+          branch="automation/trilium-${LATEST}"
+          echo "branch=${branch}" >> "${GITHUB_OUTPUT}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${branch}"
+          git add 'TriliumNext Notes/Dockerfile' \
+            'TriliumNext Notes/config.yaml' \
+            'TriliumNext Notes/CHANGELOG.md'
+          git commit -m "chore: update Trilium to ${LATEST}"
+
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force "${remote}" "HEAD:refs/heads/${branch}"
+
+          existing="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base dev \
+            --head "${branch}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -n "${existing}" ]]; then
+            pr_number="${existing}"
+          else
+            body="$(printf \
+              'Automated Trilium update to %s. Full CI is dispatched before merge.\n\nUpstream: %s\n' \
+              "${LATEST}" \
+              "https://github.com/TriliumNext/Trilium/releases/tag/${LATEST}")"
+            pr_url="$(gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base dev \
+              --head "${branch}" \
+              --title "chore: update Trilium to ${LATEST}" \
+              --body "${body}")"
+            pr_number="${pr_url##*/}"
+          fi
+
+          echo "number=${pr_number}" >> "${GITHUB_OUTPUT}"
+
+      - name: Dispatch full validation for update branch
+        if: steps.version.outputs.update == 'true'
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: gh workflow run validate.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}"
+
+      - name: Wait for update validation
+        if: steps.version.outputs.update == 'true'
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id="$(gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow validate.yml \
+              --branch "${BRANCH}" \
+              --event workflow_dispatch \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')"
+            [[ -n "${run_id}" ]] && break
+            sleep 2
+          done
+
+          [[ -n "${run_id}" ]] || { echo "Validation run did not start" >&2; exit 1; }
+          gh run watch "${run_id}" --repo "${GITHUB_REPOSITORY}" --exit-status
+
+      - name: Merge validated update into dev
+        if: steps.version.outputs.update == 'true' && env.AUTO_MERGE_TO_DEV == 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr merge "${PR_NUMBER}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --squash \
+            --delete-branch
+
+          gh workflow run validate.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref dev

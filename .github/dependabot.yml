@@ -16,3 +16,11 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+
+  - package-ecosystem: npm
+    directory: "/.github/tests/e2e"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

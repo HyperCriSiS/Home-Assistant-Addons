@@ -1,0 +1,54 @@
+---
+name: HAOS integration
+
+on:
+  workflow_run:
+    workflows:
+      - Validate add-on
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: haos-integration
+  cancel-in-progress: true
+
+jobs:
+  haos:
+    name: Test on dedicated Home Assistant OS
+    if: >-
+      ${
+        {
+          vars.HAOS_E2E_ENABLED == 'true' &&
+          (
+            github.event_name == 'workflow_dispatch' ||
+            (
+              github.event.workflow_run.conclusion == 'success' &&
+              github.event.workflow_run.head_branch == 'dev'
+            )
+          )
+        }
+      }
+    runs-on:
+      - self-hosted
+      - linux
+      - haos-addon-test
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out validated dev branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          persist-credentials: false
+
+      - name: Run Home Assistant OS add-on test harness
+        env:
+          HAOS_ADDONS_DIR: ${{ vars.HAOS_ADDONS_DIR }}
+          HAOS_BASE_URL: ${{ vars.HAOS_BASE_URL }}
+          HAOS_TOKEN: ${{ secrets.HAOS_TOKEN }}
+          HA_CLI: ${{ vars.HA_CLI || 'ha' }}
+        run: bash .github/scripts/haos-e2e.sh
