@@ -14,9 +14,6 @@ for Home Assistant Ingress.
 See [TriliumNext Notes/README.md](TriliumNext%20Notes/README.md) for installation,
 configuration, backups, networking, and troubleshooting.
 
-Maintainer documentation for validation and release automation is kept separately under
-[.github/RELEASE_AUTOMATION.md](.github/RELEASE_AUTOMATION.md).
-
 ## Support
 
 For add-on-specific problems, open an issue in this repository. For application-level
