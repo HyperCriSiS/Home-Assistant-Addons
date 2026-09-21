@@ -58,6 +58,15 @@ jobs:
           if actual_arches != required_arches:
               raise SystemExit(f"Unexpected architectures: {sorted(actual_arches)}")
 
+          trusted_proxy = config.get("environment", {}).get(
+              "TRILIUM_NETWORK_TRUSTEDREVERSEPROXY"
+          )
+          if trusted_proxy != "172.30.32.2":
+              raise SystemExit(
+                  "TRILIUM_NETWORK_TRUSTEDREVERSEPROXY must trust only "
+                  "the Home Assistant Ingress proxy at 172.30.32.2"
+              )
+
           version = config["version"]
           if not changelog.startswith(f"# Changelog\n\n## {version}\n"):
               raise SystemExit("The first changelog entry must match config.yaml version")
