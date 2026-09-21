@@ -33,27 +33,6 @@ Before upgrading, create a current Home Assistant backup. Database migrations ar
 
 Ingress is enabled by default. Port `8080` is also exposed for optional direct access. Trilium trusts only the Home Assistant Ingress reverse proxy at `172.30.32.2` for forwarded client information instead of globally trusting arbitrary `X-Forwarded-For` headers.
 
-## Automated update validation
-
-The repository checks for a new stable Trilium release every day. When a newer release is available, GitHub Actions prepares an update against the `dev` branch and runs the complete validation pipeline before it can be promoted to `main`.
-
-The automated checks include:
-
-- YAML, GitHub Actions, Dockerfile, and Home Assistant metadata validation.
-- Availability and architecture validation of the pinned Trilium image.
-- `amd64` and `aarch64` container builds.
-- HTTP startup and health checks.
-- A Home Assistant-style reverse-proxy/Ingress test using the trusted proxy address.
-- WebSocket connectivity through the proxy.
-- Playwright browser E2E that loads Trilium, creates a note, reloads the application, and reads the note back.
-- Persistent-data verification after a container restart.
-- A database upgrade test from the Trilium version currently released on `main` to the proposed version.
-- Optional testing on a dedicated Home Assistant OS system when a self-hosted HAOS runner is configured.
-
-Validated updates can be merged into `dev` automatically. Publishing `dev` to the user-facing `main` branch remains a separate release gate unless automatic release is explicitly enabled.
-
-See [the release automation documentation](../.github/RELEASE_AUTOMATION.md) for the complete workflow and configuration.
-
 ## Troubleshooting
 
 - Review the add-on logs under **Settings → Add-ons → Trilium Notes → Logs**.
