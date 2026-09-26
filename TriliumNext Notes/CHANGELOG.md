@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.09.26
+
+- Update Trilium Notes from v0.105.0 to v0.106.0.
+- Upstream release notes: https://github.com/TriliumNext/Trilium/releases/tag/v0.106.0
+- Automated CI verifies Home Assistant metadata, amd64/aarch64 builds, Ingress proxying, WebSockets, browser behavior, persistence, and database upgrades.
+
 ## v2026.09.21
 
 - Restrict Trilium reverse-proxy trust to the Home Assistant Ingress proxy at `172.30.32.2` instead of trusting arbitrary forwarded clients.

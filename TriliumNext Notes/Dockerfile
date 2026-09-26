@@ -1,4 +1,4 @@
-FROM docker.io/triliumnext/trilium:v0.105.0
+FROM docker.io/triliumnext/trilium:v0.106.0
 
 ARG BUILD_VERSION
 ARG BUILD_ARCH
