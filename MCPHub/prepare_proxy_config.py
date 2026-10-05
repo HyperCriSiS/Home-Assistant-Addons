@@ -97,6 +97,8 @@ def cloudflare_server_block(
 
         proxy_buffering off;
         proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }}
 
     location / {{
