@@ -5,12 +5,15 @@ on:
   workflow_run:
     workflows:
       - Validate add-on
+      - Validate MCPHub
       - HAOS integration
+      - HAOS MCPHub integration
     types:
       - completed
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   pull-requests: write
 
@@ -25,24 +28,63 @@ jobs:
       ${{
         github.event_name == 'workflow_dispatch' ||
         (
-          vars.HAOS_E2E_ENABLED != 'true' &&
-          github.event.workflow_run.name == 'Validate add-on' &&
           github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.head_branch == 'dev'
-        ) ||
-        (
-          vars.HAOS_E2E_ENABLED == 'true' &&
-          github.event.workflow_run.name == 'HAOS integration' &&
-          github.event.workflow_run.conclusion == 'success'
         )
       }}
     runs-on: ubuntu-24.04
     env:
-      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+      AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
 
     steps:
+      - name: Verify validation gates for current dev commit
+        id: gates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
+        run: |
+          dev_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" --jq '.object.sha')"
+          ready=true
+
+          require_success() {
+            local workflow="$1"
+            local label="$2"
+            local conclusion
+
+            conclusion="$(gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow "${workflow}" \
+              --branch dev \
+              --commit "${dev_sha}" \
+              --status completed \
+              --limit 1 \
+              --json conclusion \
+              --jq '.[0].conclusion // empty')"
+
+            if [[ "${conclusion}" != "success" ]]; then
+              echo "${label} is not successful for dev commit ${dev_sha}: ${conclusion:-not completed}"
+              ready=false
+            else
+              echo "${label} passed for dev commit ${dev_sha}"
+            fi
+          }
+
+          require_success "validate.yml" "Trilium validation"
+          require_success "validate-mcphub.yml" "MCPHub validation"
+
+          if [[ "${HAOS_E2E_ENABLED:-false}" == "true" ]]; then
+            require_success "haos-integration.yml" "Trilium HAOS integration"
+            require_success "haos-mcphub.yml" "MCPHub HAOS integration"
+          fi
+
+          echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
+
       - name: Create or update dev to main pull request
         id: pr
+        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
         run: |
           pr_number="$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
@@ -63,15 +105,28 @@ jobs:
               --base main \
               --head dev \
               --title "chore: promote validated dev to main" \
-              --body "Automated release PR. dev has passed the configured validation pipeline before promotion.")"
+              --body "Automated release PR. The current dev commit passed all configured add-on validation gates.")"
             pr_number="${pr_url##*/}"
           fi
 
           echo "number=${pr_number}" >> "${GITHUB_OUTPUT}"
 
+      - name: Report manual promotion requirement
+        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN == ''
+        run: |
+          {
+            echo "## Promotion ready"
+            echo
+            echo "All configured validation gates passed for the current dev commit."
+            echo
+            echo "No AUTOMATION_TOKEN secret is configured, so GitHub Actions cannot create"
+            echo "the dev to main pull request with the current repository settings."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Enable automatic release to main
         if: steps.pr.outputs.number != '' && vars.AUTO_RELEASE_TO_MAIN == 'true'
         env:
+          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           gh pr merge "${PR_NUMBER}" \
