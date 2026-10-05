@@ -62,6 +62,9 @@ ingress_curl() {
     --network "${NETWORK}" \
     --ip 172.30.32.2 \
     "${INGRESS_IMAGE}" \
+    --header "X-Remote-User-Id: test-user-id" \
+    --header "X-Remote-User-Name: test-admin" \
+    --header "X-Remote-User-Display-Name: Test Admin" \
     "$@"
 }
 
@@ -87,6 +90,32 @@ PY
 ingress_curl --fail --silent --show-error \
   --header "X-Ingress-Path: ${INGRESS_PATH}" \
   "http://${CONTAINER}:8099/" >/dev/null
+
+user_json="$(ingress_curl --fail --silent --show-error \
+  --header "X-Ingress-Path: ${INGRESS_PATH}" \
+  "http://${CONTAINER}:8099/api/better-auth/user")"
+
+python3 - "${user_json}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+user = payload.get("user", {})
+if payload.get("success") is not True:
+    raise SystemExit("Home Assistant SSO user endpoint did not succeed")
+if user.get("username") != "test-admin":
+    raise SystemExit(f"Unexpected Home Assistant SSO username: {user.get('username')!r}")
+if user.get("isAdmin") is not True:
+    raise SystemExit("Home Assistant Ingress user was not mapped to MCPHub admin")
+PY
+
+if docker exec "${CONTAINER}" curl --fail --silent --max-time 2 \
+  --header "X-Remote-User-Id: spoofed-user" \
+  --header "X-Remote-User-Name: spoofed-admin" \
+  http://127.0.0.1:3000/api/servers >/dev/null 2>&1; then
+  echo "MCPHub trusted Home Assistant identity headers without the private proxy secret" >&2
+  exit 1
+fi
 
 if docker run --rm \
   --network "${NETWORK}" \
