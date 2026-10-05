@@ -1,17 +1,29 @@
 ---
 configuration:
   tunnel_enabled:
-    name: "Enable OpenAI tunnel"
-    description: "Connect the selected MCPHub endpoint to ChatGPT through OpenAI Secure MCP Tunnel."
+    name: "Enable OpenAI Secure MCP Tunnel"
+    description: "Connect the selected MCPHub endpoint to ChatGPT and other supported OpenAI clients."
   openai_runtime_api_key:
     name: "OpenAI Runtime API Key"
-    description: "Runtime key used by Secure MCP Tunnel. Leave empty while using MCPHub without the tunnel."
+    description: "Runtime key used by OpenAI Secure MCP Tunnel. Leave empty while the OpenAI tunnel is disabled."
   tunnel_id:
     name: "OpenAI Tunnel ID"
     description: "Tunnel ID created for OpenAI Secure MCP Tunnel."
   tunnel_mcp_path:
-    name: "MCPHub tunnel route"
-    description: "MCPHub endpoint exposed to ChatGPT, for example /mcp, /mcp/$smart, or /mcp/<group>."
+    name: "OpenAI MCP route"
+    description: "MCPHub route exposed to OpenAI, for example /mcp, /mcp/development, or /mcp/$smart."
   tunnel_log_level:
-    name: "Tunnel log level"
+    name: "OpenAI tunnel log level"
     description: "Verbosity of the OpenAI tunnel-client logs."
+  cloudflare_tunnel_enabled:
+    name: "Enable Cloudflare Tunnel"
+    description: "Expose one restricted MCPHub route through a remotely managed Cloudflare Tunnel."
+  cloudflare_tunnel_token:
+    name: "Cloudflare Tunnel token"
+    description: "Connector token from a remotely managed Cloudflare Tunnel."
+  cloudflare_mcp_path:
+    name: "Cloudflare MCP route"
+    description: "Exact MCPHub route exposed through Cloudflare, for example /mcp/development."
+  cloudflare_access_token:
+    name: "Cloudflare MCP client token"
+    description: "32-256 character bearer token that remote MCP clients must send in the Authorization header."
