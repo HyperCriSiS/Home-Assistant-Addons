@@ -160,6 +160,11 @@ jobs:
             --tag mcphub-addon:test \
             "MCPHub"
 
+      - name: Verify bundled tunnel clients
+        run: |
+          docker run --rm --entrypoint /usr/local/bin/cloudflared mcphub-addon:test version
+          docker run --rm --entrypoint /usr/local/bin/tunnel-client mcphub-addon:test --version
+
       - name: MCPHub container integration test
         run: bash .github/scripts/integration-test-mcphub.sh mcphub-addon:test
 
