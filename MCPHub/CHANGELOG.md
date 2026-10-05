@@ -10,6 +10,7 @@ All notable changes to this Home Assistant App are documented here.
 
 ### Added
 
+- Home Assistant Ingress single sign-on using Supervisor-provided user identity headers.
 - Optional Cloudflare Tunnel support through bundled `cloudflared` 2026.9.3.
 - Independent Cloudflare MCP route selection.
 - Separate remote-client access key for the Cloudflare endpoint.
@@ -19,12 +20,14 @@ All notable changes to this Home Assistant App are documented here.
 ### Changed
 
 - MCPHub dashboard/API authentication is no longer disabled globally.
-- Home Assistant Ingress now authenticates to MCPHub with a dedicated private internal key.
+- Home Assistant Ingress now maps the authenticated Home Assistant user into MCPHub instead of using one shared dashboard bearer identity.
 - OpenAI and Cloudflare internal MCPHub keys are scoped to the configured route whenever possible.
 - Documentation now recommends MCPHub groups to limit tool discovery per AI client.
 
 ### Security
 
+- Home Assistant identity headers are trusted only together with a private per-installation proxy secret injected by the local Ingress adapter.
+- Cloudflare explicitly strips Home Assistant identity and trust headers before proxying remote MCP traffic.
 - A misconfigured external tunnel can no longer expose an unauthenticated MCPHub dashboard/API.
 - The Cloudflare client key is validated by the local proxy and is never registered as a dashboard credential.
 - The Cloudflare origin rejects all paths except the explicitly configured MCP route.
