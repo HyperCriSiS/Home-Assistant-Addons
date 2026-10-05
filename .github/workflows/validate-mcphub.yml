@@ -72,11 +72,14 @@ jobs:
       - name: Validate MCPHub metadata
         run: |
           python3 - <<'PY'
+          from datetime import datetime
           from pathlib import Path
+          import re
           import yaml
 
           config = yaml.safe_load(Path("MCPHub/config.yaml").read_text(encoding="utf-8"))
           build = yaml.safe_load(Path("MCPHub/build.yaml").read_text(encoding="utf-8"))
+          changelog = Path("MCPHub/CHANGELOG.md").read_text(encoding="utf-8")
 
           assert config["name"] == "MCPHub"
           assert config["slug"] == "mcphub"
@@ -84,7 +87,15 @@ jobs:
           assert "image" not in config
           assert config["ingress"] is True
           assert config["ingress_port"] == 8099
-          assert config["version"] == "0.3.0"
+
+          version = config["version"]
+          match = re.fullmatch(r"(v\d{4}\.\d{2}\.\d{2})(?:-([1-9]\d*))?", version)
+          assert match is not None, (
+              "MCPHub version must use vYYYY.MM.DD or vYYYY.MM.DD-N"
+          )
+          datetime.strptime(match.group(1), "v%Y.%m.%d")
+          assert f"## [{version}]" in changelog
+
           assert config["options"]["tunnel_enabled"] is False
           assert config["options"]["cloudflare_tunnel_enabled"] is False
           assert config["options"]["cloudflare_mcp_path"] == "/mcp"
@@ -95,6 +106,15 @@ jobs:
               "aarch64": expected,
           }
           PY
+
+          MCPHUB_VERSION="$(python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          config = yaml.safe_load(Path("MCPHub/config.yaml").read_text(encoding="utf-8"))
+          print(config["version"])
+          PY
+          )"
+          echo "MCPHUB_VERSION=${MCPHUB_VERSION}" >> "${GITHUB_ENV}"
 
       - name: Validate upstream image architectures
         run: |
@@ -139,7 +159,7 @@ jobs:
           docker buildx build \
             --pull \
             --platform linux/amd64 \
-            --build-arg BUILD_VERSION=0.3.0 \
+            --build-arg BUILD_VERSION="${MCPHUB_VERSION}" \
             --build-arg BUILD_ARCH=amd64 \
             --output type=cacheonly \
             "MCPHub"
@@ -147,7 +167,7 @@ jobs:
           docker buildx build \
             --pull \
             --platform linux/arm64 \
-            --build-arg BUILD_VERSION=0.3.0 \
+            --build-arg BUILD_VERSION="${MCPHUB_VERSION}" \
             --build-arg BUILD_ARCH=aarch64 \
             --output type=cacheonly \
             "MCPHub"
@@ -155,7 +175,7 @@ jobs:
       - name: Build native MCPHub test image
         run: |
           docker build --pull \
-            --build-arg BUILD_VERSION=0.3.0 \
+            --build-arg BUILD_VERSION="${MCPHUB_VERSION}" \
             --build-arg BUILD_ARCH=amd64 \
             --tag mcphub-addon:test \
             "MCPHub"
