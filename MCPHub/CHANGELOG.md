@@ -1,7 +1,5 @@
 # Changelog
 
-All notable changes to this Home Assistant App are documented here.
-
 ## [0.2.0] - 2026-10-05
 
 ### Changed
