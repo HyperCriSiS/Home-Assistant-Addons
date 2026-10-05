@@ -12,7 +12,7 @@ OPTIONS_FILE = Path("/data/options.json")
 TEMPLATE_FILE = Path("/etc/nginx/mcphub.conf.template")
 OUTPUT_FILE = Path("/etc/nginx/conf.d/mcphub.conf")
 
-INGRESS_TOKEN_FILE = Path("/data/secrets/mcphub_ingress_token")
+HA_INGRESS_PROXY_SECRET_FILE = Path("/data/secrets/mcphub_ha_ingress_proxy_secret")
 CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
@@ -89,6 +89,10 @@ def cloudflare_server_block(
         # The public client token is validated here and is never registered in
         # MCPHub. MCPHub receives a separate private, route-scoped key instead.
         proxy_set_header Authorization "Bearer {internal_token}";
+        proxy_set_header X-MCPHub-HA-Proxy-Secret "";
+        proxy_set_header X-Remote-User-Id "";
+        proxy_set_header X-Remote-User-Name "";
+        proxy_set_header X-Remote-User-Display-Name "";
 
         proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -111,7 +115,7 @@ def main() -> None:
     options = load_options()
     template = TEMPLATE_FILE.read_text(encoding="utf-8")
 
-    ingress_token = read_secret(INGRESS_TOKEN_FILE)
+    ha_ingress_proxy_secret = read_secret(HA_INGRESS_PROXY_SECRET_FILE)
     cloudflare_internal_token = read_secret(CLOUDFLARE_INTERNAL_TOKEN_FILE)
 
     cloudflare_block = cloudflare_server_block(
@@ -122,8 +126,8 @@ def main() -> None:
     )
 
     rendered = template.replace(
-        "__INGRESS_AUTHORIZATION__",
-        f"Bearer {ingress_token}",
+        "__HA_INGRESS_PROXY_SECRET__",
+        ha_ingress_proxy_secret,
     ).replace(
         "__CLOUDFLARE_SERVER_BLOCK__",
         cloudflare_block,
