@@ -163,8 +163,8 @@ if [[ "${tunnel_enabled}" == "true" ]]; then
     if [[ -z "${openai_runtime_api_key}" || -z "${tunnel_id}" ]]; then
         log_warn "The OpenAI tunnel is enabled, but the Runtime API Key or Tunnel ID is missing."
         log_warn "MCPHub will continue without the OpenAI tunnel."
-    elif [[ ! "${tunnel_id}" =~ ^tunnel_[A-Za-z0-9_-]+$ ]]; then
-        log_error "The OpenAI Tunnel ID must start with tunnel_ and contain only letters, numbers, underscores, or dashes."
+    elif [[ ! "${tunnel_id}" =~ ^tunnel_[0-9a-f]{32}$ ]]; then
+        log_error "The OpenAI Tunnel ID must match tunnel_ followed by 32 lowercase hexadecimal characters."
         shutdown_processes 1
     else
         umask 077
