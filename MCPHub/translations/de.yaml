@@ -1,0 +1,17 @@
+---
+configuration:
+  tunnel_enabled:
+    name: "OpenAI-Tunnel aktivieren"
+    description: "Verbindet den gewählten MCPHub-Endpunkt über OpenAI Secure MCP Tunnel mit ChatGPT."
+  openai_runtime_api_key:
+    name: "OpenAI Runtime API Key"
+    description: "Runtime-Key für Secure MCP Tunnel. Kann leer bleiben, solange MCPHub ohne Tunnel verwendet wird."
+  tunnel_id:
+    name: "OpenAI Tunnel-ID"
+    description: "Die für OpenAI Secure MCP Tunnel erstellte Tunnel-ID."
+  tunnel_mcp_path:
+    name: "MCPHub-Tunnelroute"
+    description: "MCPHub-Endpunkt für ChatGPT, zum Beispiel /mcp, /mcp/$smart oder /mcp/<gruppe>."
+  tunnel_log_level:
+    name: "Tunnel-Log-Level"
+    description: "Ausführlichkeit der OpenAI-tunnel-client-Logs."

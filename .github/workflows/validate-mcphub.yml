@@ -1,0 +1,164 @@
+---
+name: Validate MCPHub
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-mcphub-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate and integration-test MCPHub
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          python3 -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            'pyyaml==6.0.2' \
+            'yamllint==1.37.1'
+
+      - name: Lint MCPHub YAML
+        run: |
+          find "MCPHub" \
+            -type f \
+            \( -name '*.yml' -o -name '*.yaml' \) \
+            -print0 \
+            | xargs -0 yamllint
+
+      - name: Lint MCPHub shell scripts
+        run: |
+          shellcheck "MCPHub/run.sh"
+          shellcheck ".github/scripts/integration-test-mcphub.sh"
+          shellcheck ".github/scripts/haos-e2e-mcphub.sh"
+
+      - name: Compile MCPHub Python helper
+        run: python3 -m py_compile "MCPHub/prepare_config.py"
+
+      - name: Lint MCPHub Dockerfile
+        run: |
+          image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
+          digest="sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5"
+          docker run --rm -i "${image}@${digest}" \
+            hadolint \
+            --ignore DL3002 \
+            --ignore DL3006 \
+            --ignore DL3008 \
+            --ignore DL3066 \
+            - < "MCPHub/Dockerfile"
+
+      - name: Validate MCPHub metadata
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          config = yaml.safe_load(Path("MCPHub/config.yaml").read_text(encoding="utf-8"))
+          build = yaml.safe_load(Path("MCPHub/build.yaml").read_text(encoding="utf-8"))
+
+          assert config["name"] == "MCPHub"
+          assert config["slug"] == "mcphub"
+          assert set(config["arch"]) == {"amd64", "aarch64"}
+          assert "image" not in config
+          assert config["ingress"] is True
+          assert config["ingress_port"] == 8099
+          assert config["options"]["tunnel_enabled"] is False
+
+          expected = "samanhappy/mcphub:1.1.0"
+          assert build["build_from"] == {
+              "amd64": expected,
+              "aarch64": expected,
+          }
+          PY
+
+      - name: Validate upstream image architectures
+        run: |
+          docker manifest inspect "docker.io/samanhappy/mcphub:1.1.0" > /tmp/mcphub-manifest.json
+          docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.15" > /tmp/tunnel-manifest.json
+
+          python3 - <<'PY'
+          import json
+
+          required = {"amd64", "arm64"}
+
+          for name, path in (
+              ("MCPHub", "/tmp/mcphub-manifest.json"),
+              ("OpenAI tunnel-client", "/tmp/tunnel-manifest.json"),
+          ):
+              with open(path, encoding="utf-8") as handle:
+                  manifest = json.load(handle)
+
+              arches = {
+                  item.get("platform", {}).get("architecture")
+                  for item in manifest.get("manifests", [])
+                  if item.get("platform", {}).get("os") == "linux"
+              }
+              missing = required - arches
+              if missing:
+                  raise SystemExit(
+                      f"{name} is missing required Linux architectures: "
+                      + ", ".join(sorted(missing))
+                  )
+              print(f"{name} Linux architectures: {sorted(arches)}")
+          PY
+
+      - name: Validate amd64 and aarch64 builds
+        run: |
+          docker buildx create \
+            --driver docker-container \
+            --name mcphub-ci \
+            --use
+
+          docker buildx build \
+            --pull \
+            --platform linux/amd64 \
+            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_ARCH=amd64 \
+            --output type=cacheonly \
+            "MCPHub"
+
+          docker buildx build \
+            --pull \
+            --platform linux/arm64 \
+            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_ARCH=aarch64 \
+            --output type=cacheonly \
+            "MCPHub"
+
+      - name: Build native MCPHub test image
+        run: |
+          docker build --pull \
+            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_ARCH=amd64 \
+            --tag mcphub-addon:test \
+            "MCPHub"
+
+      - name: MCPHub container integration test
+        run: bash .github/scripts/integration-test-mcphub.sh mcphub-addon:test
+
+      - name: Show Docker state on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker network ls || true
+          docker volume ls || true
