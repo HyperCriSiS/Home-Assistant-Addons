@@ -155,6 +155,26 @@ For detailed configuration, security notes, persistence paths, backups, and trou
 
 **[Full MCPHub App documentation →](DOCS.md)**
 
+## Versioning
+
+MCPHub wrapper releases use calendar versioning:
+
+```text
+vYYYY.MM.DD
+```
+
+If more than one release is published on the same day, subsequent releases append a
+numeric suffix:
+
+```text
+v2026.10.05
+v2026.10.05-1
+v2026.10.05-2
+```
+
+Development-store builds keep the same release base and add a temporary
+`-dev.<build>` suffix.
+
 ## Updating
 
 Home Assistant detects new App versions from this repository.
