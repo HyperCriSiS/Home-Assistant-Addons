@@ -126,7 +126,9 @@ MCPHub itself binds only to the App container loopback interface.
 
 The dashboard is exposed through a dedicated Home Assistant Ingress adapter. The App does not publish MCPHub directly on the Home Assistant host network.
 
-MCP transport authentication remains enabled independently from Home Assistant Ingress. Dedicated internal credentials are generated for Home Assistant Ingress, the OpenAI tunnel, and the Cloudflare adapter. The public Cloudflare client key is validated by the local adapter and is never registered as a dashboard credential in MCPHub.
+Home Assistant Ingress provides single sign-on for the dashboard. The Supervisor-provided Home Assistant user identity is mapped into MCPHub only when the request also carries a private per-installation proxy trust secret injected by the local Ingress adapter.
+
+MCP transport authentication remains independent from Home Assistant Ingress. OpenAI and Cloudflare each use their own route-scoped internal credentials. The public Cloudflare client key is validated by the local adapter and is never registered as a dashboard credential in MCPHub.
 
 Secrets, MCPHub configuration, and package caches are stored in the persistent App data directory and are included in Home Assistant cold backups.
 
