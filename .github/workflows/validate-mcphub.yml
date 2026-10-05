@@ -52,8 +52,10 @@ jobs:
           shellcheck ".github/scripts/integration-test-mcphub.sh"
           shellcheck ".github/scripts/haos-e2e-mcphub.sh"
 
-      - name: Compile MCPHub Python helper
-        run: python3 -m py_compile "MCPHub/prepare_config.py"
+      - name: Compile MCPHub Python helpers
+        run: |
+          python3 -m py_compile "MCPHub/prepare_config.py"
+          python3 -m py_compile "MCPHub/prepare_proxy_config.py"
 
       - name: Lint MCPHub Dockerfile
         run: |
@@ -82,7 +84,10 @@ jobs:
           assert "image" not in config
           assert config["ingress"] is True
           assert config["ingress_port"] == 8099
+          assert config["version"] == "0.3.0"
           assert config["options"]["tunnel_enabled"] is False
+          assert config["options"]["cloudflare_tunnel_enabled"] is False
+          assert config["options"]["cloudflare_mcp_path"] == "/mcp"
 
           expected = "samanhappy/mcphub:1.1.0"
           assert build["build_from"] == {
@@ -95,6 +100,7 @@ jobs:
         run: |
           docker manifest inspect "docker.io/samanhappy/mcphub:1.1.0" > /tmp/mcphub-manifest.json
           docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.15" > /tmp/tunnel-manifest.json
+          docker manifest inspect "docker.io/cloudflare/cloudflared:2026.9.3" > /tmp/cloudflared-manifest.json
 
           python3 - <<'PY'
           import json
@@ -104,6 +110,7 @@ jobs:
           for name, path in (
               ("MCPHub", "/tmp/mcphub-manifest.json"),
               ("OpenAI tunnel-client", "/tmp/tunnel-manifest.json"),
+              ("Cloudflare cloudflared", "/tmp/cloudflared-manifest.json"),
           ):
               with open(path, encoding="utf-8") as handle:
                   manifest = json.load(handle)
@@ -132,7 +139,7 @@ jobs:
           docker buildx build \
             --pull \
             --platform linux/amd64 \
-            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_VERSION=0.3.0 \
             --build-arg BUILD_ARCH=amd64 \
             --output type=cacheonly \
             "MCPHub"
@@ -140,7 +147,7 @@ jobs:
           docker buildx build \
             --pull \
             --platform linux/arm64 \
-            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_VERSION=0.3.0 \
             --build-arg BUILD_ARCH=aarch64 \
             --output type=cacheonly \
             "MCPHub"
@@ -148,7 +155,7 @@ jobs:
       - name: Build native MCPHub test image
         run: |
           docker build --pull \
-            --build-arg BUILD_VERSION=0.2.0 \
+            --build-arg BUILD_VERSION=0.3.0 \
             --build-arg BUILD_ARCH=amd64 \
             --tag mcphub-addon:test \
             "MCPHub"
