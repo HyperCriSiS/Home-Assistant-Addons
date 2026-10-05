@@ -1,12 +1,6 @@
 # Changelog
 
-All notable changes to this Home Assistant App are documented here.
-
 ## [v2026.10.05] - 2026-10-05
-
-### Changed
-
-- Switched MCPHub wrapper releases to CalVer using `vYYYY.MM.DD`; additional releases on the same day use `-1`, `-2`, `-3`, and so on.
 
 ### Added
 
@@ -19,6 +13,7 @@ All notable changes to this Home Assistant App are documented here.
 
 ### Changed
 
+- Switched MCPHub wrapper releases to CalVer using `vYYYY.MM.DD`; same-day releases use `-1`, `-2`, `-3`, and so on.
 - MCPHub dashboard/API authentication is no longer disabled globally.
 - Home Assistant Ingress now maps the authenticated Home Assistant user into MCPHub instead of using one shared dashboard bearer identity.
 - OpenAI and Cloudflare internal MCPHub keys are scoped to the configured route whenever possible.
