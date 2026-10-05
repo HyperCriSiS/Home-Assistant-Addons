@@ -41,6 +41,11 @@ The App accepts those identity headers only when the trusted local Ingress adapt
 supplies a private per-installation proxy secret. Remote tunnel traffic cannot set or
 reuse this trust marker.
 
+The Home Assistant panel is configured with `panel_admin: true`. Because only
+Home Assistant administrators are intended to enter this Ingress panel, trusted Ingress
+identities are mapped to MCPHub administrators. The CI metadata checks enforce that
+`panel_admin` remains enabled while this mapping is in use.
+
 ## Limit which tools a client receives
 
 MCPHub groups are the preferred way to avoid exposing every MCP server and tool to every
