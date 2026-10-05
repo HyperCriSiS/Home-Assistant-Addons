@@ -46,6 +46,10 @@ PY
 COPY --from=openai_tunnel /usr/bin/tunnel-client /usr/local/bin/tunnel-client
 COPY --from=cloudflare_tunnel /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 
+COPY patch_home_assistant_auth.py /usr/local/bin/patch_home_assistant_auth.py
+RUN python3 /usr/local/bin/patch_home_assistant_auth.py \
+    && rm /usr/local/bin/patch_home_assistant_auth.py
+
 COPY ingress.conf /etc/nginx/mcphub.conf.template
 COPY prepare_config.py /usr/local/bin/prepare_mcphub_config.py
 COPY prepare_proxy_config.py /usr/local/bin/prepare_proxy_config.py
