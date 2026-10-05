@@ -7,6 +7,7 @@ readonly SECRET_DIR="/data/secrets"
 readonly OPENAI_KEY_FILE="${SECRET_DIR}/openai_runtime_api_key"
 readonly OPENAI_AUTH_FILE="${SECRET_DIR}/mcphub_tunnel_authorization"
 readonly JWT_SECRET_FILE="${SECRET_DIR}/mcphub_jwt_secret"
+readonly HA_INGRESS_PROXY_SECRET_FILE="${SECRET_DIR}/mcphub_ha_ingress_proxy_secret"
 readonly CLOUDFLARE_TUNNEL_TOKEN_FILE="${SECRET_DIR}/cloudflare_tunnel_token"
 
 mcphub_pid=""
@@ -115,6 +116,8 @@ export NODE_ENV="production"
 export MCPHUB_SETTING_PATH="${MCPHUB_DATA_DIR}/mcp_settings.json"
 export JWT_SECRET
 JWT_SECRET="$(cat "${JWT_SECRET_FILE}")"
+export HA_INGRESS_PROXY_SECRET
+HA_INGRESS_PROXY_SECRET="$(cat "${HA_INGRESS_PROXY_SECRET_FILE}")"
 
 # Persist package caches used by dynamically installed npx and uvx MCP servers.
 export HOME="/data/home"
