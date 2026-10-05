@@ -34,12 +34,15 @@ jobs:
       }}
     runs-on: ubuntu-24.04
     env:
-      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+      AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
 
     steps:
       - name: Verify validation gates for current dev commit
         id: gates
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
         run: |
           dev_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" --jq '.object.sha')"
           ready=true
@@ -76,12 +79,12 @@ jobs:
           fi
 
           echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
-        env:
-          HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
 
       - name: Create or update dev to main pull request
         id: pr
-        if: steps.gates.outputs.ready == 'true'
+        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
         run: |
           pr_number="$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
@@ -108,9 +111,22 @@ jobs:
 
           echo "number=${pr_number}" >> "${GITHUB_OUTPUT}"
 
+      - name: Report manual promotion requirement
+        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN == ''
+        run: |
+          {
+            echo "## Promotion ready"
+            echo
+            echo "All configured validation gates passed for the current dev commit."
+            echo
+            echo "No AUTOMATION_TOKEN secret is configured, so GitHub Actions cannot create"
+            echo "the dev to main pull request with the current repository settings."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Enable automatic release to main
         if: steps.pr.outputs.number != '' && vars.AUTO_RELEASE_TO_MAIN == 'true'
         env:
+          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           gh pr merge "${PR_NUMBER}" \
