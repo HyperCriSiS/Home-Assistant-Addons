@@ -23,33 +23,35 @@ It supports MCPHub Market / Registry discovery, local stdio servers, remote MCP 
 
 ## Installation
 
-### 1. Add this repository to Home Assistant
+### Stable
 
-Click the button below to add the HyperCriSiS Apps repository to your Home Assistant instance:
+[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
 
-[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+If the button opens the App store without showing the repository dialog, add it manually:
 
-If the button opens the App store without showing the repository dialog, add the repository manually:
+```text
+https://github.com/HyperCriSiS/Home-Assistant-Addons
+```
 
-1. Open **Settings → Apps → Install app**.
-2. Open the **⋮** menu and choose **Repositories**.
-3. Add:
+Then search for **MCPHub**, install it, start it with the default configuration, and open **Web UI**.
 
-   ```text
-   https://github.com/HyperCriSiS/Home-Assistant-Addons
-   ```
+### Development testing
 
-4. Reload the App store if necessary.
+To test the current `dev` branch before it is promoted to `main`, add the generated
+development store:
 
-### 2. Install MCPHub
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
 
-1. Search for **MCPHub** in the Home Assistant App store.
-2. Open **MCPHub** and click **Install**.
-3. Start the App with the default configuration.
-4. Open **Web UI** to access the MCPHub dashboard.
-5. Add MCP servers from MCPHub Market / Registry or configure them manually.
+```text
+https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+```
 
-The OpenAI tunnel is disabled by default. Verify that MCPHub works locally before enabling remote ChatGPT access.
+The development App is shown as **MCPHub (Dev)** under
+**HyperCriSiS Add-ons (Dev)**, so it can be distinguished from the stable App at a glance.
+
+> [!WARNING]
+> Development builds may contain incomplete or breaking changes. Use the stable repository
+> for normal production use.
 
 ## Features
 

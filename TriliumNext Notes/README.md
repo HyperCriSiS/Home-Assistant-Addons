@@ -6,13 +6,32 @@ This Home Assistant add-on runs [Trilium Notes](https://github.com/TriliumNext/T
 
 ## Installation
 
-1. Add this repository to Home Assistant:
+### Stable
 
-   [![Open your Home Assistant instance and show the add add-on repository dialog with this repository pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
 
-2. Install **Trilium Notes** from the add-on store.
-3. Start the add-on and open its web interface through Home Assistant Ingress.
+1. Add the stable repository using the button above.
+2. Install **Trilium Notes** from the App store.
+3. Start the App and open its web interface through Home Assistant Ingress.
 4. Complete Trilium's initial setup and choose a strong password.
+
+### Development testing
+
+To test the current `dev` branch before it is promoted to `main`, add the generated
+development store:
+
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
+
+```text
+https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+```
+
+The development App is shown as **Trilium Notes (Dev)** under
+**HyperCriSiS Add-ons (Dev)**, so it can be distinguished from the stable App at a glance.
+
+> [!WARNING]
+> Development builds may contain breaking changes. Create a Home Assistant backup before
+> testing a development update.
 
 ## Configuration
 
@@ -35,8 +54,8 @@ Ingress is enabled by default. Port `8080` is also exposed for optional direct a
 
 ## Troubleshooting
 
-- Review the add-on logs under **Settings → Add-ons → Trilium Notes → Logs**.
-- If the interface does not load after an update, restart the add-on and clear the browser cache.
+- Review the add-on logs under **Settings → Apps → Trilium Notes → Logs**.
+- If the interface does not load after an update, restart the App and clear the browser cache.
 - If startup fails after an upgrade, restore the pre-upgrade backup and attach the complete log when opening an issue.
 
 ## Support

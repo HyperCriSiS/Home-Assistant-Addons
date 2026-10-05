@@ -1,0 +1,117 @@
+---
+name: Sync development store
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-development-store
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Publish dev as Home Assistant development store
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Generate development metadata
+        env:
+          DEV_BUILD: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          run_number = os.environ["DEV_BUILD"]
+
+          repository = Path("repository.json")
+          repo_data = json.loads(repository.read_text(encoding="utf-8"))
+          repo_data["name"] = "HyperCriSiS Add-ons (Dev)"
+          repository.write_text(
+              json.dumps(repo_data, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          def patch_config(path, name, panel_title, url):
+              config = Path(path)
+              text = config.read_text(encoding="utf-8")
+
+              version_match = re.search(
+                  r'^version:\s*["\']?([^"\'\n]+)["\']?\s*$',
+                  text,
+                  flags=re.MULTILINE,
+              )
+              if version_match is None:
+                  raise SystemExit(f"Unable to read version from {path}")
+
+              base_version = version_match.group(1)
+              dev_version = f"{base_version}-dev.{run_number}"
+
+              replacements = {
+                  "name": f'name: "{name}"',
+                  "version": f'version: "{dev_version}"',
+                  "panel_title": f'panel_title: "{panel_title}"',
+                  "url": f'url: "{url}"',
+              }
+
+              for key, value in replacements.items():
+                  text, count = re.subn(
+                      rf"^{key}:.*$",
+                      value,
+                      text,
+                      count=1,
+                      flags=re.MULTILINE,
+                  )
+                  if count != 1:
+                      raise SystemExit(f"Unable to patch {key} in {path}")
+
+              if not re.search(r"^stage:", text, flags=re.MULTILINE):
+                  text, count = re.subn(
+                      r"^(init:\s*false\s*)$",
+                      r"\1\nstage: experimental",
+                      text,
+                      count=1,
+                      flags=re.MULTILINE,
+                  )
+                  if count != 1:
+                      raise SystemExit(f"Unable to add development stage to {path}")
+
+              config.write_text(text, encoding="utf-8")
+
+          patch_config(
+              "MCPHub/config.yaml",
+              "MCPHub (Dev)",
+              "MCPHub (Dev)",
+              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/MCPHub",
+          )
+          patch_config(
+              "TriliumNext Notes/config.yaml",
+              "Trilium Notes (Dev)",
+              "Trilium Notes (Dev)",
+              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/TriliumNext%20Notes",
+          )
+          PY
+
+      - name: Publish generated dev-store branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B dev-store
+          git add repository.json "MCPHub/config.yaml" "TriliumNext Notes/config.yaml"
+          git commit -m "chore(dev-store): sync from dev ${GITHUB_SHA::7}"
+          git push --force origin HEAD:dev-store
