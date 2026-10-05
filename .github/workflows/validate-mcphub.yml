@@ -165,6 +165,27 @@ jobs:
           docker run --rm --entrypoint /usr/local/bin/cloudflared mcphub-addon:test version
           docker run --rm --entrypoint /usr/local/bin/tunnel-client mcphub-addon:test --version
 
+      - name: Validate restricted Cloudflare proxy
+        run: |
+          data_dir="$(mktemp -d)"
+          mkdir -p "${data_dir}/secrets" "${data_dir}/mcphub"
+          cat > "${data_dir}/options.json" <<'EOF'
+          {
+            "cloudflare_tunnel_enabled": true,
+            "cloudflare_mcp_path": "/mcp/$smart/development",
+            "cloudflare_access_token": "test_client_key_0123456789abcdefghijklmnop"
+          }
+          EOF
+
+          docker run --rm \
+            --entrypoint /bin/bash \
+            --volume "${data_dir}:/data" \
+            mcphub-addon:test \
+            -c '/usr/local/bin/prepare_mcphub_config.py &&
+                /usr/local/bin/prepare_proxy_config.py &&
+                nginx -t &&
+                grep -q "listen 127.0.0.1:8098" /etc/nginx/conf.d/mcphub.conf'
+
       - name: MCPHub container integration test
         run: bash .github/scripts/integration-test-mcphub.sh mcphub-addon:test
 
