@@ -20,6 +20,7 @@ JWT_SECRET_FILE = SECRET_DIR / "mcphub_jwt_secret"
 OPENAI_TOKEN_FILE = SECRET_DIR / "mcphub_tunnel_token"
 OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
 HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
+LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
@@ -131,6 +132,10 @@ def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     SECRET_DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(SECRET_DIR, 0o700)
+
+    # The old shared Ingress bearer credential is no longer used after HA SSO.
+    if LEGACY_INGRESS_TOKEN_FILE.exists():
+        LEGACY_INGRESS_TOKEN_FILE.unlink()
 
     options = load_options()
 
