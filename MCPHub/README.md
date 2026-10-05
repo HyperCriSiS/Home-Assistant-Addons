@@ -62,7 +62,8 @@ The development App is shown as **MCPHub (Dev)** under
 - Persistent MCPHub configuration
 - Persistent npm / npx and uv / uvx package caches
 - Home Assistant Ingress dashboard
-- Optional OpenAI Secure MCP Tunnel
+- Optional OpenAI Secure MCP Tunnel for ChatGPT / OpenAI clients
+- Optional Cloudflare Tunnel for Claude, Cursor, VS Code, and other remote MCP clients
 - No public MCPHub port required
 - No Home Assistant Docker socket access
 - No privileged mode
@@ -72,7 +73,11 @@ The development App is shown as **MCPHub (Dev)** under
 - Home Assistant cold-backup support
 - `amd64` and `aarch64` support
 
-## ChatGPT through OpenAI Secure MCP Tunnel
+## Remote access
+
+MCPHub supports two independent remote-access paths. Both are optional and can be enabled at the same time.
+
+### ChatGPT through OpenAI Secure MCP Tunnel
 
 The optional tunnel lets ChatGPT reach MCPHub without publishing MCPHub to the internet.
 
@@ -95,7 +100,25 @@ No router port forwarding, public reverse proxy, public MCPHub URL, or Cloudflar
 
 Enable the tunnel only after creating an OpenAI Secure MCP Tunnel and obtaining its Runtime API Key and Tunnel ID.
 
-See [DOCS.md](DOCS.md) for the complete tunnel configuration.
+See [DOCS.md](DOCS.md) for the complete OpenAI tunnel configuration.
+
+### Generic remote MCP through Cloudflare Tunnel
+
+Cloudflare Tunnel exposes one explicitly selected MCPHub route through a normal HTTPS hostname. This is useful for Claude, Cursor, VS Code, and other clients that support remote Streamable HTTP MCP.
+
+The App runs a loopback-only Cloudflare origin on `127.0.0.1:8098`. That adapter exposes exactly the configured `cloudflare_mcp_path`; all other paths return 404. Remote clients must also provide the configured client key.
+
+For the smallest tool surface, create a focused MCPHub group and expose only that group:
+
+```text
+/mcp/development
+/mcp/home
+/mcp/web
+```
+
+This prevents clients from discovering every server and tool in MCPHub at once.
+
+See [DOCS.md](DOCS.md) for the Cloudflare setup.
 
 ## Security model
 
@@ -103,7 +126,7 @@ MCPHub itself binds only to the App container loopback interface.
 
 The dashboard is exposed through a dedicated Home Assistant Ingress adapter. The App does not publish MCPHub directly on the Home Assistant host network.
 
-MCP transport authentication remains enabled independently from Home Assistant Ingress. A dedicated persistent bearer token is generated for the local connection between the OpenAI tunnel client and MCPHub.
+MCP transport authentication remains enabled independently from Home Assistant Ingress. Dedicated internal credentials are generated for Home Assistant Ingress, the OpenAI tunnel, and the Cloudflare adapter. The public Cloudflare client key is validated by the local adapter and is never registered as a dashboard credential in MCPHub.
 
 Secrets, MCPHub configuration, and package caches are stored in the persistent App data directory and are included in Home Assistant cold backups.
 
@@ -120,7 +143,11 @@ The Home Assistant App configuration contains only tunnel-related options:
 | `openai_runtime_api_key` | empty | Runtime API Key used by the tunnel client |
 | `tunnel_id` | empty | OpenAI Secure MCP Tunnel ID |
 | `tunnel_mcp_path` | `/mcp` | MCPHub route exposed through the tunnel |
-| `tunnel_log_level` | `info` | Tunnel log verbosity |
+| `tunnel_log_level` | `info` | OpenAI tunnel log verbosity |
+| `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
+| `cloudflare_tunnel_token` | empty | Connector token for a remotely managed Cloudflare Tunnel |
+| `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
+| `cloudflare_access_token` | empty | Client key required from remote MCP clients |
 
 MCP server configuration itself is managed from the MCPHub Web UI.
 
