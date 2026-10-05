@@ -60,6 +60,7 @@ jobs:
           image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
           digest="sha256:cc00266a16707bbbdfd29517cccd76164ac46a956e2ba8222515df5691fa54b5"
           docker run --rm -i "${image}@${digest}" \
+            hadolint \
             --ignore DL3002 \
             --ignore DL3006 \
             --ignore DL3008 \
