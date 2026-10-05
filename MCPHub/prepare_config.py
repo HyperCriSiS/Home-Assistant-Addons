@@ -19,7 +19,7 @@ SETTINGS_FILE = DATA_DIR / "mcp_settings.json"
 JWT_SECRET_FILE = SECRET_DIR / "mcphub_jwt_secret"
 OPENAI_TOKEN_FILE = SECRET_DIR / "mcphub_tunnel_token"
 OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
-INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
+HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
@@ -139,9 +139,9 @@ def main() -> None:
         OPENAI_TOKEN_FILE,
         lambda: "mch_" + secrets.token_urlsafe(48),
     )
-    ingress_token = ensure_secret(
-        INGRESS_TOKEN_FILE,
-        lambda: "mhi_" + secrets.token_urlsafe(48),
+    ensure_secret(
+        HA_INGRESS_PROXY_SECRET_FILE,
+        lambda: "mha_" + secrets.token_urlsafe(48),
     )
     cloudflare_internal_token = ensure_secret(
         CLOUDFLARE_INTERNAL_TOKEN_FILE,
@@ -172,14 +172,12 @@ def main() -> None:
     if not isinstance(bearer_keys, list):
         raise ValueError("bearerKeys must be a JSON list")
 
-    upsert_system_key(
-        bearer_keys,
-        name=INGRESS_KEY_NAME,
-        token=ingress_token,
-        access_type="all",
-        allowed_groups=[],
-        allowed_servers=[],
-    )
+    # Home Assistant Ingress authenticates dashboard users through Supervisor-provided
+    # identity headers. Remove the legacy shared Ingress bearer key if it exists.
+    bearer_keys[:] = [
+        item for item in bearer_keys
+        if item.get("name") != INGRESS_KEY_NAME
+    ]
 
     openai_path = str(options.get("tunnel_mcp_path", "/mcp"))
     openai_scope = scope_for_path(openai_path)
