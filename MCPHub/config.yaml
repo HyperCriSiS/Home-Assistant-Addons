@@ -1,8 +1,8 @@
 ---
 name: "MCPHub"
-version: "0.2.0"
+version: "0.3.0"
 slug: mcphub
-description: "Central MCP server management with an optional OpenAI Secure MCP Tunnel"
+description: "Central MCP server management with optional OpenAI and Cloudflare remote access"
 url: "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/main/MCPHub"
 startup: application
 boot: auto
@@ -24,9 +24,17 @@ options:
   tunnel_id: ""
   tunnel_mcp_path: "/mcp"
   tunnel_log_level: "info"
+  cloudflare_tunnel_enabled: false
+  cloudflare_tunnel_token: ""
+  cloudflare_mcp_path: "/mcp"
+  cloudflare_access_token: ""
 schema:
   tunnel_enabled: bool
   openai_runtime_api_key: password
   tunnel_id: str
   tunnel_mcp_path: str
   tunnel_log_level: "list(debug|info|warn)"
+  cloudflare_tunnel_enabled: bool
+  cloudflare_tunnel_token: password
+  cloudflare_mcp_path: str
+  cloudflare_access_token: password
