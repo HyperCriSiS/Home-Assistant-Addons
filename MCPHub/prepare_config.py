@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import uuid
 from pathlib import Path
@@ -12,11 +13,20 @@ from pathlib import Path
 
 DATA_DIR = Path("/data/mcphub")
 SECRET_DIR = Path("/data/secrets")
+OPTIONS_FILE = Path("/data/options.json")
 SETTINGS_FILE = DATA_DIR / "mcp_settings.json"
+
 JWT_SECRET_FILE = SECRET_DIR / "mcphub_jwt_secret"
-TUNNEL_TOKEN_FILE = SECRET_DIR / "mcphub_tunnel_token"
-TUNNEL_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
-INTERNAL_KEY_NAME = "Home Assistant OpenAI Tunnel"
+OPENAI_TOKEN_FILE = SECRET_DIR / "mcphub_tunnel_token"
+OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
+INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
+CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
+
+OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
+INGRESS_KEY_NAME = "Home Assistant Ingress"
+CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
+
+MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 
 
 def ensure_secret(path: Path, factory) -> str:
@@ -30,6 +40,20 @@ def ensure_secret(path: Path, factory) -> str:
     path.write_text(value, encoding="utf-8")
     os.chmod(path, 0o600)
     return value
+
+
+def load_options() -> dict:
+    """Load Home Assistant App options."""
+    if not OPTIONS_FILE.exists():
+        return {}
+
+    with OPTIONS_FILE.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    if not isinstance(data, dict):
+        raise ValueError("options.json must contain a JSON object")
+
+    return data
 
 
 def load_settings() -> dict:
@@ -53,20 +77,80 @@ def load_settings() -> dict:
     return data
 
 
+def scope_for_path(path: str) -> tuple[str, list[str], list[str]]:
+    """Return the narrowest MCPHub system-key scope that can serve a route."""
+    if not MCP_PATH_PATTERN.fullmatch(path):
+        raise ValueError(
+            "MCP route must be /mcp or contain at most two safe path segments"
+        )
+
+    if path in {"/mcp", "/mcp/$smart"}:
+        return "all", [], []
+
+    if path.startswith("/mcp/$smart/"):
+        group = path.removeprefix("/mcp/$smart/")
+        return "groups", [group], []
+
+    target = path.removeprefix("/mcp/")
+    return "custom", [target], [target]
+
+
+def upsert_system_key(
+    bearer_keys: list[dict],
+    *,
+    name: str,
+    token: str,
+    access_type: str,
+    allowed_groups: list[str],
+    allowed_servers: list[str],
+) -> None:
+    """Create or reconcile one operator-managed MCPHub bearer key."""
+    item = next(
+        (entry for entry in bearer_keys if entry.get("name") == name),
+        None,
+    )
+
+    values = {
+        "name": name,
+        "token": token,
+        "enabled": True,
+        "kind": "system",
+        "accessType": access_type,
+        "allowedGroups": allowed_groups,
+        "allowedServers": allowed_servers,
+    }
+
+    if item is None:
+        bearer_keys.append({"id": str(uuid.uuid4()), **values})
+        return
+
+    item.update(values)
+
+
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     SECRET_DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(SECRET_DIR, 0o700)
 
+    options = load_options()
+
     ensure_secret(JWT_SECRET_FILE, lambda: secrets.token_hex(32))
-    tunnel_token = ensure_secret(
-        TUNNEL_TOKEN_FILE,
+    openai_token = ensure_secret(
+        OPENAI_TOKEN_FILE,
         lambda: "mch_" + secrets.token_urlsafe(48),
     )
+    ingress_token = ensure_secret(
+        INGRESS_TOKEN_FILE,
+        lambda: "mhi_" + secrets.token_urlsafe(48),
+    )
+    cloudflare_internal_token = ensure_secret(
+        CLOUDFLARE_INTERNAL_TOKEN_FILE,
+        lambda: "mcf_" + secrets.token_urlsafe(48),
+    )
 
-    # The tunnel client expects the complete static Authorization header value.
-    TUNNEL_AUTH_FILE.write_text(f"Bearer {tunnel_token}", encoding="utf-8")
-    os.chmod(TUNNEL_AUTH_FILE, 0o600)
+    # OpenAI tunnel-client accepts a complete static Authorization value by file.
+    OPENAI_AUTH_FILE.write_text(f"Bearer {openai_token}", encoding="utf-8")
+    os.chmod(OPENAI_AUTH_FILE, 0o600)
 
     settings = load_settings()
 
@@ -78,9 +162,9 @@ def main() -> None:
     system_config = settings.setdefault("systemConfig", {})
     routing = system_config.setdefault("routing", {})
 
-    # Home Assistant Ingress protects the dashboard. MCP transport authentication
-    # remains enabled independently through a dedicated bearer key.
-    routing["skipAuth"] = True
+    # Dashboard/API access is no longer unauthenticated. Home Assistant Ingress
+    # receives a dedicated internal key through the local Nginx adapter.
+    routing["skipAuth"] = False
     routing["enableBearerAuth"] = True
     routing["bearerAuthHeaderName"] = "Authorization"
 
@@ -88,32 +172,36 @@ def main() -> None:
     if not isinstance(bearer_keys, list):
         raise ValueError("bearerKeys must be a JSON list")
 
-    internal_key = next(
-        (item for item in bearer_keys if item.get("name") == INTERNAL_KEY_NAME),
-        None,
+    upsert_system_key(
+        bearer_keys,
+        name=INGRESS_KEY_NAME,
+        token=ingress_token,
+        access_type="all",
+        allowed_groups=[],
+        allowed_servers=[],
     )
 
-    if internal_key is None:
-        bearer_keys.append(
-            {
-                "id": str(uuid.uuid4()),
-                "name": INTERNAL_KEY_NAME,
-                "token": tunnel_token,
-                "enabled": True,
-                "kind": "system",
-                "accessType": "all",
-                "allowedGroups": [],
-                "allowedServers": [],
-            }
-        )
-    else:
-        # Reconcile the internal key with the persistent secret on every start.
-        internal_key["token"] = tunnel_token
-        internal_key["enabled"] = True
-        internal_key["kind"] = "system"
-        internal_key["accessType"] = "all"
-        internal_key["allowedGroups"] = []
-        internal_key["allowedServers"] = []
+    openai_path = str(options.get("tunnel_mcp_path", "/mcp"))
+    openai_scope = scope_for_path(openai_path)
+    upsert_system_key(
+        bearer_keys,
+        name=OPENAI_KEY_NAME,
+        token=openai_token,
+        access_type=openai_scope[0],
+        allowed_groups=openai_scope[1],
+        allowed_servers=openai_scope[2],
+    )
+
+    cloudflare_path = str(options.get("cloudflare_mcp_path", "/mcp"))
+    cloudflare_scope = scope_for_path(cloudflare_path)
+    upsert_system_key(
+        bearer_keys,
+        name=CLOUDFLARE_KEY_NAME,
+        token=cloudflare_internal_token,
+        access_type=cloudflare_scope[0],
+        allowed_groups=cloudflare_scope[1],
+        allowed_servers=cloudflare_scope[2],
+    )
 
     temporary = SETTINGS_FILE.with_suffix(".json.tmp")
     with temporary.open("w", encoding="utf-8") as handle:
