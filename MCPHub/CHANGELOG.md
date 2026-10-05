@@ -2,7 +2,11 @@
 
 All notable changes to this Home Assistant App are documented here.
 
-## [0.3.0] - 2026-10-05
+## [v2026.10.05] - 2026-10-05
+
+### Changed
+
+- Switched MCPHub wrapper releases to CalVer using `vYYYY.MM.DD`; additional releases on the same day use `-1`, `-2`, `-3`, and so on.
 
 ### Added
 
