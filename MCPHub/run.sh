@@ -81,8 +81,10 @@ tunnel_mcp_path="$(option tunnel_mcp_path)"
 tunnel_log_level="$(option tunnel_log_level)"
 
 cloudflare_tunnel_enabled="$(option cloudflare_tunnel_enabled)"
+cloudflare_tunnel_enabled="${cloudflare_tunnel_enabled:-false}"
 cloudflare_tunnel_token="$(option cloudflare_tunnel_token)"
 cloudflare_mcp_path="$(option cloudflare_mcp_path)"
+cloudflare_mcp_path="${cloudflare_mcp_path:-/mcp}"
 cloudflare_access_token="$(option cloudflare_access_token)"
 
 mkdir -p     "${MCPHUB_DATA_DIR}"     "${SECRET_DIR}"     /data/home     /data/cache/npm     /data/cache/uv
