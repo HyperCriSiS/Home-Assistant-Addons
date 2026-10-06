@@ -1,5 +1,18 @@
 # Changelog
 
+## [v2026.10.07] - 2026-10-07
+
+### Added
+
+- Optional GitHub CLI MCP integration controlled from Home Assistant App options.
+- Persistent, architecture-aware installation of GitHub CLI 2.101.0 with pinned SHA-256 verification.
+- Automatic MCPHub registration of the managed `ha-github-cli` stdio server using `gh-cli-mcp-server` 0.3.0.
+- Protected GitHub token handoff through `/data/secrets/github_token` instead of storing the token in `mcp_settings.json`.
+
+### Changed
+
+- Disabling the GitHub CLI MCP option now removes only the App-managed `ha-github-cli` entry and leaves user-managed GitHub servers untouched.
+
 ## [v2026.10.05] - 2026-10-05
 
 ### Added

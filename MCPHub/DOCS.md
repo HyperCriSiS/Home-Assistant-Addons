@@ -240,6 +240,36 @@ Search MCPHub's Market or Registry for the GitHub MCP implementation you want to
 review its current upstream authentication instructions, and configure the required
 credential in MCPHub.
 
+## Optional GitHub CLI MCP
+
+The App can manage an additional universal GitHub CLI MCP server without requiring a
+custom Docker image. It is disabled by default.
+
+### `github_cli_mcp_enabled`
+
+Default: `false`
+
+When enabled, the App adds the managed `ha-github-cli` stdio server to MCPHub. On its
+first launch, the helper downloads the pinned GitHub CLI release for the current CPU
+architecture, verifies its SHA-256 checksum, and stores it below `/data/tools/github-cli/`.
+The installation survives App/container recreation because `/data` is persistent.
+
+The MCP server itself is launched through `uvx` as `gh-cli-mcp-server==0.3.0`. The
+existing persistent uv cache is reused.
+
+### `github_token`
+
+Optional GitHub Personal Access Token used as `GH_TOKEN` by GitHub CLI. Authenticated
+access is required for private repositories and write operations. The App writes this
+value to `/data/secrets/github_token` with mode `0600`; it is not copied into
+`mcp_settings.json`.
+
+If the integration is enabled without a token, the server still starts, but GitHub CLI
+is limited to operations that work without authentication.
+
+Disabling the option removes only the App-managed `ha-github-cli` entry. GitHub MCP
+servers created manually under other names are not modified.
+
 ## Docker-based MCP servers
 
 This App intentionally does not expose the Home Assistant Docker socket and does not run
