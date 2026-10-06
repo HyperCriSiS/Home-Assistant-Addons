@@ -39,3 +39,13 @@ configuration:
     description: >-
       32-256 character client key that remote MCP clients must send in the
       Authorization header.
+  github_cli_mcp_enabled:
+    name: "Enable GitHub CLI MCP"
+    description: >-
+      Persistently installs GitHub CLI on demand and automatically adds the
+      universal gh-cli-mcp-server to MCPHub.
+  github_token:
+    name: "GitHub token"
+    description: >-
+      Optional GitHub Personal Access Token for authenticated gh commands.
+      Required for private repositories and write operations.

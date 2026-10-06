@@ -1,16 +1,16 @@
----
-name: "MCPHub"
-version: "v2026.10.05"
+name: MCPHub
+version: v2026.10.07
 slug: mcphub
-description: "Central MCP server management with optional OpenAI and Cloudflare remote access"
-url: "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/main/MCPHub"
+description: Central MCP server management with optional OpenAI and Cloudflare remote
+  access
+url: https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/main/MCPHub
 startup: application
 boot: auto
 init: false
 stage: experimental
 arch:
-  - amd64
-  - aarch64
+- amd64
+- aarch64
 ingress: true
 ingress_port: 8099
 ingress_stream: true
@@ -20,21 +20,25 @@ panel_admin: true
 backup: cold
 options:
   tunnel_enabled: false
-  openai_runtime_api_key: ""
-  tunnel_id: ""
-  tunnel_mcp_path: "/mcp"
-  tunnel_log_level: "info"
+  openai_runtime_api_key: ''
+  tunnel_id: ''
+  tunnel_mcp_path: /mcp
+  tunnel_log_level: info
   cloudflare_tunnel_enabled: false
-  cloudflare_tunnel_token: ""
-  cloudflare_mcp_path: "/mcp"
-  cloudflare_access_token: ""
+  cloudflare_tunnel_token: ''
+  cloudflare_mcp_path: /mcp
+  cloudflare_access_token: ''
+  github_cli_mcp_enabled: false
+  github_token: ''
 schema:
   tunnel_enabled: bool
   openai_runtime_api_key: password
   tunnel_id: str
   tunnel_mcp_path: str
-  tunnel_log_level: "list(debug|info|warn)"
+  tunnel_log_level: list(debug|info|warn)
   cloudflare_tunnel_enabled: bool
   cloudflare_tunnel_token: password
   cloudflare_mcp_path: str
   cloudflare_access_token: password
+  github_cli_mcp_enabled: bool
+  github_token: password

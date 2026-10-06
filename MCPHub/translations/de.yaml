@@ -28,3 +28,13 @@ configuration:
   cloudflare_access_token:
     name: "Cloudflare Client-Key"
     description: "Zusätzlicher Schlüssel für Remote-MCP-Clients."
+  github_cli_mcp_enabled:
+    name: "GitHub CLI MCP aktivieren"
+    description: >-
+      Installiert GitHub CLI bei Bedarf persistent und fügt automatisch den
+      universellen gh-cli-mcp-server zu MCPHub hinzu.
+  github_token:
+    name: "GitHub Token"
+    description: >-
+      Optionaler GitHub Personal Access Token für authentifizierte gh-Befehle.
+      Für private Repositories und Schreibzugriffe erforderlich.
