@@ -22,10 +22,12 @@ OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
 HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
+GITHUB_TOKEN_FILE = SECRET_DIR / "github_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
+GITHUB_CLI_SERVER_NAME = "ha-github-cli"
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 
@@ -205,6 +207,29 @@ def main() -> None:
         allowed_groups=cloudflare_scope[1],
         allowed_servers=cloudflare_scope[2],
     )
+
+    mcp_servers = settings["mcpServers"]
+    if not isinstance(mcp_servers, dict):
+        raise ValueError("mcpServers must be a JSON object")
+
+    github_cli_enabled = bool(options.get("github_cli_mcp_enabled", False))
+    github_token = str(options.get("github_token", "")).strip()
+    if github_cli_enabled:
+        mcp_servers[GITHUB_CLI_SERVER_NAME] = {
+            "command": "/usr/local/bin/github_cli_mcp.sh",
+            "args": [],
+        }
+        if github_token:
+            GITHUB_TOKEN_FILE.write_text(github_token, encoding="utf-8")
+            os.chmod(GITHUB_TOKEN_FILE, 0o600)
+        elif GITHUB_TOKEN_FILE.exists():
+            GITHUB_TOKEN_FILE.unlink()
+    else:
+        # This key is reserved for the Home Assistant managed integration.
+        # User-created GitHub MCP servers under other names are untouched.
+        mcp_servers.pop(GITHUB_CLI_SERVER_NAME, None)
+        if GITHUB_TOKEN_FILE.exists():
+            GITHUB_TOKEN_FILE.unlink()
 
     temporary = SETTINGS_FILE.with_suffix(".json.tmp")
     with temporary.open("w", encoding="utf-8") as handle:
