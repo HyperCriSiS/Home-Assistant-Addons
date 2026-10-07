@@ -1,9 +1,9 @@
 ---
-name: "MCPHub"
-version: "v2026.10.07-4"
+name: "MCPHub (Dev)"
+version: "v2026.10.07-4-dev.57"
 slug: mcphub
 description: "Central MCP server management with optional OpenAI and Cloudflare remote access"
-url: "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/main/MCPHub"
+url: "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/MCPHub"
 startup: application
 boot: auto
 init: false
@@ -15,7 +15,7 @@ ingress: true
 ingress_port: 8099
 ingress_stream: true
 panel_icon: mdi:hub
-panel_title: MCPHub
+panel_title: "MCPHub (Dev)"
 panel_admin: true
 backup: cold
 options:

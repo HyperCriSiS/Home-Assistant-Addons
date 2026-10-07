@@ -1,16 +1,16 @@
 ---
-name: "Trilium Notes"
-version: "v2026.09.21"
+name: "Trilium Notes (Dev)"
+version: "v2026.09.21-dev.57"
 slug: trilium
 description: >-
   Hierarchical note-taking application with encryption, Markdown support,
   synchronization, and personal knowledge base features.
-url: "https://github.com/HyperCriSiS/Home-Assistant-Addons"
+url: "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/TriliumNext%20Notes"
 ingress: true
 ingress_port: 8080
 ingress_stream: true
 panel_icon: mdi:notebook-multiple
-panel_title: Trilium Notes
+panel_title: "Trilium Notes (Dev)"
 webui: "http://[HOST]:[PORT:8080]/"
 watchdog: "tcp://[HOST]:[PORT:8080]"
 arch:
@@ -19,6 +19,7 @@ arch:
 startup: application
 boot: auto
 init: false
+stage: experimental
 map:
   - type: data
     read_only: false
