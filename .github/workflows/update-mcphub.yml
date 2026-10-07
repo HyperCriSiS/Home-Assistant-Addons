@@ -50,15 +50,17 @@ jobs:
           PY
           )"
 
-          echo "current=${current_version}" >> "${GITHUB_OUTPUT}"
-          echo "latest=${latest_version}" >> "${GITHUB_OUTPUT}"
-          echo "release_url=${release_url}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "current=${current_version}"
+            echo "latest=${latest_version}"
+            echo "release_url=${release_url}"
 
-          if [[ "${current_version}" == "${latest_version}" ]]; then
-            echo "update=false" >> "${GITHUB_OUTPUT}"
-          else
-            echo "update=true" >> "${GITHUB_OUTPUT}"
-          fi
+            if [[ "${current_version}" == "${latest_version}" ]]; then
+              echo "update=false"
+            else
+              echo "update=true"
+            fi
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Check for an existing update pull request
         if: steps.upstream.outputs.update == 'true'
@@ -74,8 +76,10 @@ jobs:
             --state open \
             --json number \
             --jq '.[0].number // empty')"
-          echo "branch=${branch}" >> "${GITHUB_OUTPUT}"
-          echo "number=${number}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "branch=${branch}"
+            echo "number=${number}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Prepare update
         if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
@@ -124,7 +128,7 @@ jobs:
 
           Upstream release: ${RELEASE_URL}
 
-          This PR intentionally targets `dev`.
+          This PR intentionally targets the dev branch.
           The existing MCPHub validation workflow must build both architectures
           and verify the Home Assistant wrapper patches before the change is merged.
           EOF
