@@ -1,5 +1,18 @@
 # Changelog
 
+## [v2026.10.07-3] - 2026-10-07
+
+### Fixed
+
+- Fixed Home Assistant Ingress-created MCP servers being persisted with a synthetic Home Assistant username that is not a local MCPHub user.
+- Home Assistant Ingress admin sessions now persist MCP server ownership as the canonical MCPHub `admin` principal, allowing MCPHub's existing trusted-admin SSRF path to reach Home Assistant-local/private MCP endpoints.
+- Existing servers edited through Home Assistant Ingress are normalized to `owner: admin`, so previously affected entries can be repaired by saving them again.
+
+### Security
+
+- The private-network SSRF bypass remains limited to MCPHub's existing admin-owned-server trust model; private/internal targets are not enabled globally.
+- Home Assistant usernames remain available as the authenticated request identity for the Ingress UI and activity context.
+
 ## [v2026.10.07-2] - 2026-10-07
 
 ### Fixed

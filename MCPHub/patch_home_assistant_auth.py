@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Patch MCPHub 1.1.0 to trust Home Assistant Ingress identity headers.
+"""Patch MCPHub 1.1.0 for trusted Home Assistant Ingress sessions.
 
 The Supervisor injects X-Remote-User-* headers for authenticated Ingress sessions.
 A second private proxy secret prevents those headers from being trusted outside the
 Home Assistant Ingress adapter.
+
+Home Assistant Ingress users remain identifiable by their Home Assistant username,
+but persistent MCPHub server ownership is normalized to the canonical local
+`admin` principal. MCPHub uses the persisted owner to decide whether a configured
+upstream may access private/internal networks, so this mapping is required for
+trusted Home Assistant-local MCP endpoints such as http://homeassistant:8123.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ from pathlib import Path
 
 AUTH_FILE = Path("/app/dist/middlewares/auth.js")
 BETTER_AUTH_CONTROLLER_FILE = Path("/app/dist/controllers/betterAuthController.js")
+SERVER_CONTROLLER_FILE = Path("/app/dist/controllers/serverController.js")
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -112,9 +119,50 @@ def patch_better_auth_controller() -> None:
     BETTER_AUTH_CONTROLLER_FILE.write_text(text, encoding="utf-8")
 
 
+def patch_server_controller() -> None:
+    text = SERVER_CONTROLLER_FILE.read_text(encoding="utf-8")
+
+    owner_marker = """    if (currentUser.isAdmin) {
+        config.owner = config.owner || existingOwner || currentUser.username;
+        return;
+    }
+"""
+    owner_block = """    if (currentUser.isAdmin) {
+        if (currentUser.homeAssistantUserId) {
+            config.owner = 'admin';
+            return;
+        }
+        config.owner = config.owner || existingOwner || currentUser.username;
+        return;
+    }
+"""
+    text = replace_once(
+        text,
+        owner_marker,
+        owner_block,
+        "Home Assistant canonical server owner",
+    )
+
+    batch_owner_marker = "    const defaultOwner = currentUser?.username || 'admin';\n"
+    batch_owner_block = """    const defaultOwner =
+        currentUser?.isAdmin && currentUser?.homeAssistantUserId
+            ? 'admin'
+            : currentUser?.username || 'admin';
+"""
+    text = replace_once(
+        text,
+        batch_owner_marker,
+        batch_owner_block,
+        "Home Assistant canonical batch server owner",
+    )
+
+    SERVER_CONTROLLER_FILE.write_text(text, encoding="utf-8")
+
+
 def main() -> None:
     patch_auth()
     patch_better_auth_controller()
+    patch_server_controller()
 
 
 if __name__ == "__main__":
