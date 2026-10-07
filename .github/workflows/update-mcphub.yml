@@ -19,6 +19,8 @@ jobs:
     name: Open MCPHub update PR
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Check out dev
@@ -26,11 +28,10 @@ jobs:
         with:
           ref: dev
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Find latest stable MCPHub release
         id: upstream
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           latest_tag="$(gh api repos/samanhappy/mcphub/releases/latest --jq '.tag_name')"
           latest_version="${latest_tag#v}"
@@ -42,7 +43,9 @@ jobs:
           text = Path("MCPHub/build.yaml").read_text(encoding="utf-8")
           versions = set(re.findall(r"samanhappy/mcphub:(\d+\.\d+\.\d+)", text))
           if len(versions) != 1:
-              raise SystemExit(f"Unable to determine current MCPHub version: {sorted(versions)}")
+              raise SystemExit(
+                  f"Unable to determine current MCPHub version: {sorted(versions)}"
+              )
           print(versions.pop())
           PY
           )"
@@ -61,7 +64,6 @@ jobs:
         if: steps.upstream.outputs.update == 'true'
         id: existing
         env:
-          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.upstream.outputs.latest }}
         run: |
           branch="automation/mcphub-${VERSION}"
@@ -95,25 +97,41 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C "${BRANCH}"
-          git add             MCPHub/build.yaml             MCPHub/Dockerfile             MCPHub/run.sh             MCPHub/ingress.conf             MCPHub/NOTICE.md             MCPHub/config.yaml             MCPHub/CHANGELOG.md             .github/workflows/validate-mcphub.yml
+          git add \
+            MCPHub/build.yaml \
+            MCPHub/Dockerfile \
+            MCPHub/run.sh \
+            MCPHub/ingress.conf \
+            MCPHub/NOTICE.md \
+            MCPHub/config.yaml \
+            MCPHub/CHANGELOG.md \
+            MCPHub/patch_home_assistant_auth.py \
+            .github/workflows/validate-mcphub.yml
           git commit -m "chore(mcphub): update upstream to ${VERSION}"
-          git push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
+
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force "${remote}" "HEAD:refs/heads/${BRANCH}"
 
       - name: Open pull request against dev
         if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
         env:
-          GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ steps.existing.outputs.branch }}
           VERSION: ${{ steps.upstream.outputs.latest }}
           RELEASE_URL: ${{ steps.upstream.outputs.release_url }}
         run: |
+          cat > /tmp/pr-body.md <<EOF
+          Automated daily MCPHub update check.
+
+          Upstream release: ${RELEASE_URL}
+
+          This PR intentionally targets `dev`.
+          The existing MCPHub validation workflow must build both architectures
+          and verify the Home Assistant wrapper patches before the change is merged.
+          EOF
+
           gh pr create \
             --repo "${GITHUB_REPOSITORY}" \
             --base dev \
             --head "${BRANCH}" \
             --title "chore(mcphub): update upstream to ${VERSION}" \
-            --body "Automated daily MCPHub update check.
-
-          Upstream release: ${RELEASE_URL}
-
-          This PR intentionally targets `dev`. The existing MCPHub validation workflow must build both architectures and verify the Home Assistant wrapper patches before the change is merged."
+            --body-file /tmp/pr-body.md

@@ -103,6 +103,8 @@ jobs:
           assert config["options"]["tunnel_enabled"] is False
           assert config["options"]["cloudflare_tunnel_enabled"] is False
           assert config["options"]["cloudflare_mcp_path"] == "/mcp"
+          assert list(config["options"])[-1] == "tunnel_log_level"
+          assert list(config["schema"])[-1] == "tunnel_log_level"
 
           expected = "samanhappy/mcphub:1.1.1"
           assert build["build_from"] == {
