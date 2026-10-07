@@ -41,3 +41,4 @@ schema:
   cloudflare_access_token: password
   github_cli_mcp_enabled: bool
   github_token: password
+  tunnel_log_level: "list(debug|info|warn)"
