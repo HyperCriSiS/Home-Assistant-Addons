@@ -9,6 +9,8 @@ FROM ${BUILD_FROM}
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 ARG GH_VERSION=2.101.0
+ARG GH_CLI_MCP_VERSION=0.3.0
+ARG MCP_PYTHON_VERSION=1.30.0
 
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -47,6 +49,19 @@ RUN set -eux; \
     install -m 0755 "${tmp_dir}/gh_${GH_VERSION}_linux_${gh_arch}/bin/gh" /usr/local/bin/gh; \
     rm -rf "${tmp_dir}"; \
     gh --version
+
+# gh-cli-mcp-server 0.3.0 still imports FastMCP from the MCP Python SDK 1.x
+# namespace, while its upstream dependency incorrectly allows MCP 2.x. Install
+# a fully pinned compatibility environment at image-build time so runtime
+# startup is deterministic and cannot resolve an incompatible SDK.
+RUN set -eux; \
+    uv venv /opt/gh-cli-mcp; \
+    uv pip install \
+        --python /opt/gh-cli-mcp/bin/python \
+        "gh-cli-mcp-server==${GH_CLI_MCP_VERSION}" \
+        "mcp[cli]==${MCP_PYTHON_VERSION}"; \
+    /opt/gh-cli-mcp/bin/python -c \
+        'from gh_cli_mcp_server.server import mcp; import importlib.metadata as md; assert md.version("mcp") == "1.30.0"; assert md.version("gh-cli-mcp-server") == "0.3.0"'
 
 # MCPHub 1.1.0 listens on all interfaces upstream. The pinned release is patched
 # to bind its main server to loopback so only local adapters can reach it.

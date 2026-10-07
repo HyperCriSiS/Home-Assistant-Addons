@@ -187,7 +187,45 @@ jobs:
         run: |
           docker run --rm --entrypoint /usr/local/bin/cloudflared mcphub-addon:test version
           docker run --rm --entrypoint /usr/local/bin/tunnel-client mcphub-addon:test --version
-          docker run --rm --entrypoint /usr/local/bin/gh mcphub-addon:test --version | grep -q 'gh version 2.101.0'
+          docker run --rm --entrypoint /usr/local/bin/gh mcphub-addon:test --version \
+            | grep -q 'gh version 2.101.0'
+          docker run --rm --entrypoint /opt/gh-cli-mcp/bin/python mcphub-addon:test \
+            -c 'import importlib.metadata as md; from gh_cli_mcp_server.server import mcp; assert md.version("gh-cli-mcp-server") == "0.3.0"; assert md.version("mcp") == "1.30.0"'
+
+      - name: Smoke-test GitHub CLI MCP server
+        run: |
+          docker run --rm --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
+          import subprocess
+          import time
+
+          proc = subprocess.Popen(
+              ["/usr/local/bin/github_cli_mcp.sh"],
+              stdin=subprocess.PIPE,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+              text=True,
+          )
+          try:
+              time.sleep(2)
+              if proc.poll() is not None:
+                  stdout, stderr = proc.communicate(timeout=1)
+                  raise SystemExit(
+                      "GitHub CLI MCP server exited during startup "
+                      f"with code {proc.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+                  )
+          finally:
+              if proc.poll() is None:
+                  proc.terminate()
+                  try:
+                      proc.wait(timeout=3)
+                  except subprocess.TimeoutExpired:
+                      proc.kill()
+                      proc.wait(timeout=3)
+
+          stderr = proc.stderr.read() if proc.stderr else ""
+          if "Starting gh-cli-mcp-server 0.3.0" not in stderr:
+              raise SystemExit(f"Unexpected GitHub CLI MCP stderr:\n{stderr}")
+          PY
 
       - name: Validate restricted Cloudflare proxy
         run: |

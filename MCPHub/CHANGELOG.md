@@ -1,5 +1,17 @@
 # Changelog
 
+## [v2026.10.07-2] - 2026-10-07
+
+### Fixed
+
+- Fixed `ha-github-cli` crashing because `gh-cli-mcp-server` 0.3.0 declares `mcp[cli]>=1.0.0` but still imports the MCP Python SDK 1.x `FastMCP` API, allowing an incompatible MCP 2.x runtime to be resolved.
+- Pinned the compatibility runtime to MCP Python SDK 1.30.0.
+
+### Changed
+
+- `gh-cli-mcp-server` and its compatible MCP Python SDK are now installed into the App image at build time instead of being resolved dynamically by `uvx` when MCPHub starts the stdio server.
+- CI now verifies both pinned Python package versions and performs a startup smoke test for the bundled GitHub CLI MCP server.
+
 ## [v2026.10.07-1] - 2026-10-07
 
 ### Fixed
