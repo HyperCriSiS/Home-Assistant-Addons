@@ -49,6 +49,7 @@ jobs:
       - name: Lint MCPHub shell scripts
         run: |
           shellcheck "MCPHub/run.sh"
+          shellcheck "MCPHub/github_cli_mcp.sh"
           shellcheck ".github/scripts/integration-test-mcphub.sh"
           shellcheck ".github/scripts/haos-e2e-mcphub.sh"
 
@@ -182,10 +183,11 @@ jobs:
             --tag mcphub-addon:test \
             "MCPHub"
 
-      - name: Verify bundled tunnel clients
+      - name: Verify bundled clients
         run: |
           docker run --rm --entrypoint /usr/local/bin/cloudflared mcphub-addon:test version
           docker run --rm --entrypoint /usr/local/bin/tunnel-client mcphub-addon:test --version
+          docker run --rm --entrypoint /usr/local/bin/gh mcphub-addon:test --version | grep -q 'gh version 2.101.0'
 
       - name: Validate restricted Cloudflare proxy
         run: |

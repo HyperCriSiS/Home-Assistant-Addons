@@ -1,5 +1,16 @@
 # Changelog
 
+## [v2026.10.07-1] - 2026-10-07
+
+### Fixed
+
+- Fixed `ha-github-cli` failing immediately on startup because the runtime bootstrap used SHA-256 values that did not match the official GitHub CLI 2.101.0 release assets.
+- GitHub CLI is now bundled and verified while the App image is built instead of being downloaded when the stdio MCP server starts.
+
+### Changed
+
+- GitHub CLI remains pinned to 2.101.0 and is updated together with tested MCPHub App releases, avoiding unreviewed runtime upgrades.
+
 ## [v2026.10.07] - 2026-10-07
 
 ### Added
