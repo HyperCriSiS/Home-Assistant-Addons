@@ -41,7 +41,8 @@ RUN set -eux; \
     curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
         "https://github.com/cli/cli/releases/download/v${GH_VERSION}/${asset}" \
         --output "${tmp_dir}/${asset}"; \
-    printf '%s  %s\n' "${gh_sha256}" "${tmp_dir}/${asset}" | sha256sum --check --status -; \
+    printf '%s  %s\n' "${gh_sha256}" "${tmp_dir}/${asset}" > "${tmp_dir}/checksums.txt"; \
+    sha256sum --check --status "${tmp_dir}/checksums.txt"; \
     tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}"; \
     install -m 0755 "${tmp_dir}/gh_${GH_VERSION}_linux_${gh_arch}/bin/gh" /usr/local/bin/gh; \
     rm -rf "${tmp_dir}"; \
