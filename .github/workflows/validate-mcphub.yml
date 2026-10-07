@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
@@ -189,12 +189,20 @@ jobs:
           docker run --rm --entrypoint /usr/local/bin/tunnel-client mcphub-addon:test --version
           docker run --rm --entrypoint /usr/local/bin/gh mcphub-addon:test --version \
             | grep -q 'gh version 2.101.0'
-          docker run --rm --entrypoint /opt/gh-cli-mcp/bin/python mcphub-addon:test \
-            -c 'import importlib.metadata as md; from gh_cli_mcp_server.server import mcp; assert md.version("gh-cli-mcp-server") == "0.3.0"; assert md.version("mcp") == "1.30.0"'
+          docker run --rm -i \
+            --entrypoint /opt/gh-cli-mcp/bin/python \
+            mcphub-addon:test - <<'PY'
+          import importlib.metadata as md
+          from gh_cli_mcp_server.server import mcp
+
+          assert mcp is not None
+          assert md.version("gh-cli-mcp-server") == "0.3.0"
+          assert md.version("mcp") == "1.30.0"
+          PY
 
       - name: Smoke-test GitHub CLI MCP server
         run: |
-          docker run --rm --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
+          docker run --rm -i --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
           import subprocess
           import time
 
