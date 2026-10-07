@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.png" alt="MCPHub" width="320">
+<img src="logo.svg" alt="MCPHub" width="320">
 
 # MCPHub
 
