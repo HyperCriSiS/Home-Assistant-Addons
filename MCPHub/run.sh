@@ -125,7 +125,7 @@ export XDG_CACHE_HOME="/data/cache"
 export NPM_CONFIG_CACHE="/data/cache/npm"
 export UV_CACHE_DIR="/data/cache/uv"
 
-log_info "Starting MCPHub 1.1.0 on internal loopback port 3000."
+log_info "Starting MCPHub 1.1.1 on internal loopback port 3000."
 (
     cd /app
     /usr/local/bin/entrypoint.sh node dist/index.js

@@ -68,6 +68,14 @@ ingress_curl() {
     "$@"
 }
 
+ingress_curl_without_identity() {
+  docker run --rm \
+    --network "${NETWORK}" \
+    --ip 172.30.32.2 \
+    "${INGRESS_IMAGE}" \
+    "$@"
+}
+
 write_options
 start_addon
 wait_ready
@@ -107,6 +115,24 @@ if user.get("username") != "test-admin":
     raise SystemExit(f"Unexpected Home Assistant SSO username: {user.get('username')!r}")
 if user.get("isAdmin") is not True:
     raise SystemExit("Home Assistant Ingress user was not mapped to MCPHub admin")
+PY
+
+fallback_user_json="$(ingress_curl_without_identity --fail --silent --show-error \
+  --header "X-Ingress-Path: ${INGRESS_PATH}" \
+  "http://${CONTAINER}:8099/api/better-auth/user")"
+
+python3 - "${fallback_user_json}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+user = payload.get("user", {})
+if payload.get("success") is not True:
+    raise SystemExit("Trusted Home Assistant Ingress fallback did not authenticate")
+if user.get("username") != "homeassistant-admin":
+    raise SystemExit(f"Unexpected fallback username: {user.get('username')!r}")
+if user.get("isAdmin") is not True:
+    raise SystemExit("Trusted Home Assistant Ingress fallback was not mapped to admin")
 PY
 
 if docker exec "${CONTAINER}" curl --fail --silent --max-time 2 \

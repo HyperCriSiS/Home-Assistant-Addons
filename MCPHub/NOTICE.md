@@ -5,7 +5,7 @@ This Home Assistant wrapper includes third-party software.
 ## MCPHub
 
 - Project: https://github.com/samanhappy/mcphub
-- Version currently packaged: 1.1.0
+- Version currently packaged: 1.1.1
 - License: Apache License 2.0
 
 ## OpenAI Secure MCP Tunnel client
@@ -14,5 +14,11 @@ This Home Assistant wrapper includes third-party software.
 - Version currently packaged: v0.0.15
 - License: Apache License 2.0
 
-## Cloudflare cloudflared\n\n- Project: https://github.com/cloudflare/cloudflared\n- Version currently packaged: 2026.9.3\n- License: Apache License 2.0\n\nThe MIT license in this add-on directory applies to the wrapper code maintained here.
+## Cloudflare cloudflared
+
+- Project: https://github.com/cloudflare/cloudflared
+- Version currently packaged: 2026.9.3
+- License: Apache License 2.0
+
+The MIT license in this add-on directory applies to the wrapper code maintained here.
 Third-party components retain their own licenses and copyright notices.

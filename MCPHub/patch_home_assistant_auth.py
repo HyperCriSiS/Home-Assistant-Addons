@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Patch MCPHub 1.1.0 for trusted Home Assistant Ingress sessions.
+"""Patch MCPHub 1.1.1 for trusted Home Assistant Ingress sessions.
 
 The Supervisor injects X-Remote-User-* headers for authenticated Ingress sessions.
 A second private proxy secret prevents those headers from being trusted outside the
-Home Assistant Ingress adapter.
+Home Assistant Ingress adapter. The trusted proxy itself is sufficient for the
+session, while Supervisor user headers enrich the identity when available.
 
 Home Assistant Ingress users remain identifiable by their Home Assistant username,
 but persistent MCPHub server ownership is normalized to the canonical local
@@ -25,7 +26,7 @@ SERVER_CONTROLLER_FILE = Path("/app/dist/controllers/serverController.js")
 def replace_once(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
     if count != 1:
-        raise SystemExit(f"Unexpected MCPHub 1.1.0 structure for {label}: found {count}")
+        raise SystemExit(f"Unexpected MCPHub 1.1.1 structure for {label}: found {count}")
     return text.replace(old, new, 1)
 
 
@@ -36,9 +37,8 @@ def patch_auth() -> None:
     helper = """export const resolveHomeAssistantIngressUser = (req) => {
     const expectedSecret = process.env.HA_INGRESS_PROXY_SECRET;
     const providedSecret = req.header('x-mcphub-ha-proxy-secret');
-    const userId = req.header('x-remote-user-id');
 
-    if (!expectedSecret || !providedSecret || !userId) {
+    if (!expectedSecret || !providedSecret) {
         return null;
     }
 
@@ -46,15 +46,17 @@ def patch_auth() -> None:
         return null;
     }
 
+    const userId = req.header('x-remote-user-id')?.trim();
     const remoteUsername = req.header('x-remote-user-name')?.trim();
     const displayName = req.header('x-remote-user-display-name')?.trim();
-    const username = remoteUsername || displayName || ('ha-' + userId);
+    const username =
+        remoteUsername || displayName || (userId ? ('ha-' + userId) : 'homeassistant-admin');
 
     return {
         username,
         isAdmin: true,
         credentialEligible: false,
-        homeAssistantUserId: userId,
+        homeAssistantUserId: userId || 'ingress',
         homeAssistantDisplayName: displayName || remoteUsername || username,
     };
 };

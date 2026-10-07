@@ -1,6 +1,6 @@
 ARG OPENAI_TUNNEL_VERSION=v0.0.15
 ARG CLOUDFLARED_VERSION=2026.9.3
-ARG BUILD_FROM=samanhappy/mcphub:1.1.0
+ARG BUILD_FROM=samanhappy/mcphub:1.1.1
 
 FROM ghcr.io/openai/tunnel-client:${OPENAI_TUNNEL_VERSION} AS openai_tunnel
 FROM cloudflare/cloudflared:${CLOUDFLARED_VERSION} AS cloudflare_tunnel
@@ -63,7 +63,7 @@ RUN set -eux; \
     /opt/gh-cli-mcp/bin/python -c \
         'from gh_cli_mcp_server.server import mcp; import importlib.metadata as md; assert md.version("mcp") == "1.30.0"; assert md.version("gh-cli-mcp-server") == "0.3.0"'
 
-# MCPHub 1.1.0 listens on all interfaces upstream. The pinned release is patched
+# MCPHub 1.1.1 listens on all interfaces upstream. The pinned release is patched
 # to bind its main server to loopback so only local adapters can reach it.
 RUN python3 - <<'PY'
 from pathlib import Path

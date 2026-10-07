@@ -12,10 +12,6 @@ configuration:
   tunnel_mcp_path:
     name: "OpenAI MCP-Route"
     description: "MCPHub-Endpunkt für ChatGPT, zum Beispiel /mcp, /mcp/$smart oder /mcp/<gruppe>."
-  tunnel_log_level:
-    name: "OpenAI Tunnel-Log-Level"
-    description: "Ausführlichkeit der OpenAI-tunnel-client-Logs."
-
   cloudflare_tunnel_enabled:
     name: "Cloudflare Tunnel aktivieren"
     description: "Stellt eine gewählte MCPHub-Route über Cloudflare bereit."
@@ -38,3 +34,6 @@ configuration:
     description: >-
       Optionaler GitHub Personal Access Token für authentifizierte gh-Befehle.
       Für private Repositories und Schreibzugriffe erforderlich.
+  tunnel_log_level:
+    name: "OpenAI Tunnel-Log-Level"
+    description: "Ausführlichkeit der OpenAI-tunnel-client-Logs."

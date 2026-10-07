@@ -1,5 +1,26 @@
 # Changelog
 
+## [v2026.10.07-4] - 2026-10-07
+
+### Added
+
+- Added a daily GitHub Actions check for new stable MCPHub releases; when an update is available it prepares the version bump on a dedicated branch and opens a pull request against `dev`.
+
+### Changed
+
+- Updated the bundled MCPHub base from 1.1.0 to 1.1.1, including upstream SSO hardening, optional password-login disabling for native SSO providers, settings reconciliation, and reliability fixes.
+- Moved the OpenAI Tunnel log-level option to the end of the Home Assistant App configuration.
+
+### Fixed
+
+- Hardened Home Assistant Ingress SSO so a request authenticated by the private Ingress proxy secret no longer falls back to MCPHub's local login screen when optional Supervisor user-name headers are unavailable.
+- Preserved the canonical `admin` owner mapping for Home Assistant-created MCP servers so trusted internal Home Assistant MCP endpoints remain reachable through MCPHub's existing SSRF policy.
+
+### Security
+
+- Home Assistant Ingress authentication remains request-scoped and protected by the private per-installation proxy secret; MCPHub authentication is not disabled globally.
+- MCPHub 1.1.1 includes upstream authentication and dependency hardening.
+
 ## [v2026.10.07-3] - 2026-10-07
 
 ### Fixed
