@@ -1,0 +1,141 @@
+---
+name: Check MCPHub upstream
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: check-mcphub-upstream
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Open MCPHub update PR
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find latest stable MCPHub release
+        id: upstream
+        run: |
+          latest_tag="$(gh api repos/samanhappy/mcphub/releases/latest --jq '.tag_name')"
+          latest_version="${latest_tag#v}"
+          release_url="$(gh api repos/samanhappy/mcphub/releases/latest --jq '.html_url')"
+          current_version="$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path("MCPHub/build.yaml").read_text(encoding="utf-8")
+          versions = set(re.findall(r"samanhappy/mcphub:(\d+\.\d+\.\d+)", text))
+          if len(versions) != 1:
+              raise SystemExit(
+                  f"Unable to determine current MCPHub version: {sorted(versions)}"
+              )
+          print(versions.pop())
+          PY
+          )"
+
+          {
+            echo "current=${current_version}"
+            echo "latest=${latest_version}"
+            echo "release_url=${release_url}"
+
+            if [[ "${current_version}" == "${latest_version}" ]]; then
+              echo "update=false"
+            else
+              echo "update=true"
+            fi
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Check for an existing update pull request
+        if: steps.upstream.outputs.update == 'true'
+        id: existing
+        env:
+          VERSION: ${{ steps.upstream.outputs.latest }}
+        run: |
+          branch="automation/mcphub-${VERSION}"
+          number="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base dev \
+            --head "${branch}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+          {
+            echo "branch=${branch}"
+            echo "number=${number}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare update
+        if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
+        env:
+          VERSION: ${{ steps.upstream.outputs.latest }}
+          RELEASE_URL: ${{ steps.upstream.outputs.release_url }}
+        run: |
+          python3 .github/scripts/update-mcphub-upstream.py \
+            --version "${VERSION}" \
+            --release-url "${RELEASE_URL}" \
+            --date "$(date -u +%F)"
+
+      - name: Commit update branch
+        if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
+        env:
+          BRANCH: ${{ steps.existing.outputs.branch }}
+          VERSION: ${{ steps.upstream.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "${BRANCH}"
+          git add \
+            MCPHub/build.yaml \
+            MCPHub/Dockerfile \
+            MCPHub/run.sh \
+            MCPHub/ingress.conf \
+            MCPHub/NOTICE.md \
+            MCPHub/config.yaml \
+            MCPHub/CHANGELOG.md \
+            MCPHub/patch_home_assistant_auth.py \
+            .github/workflows/validate-mcphub.yml
+          git commit -m "chore(mcphub): update upstream to ${VERSION}"
+
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force "${remote}" "HEAD:refs/heads/${BRANCH}"
+
+      - name: Open pull request against dev
+        if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
+        env:
+          BRANCH: ${{ steps.existing.outputs.branch }}
+          VERSION: ${{ steps.upstream.outputs.latest }}
+          RELEASE_URL: ${{ steps.upstream.outputs.release_url }}
+        run: |
+          cat > /tmp/pr-body.md <<EOF
+          Automated daily MCPHub update check.
+
+          Upstream release: ${RELEASE_URL}
+
+          This PR intentionally targets the dev branch.
+          The existing MCPHub validation workflow must build both architectures
+          and verify the Home Assistant wrapper patches before the change is merged.
+          EOF
+
+          gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base dev \
+            --head "${BRANCH}" \
+            --title "chore(mcphub): update upstream to ${VERSION}" \
+            --body-file /tmp/pr-body.md
