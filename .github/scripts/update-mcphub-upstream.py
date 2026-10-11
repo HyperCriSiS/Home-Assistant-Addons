@@ -73,8 +73,6 @@ def prepend_changelog(
     version: str,
     upstream_old: str,
     upstream_new: str,
-    release_url: str,
-    today: date,
 ) -> None:
     path = ROOT / "MCPHub/CHANGELOG.md"
     text = path.read_text(encoding="utf-8")
@@ -83,10 +81,9 @@ def prepend_changelog(
         raise SystemExit("Unexpected MCPHub changelog header")
 
     entry = (
-        f"## [{version}] - {today.isoformat()}\n\n"
+        f"## {version}\n\n"
         "### Changed\n\n"
-        f"- Updated bundled MCPHub from {upstream_old} to {upstream_new}. "
-        f"Upstream release: {release_url}\n\n"
+        f"- Updated MCPHub from {upstream_old} to {upstream_new}.\n\n"
     )
     path.write_text(
         heading + entry + text[len(heading) :],
@@ -164,8 +161,6 @@ def main() -> None:
         wrapper,
         current,
         args.version,
-        args.release_url,
-        today,
     )
     print(
         f"Prepared MCPHub {current} -> {args.version} "

@@ -112,7 +112,7 @@ jobs:
               "MCPHub version must use vYYYY.MM.DD or vYYYY.MM.DD-N"
           )
           datetime.strptime(match.group(1), "v%Y.%m.%d")
-          assert f"## [{version}]" in changelog
+          assert changelog.startswith(f"# Changelog\n\n## {version}\n")
 
           assert config["options"]["tunnel_enabled"] is False
           assert config["options"]["cloudflare_tunnel_enabled"] is False
