@@ -1,16 +1,11 @@
 ---
 version: 2
 updates:
-  - package-ecosystem: docker
-    directory: "/TriliumNext Notes"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-
+  # Trilium Docker updates are handled by .github/workflows/update-trilium.yml so
+  # the app version, changelog, full CI, and dev-store promotion stay atomic.
   - package-ecosystem: docker
     directory: "/MCPHub"
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -19,6 +14,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -27,6 +23,7 @@ updates:
 
   - package-ecosystem: npm
     directory: "/.github/tests/e2e"
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

@@ -63,6 +63,21 @@ def main() -> None:
         f'version: "{new_addon_version}"',
         1,
     )
+
+    description = (
+        f"description: >-\n"
+        f"  Trilium {args.upstream} - hierarchical note-taking and personal knowledge base."
+    )
+    config, count = re.subn(
+        r"^description:\s*>-\n(?:^[ \t]+.*(?:\n|$))+?(?=^[A-Za-z_])",
+        description + "\n",
+        config,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        raise SystemExit("Could not update Trilium version in config description")
+
     config_path.write_text(config, encoding="utf-8")
 
     changelog = changelog_path.read_text(encoding="utf-8")
