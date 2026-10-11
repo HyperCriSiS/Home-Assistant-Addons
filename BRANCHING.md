@@ -1,71 +1,46 @@
 # Branching workflow
 
-This repository uses three long-lived branches with distinct responsibilities.
+This repository uses separate long-lived development branches per Home Assistant App.
 
 ## `main`
 
-`main` is the stable Home Assistant repository consumed by normal users:
+`main` is the stable Home Assistant repository consumed by normal users. Only validated changes that are ready for release belong here.
 
-```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons
-```
+## `dev-trilium`
 
-Only validated changes that are ready for release belong on `main`.
+Long-lived release-candidate branch for **Trilium Notes only**. Trilium changes are validated and tested here before promotion to `main`.
 
-## `dev`
+## `dev-mcphub`
 
-`dev` is the integration branch for changes that still need real Home Assistant testing.
+Long-lived release-candidate branch for **MCPHub only**. MCPHub changes are validated and tested here before promotion to `main`.
 
-Each add-on has its own validation workflow. Changes remain on `dev` until CI and
-manual testing are complete, then they are promoted to `main`.
-
-Do not add `#dev` directly to Home Assistant for routine testing. Use the generated
-`dev-store` branch instead, because it has explicit development labels and generated
-development versions.
+Both development branches periodically merge the latest `main` so they inherit already released changes from the other App without inheriting the other App's unreleased work.
 
 ## `dev-store`
 
-`dev-store` is generated automatically from `dev` by
-`.github/workflows/sync-dev-store.yml`.
+`dev-store` is a generated Home Assistant testing repository. It is composed from:
 
-It exists only to make development builds easy and unambiguous in Home Assistant:
+- `TriliumNext Notes/` from `dev-trilium`
+- `MCPHub/` from `dev-mcphub`
+- shared repository content from `main`
+
+Home Assistant development repository URL:
 
 ```text
 https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
 ```
 
-The generator changes only Home Assistant store metadata:
+The generator adds `(Dev)`, `-dev.<run>`, and `stage: experimental` metadata so test installations are clearly distinguishable.
 
-- repository name → `HyperCriSiS Add-ons (Dev)`
-- `MCPHub` → `MCPHub (Dev)`
-- `Trilium Notes` → `Trilium Notes (Dev)`
-- panel titles receive the same `(Dev)` suffix
-- each App version receives a generated `-dev.<run>` suffix
-- development entries are marked experimental where necessary
+**Never edit `dev-store` manually and never merge it into `main`.**
 
-The source code itself remains identical to the current `dev` commit.
-
-**Never edit `dev-store` manually and never merge it into `main`.** It is generated
-output and is force-updated whenever `dev` changes.
-
-## Feature work
-
-Use short-lived branches such as `feature/*`, `fix/*`, `refactor/*`, `test/*`,
-`docs/*`, `chore/*`, and `hotfix/*` when appropriate. Merge those changes into
-`dev` for integration testing.
-
-The normal release flow is:
+## Release flows
 
 ```text
-feature/fix branch
-        ↓
-       dev
-        ↓
-   dev-store
-   (HA testing)
-        ↓
-       main
+Trilium work -> dev-trilium -> dev-store -> HA test -> main
+MCPHub work  -> dev-mcphub  -> dev-store -> HA test -> main
 ```
 
-Git tags can be used for released versions. Individual Home Assistant Apps belong in
-the repository directory/module structure rather than permanent per-App branches.
+A Trilium release PR is always `dev-trilium -> main`. An MCPHub release PR is always `dev-mcphub -> main`. This prevents one App's unreleased work from being published with the other App.
+
+Use short-lived `feature/*`, `fix/*`, `refactor/*`, `test/*`, `docs/*`, `chore/*`, and `hotfix/*` branches where useful, targeting the corresponding App development branch.

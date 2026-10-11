@@ -1,5 +1,5 @@
 ---
-name: Promote dev to main
+name: Promote app development branches to main
 
 on:
   workflow_run:
@@ -18,118 +18,110 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: promote-dev-main
+  group: promote-app-development-main
   cancel-in-progress: false
 
 jobs:
-  promote:
-    name: Maintain release pull request
+  promote-trilium:
+    name: Maintain Trilium release pull request
     if: >-
       ${{
         github.event_name == 'workflow_dispatch' ||
         (
           github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'dev'
+          github.event.workflow_run.head_branch == 'dev-trilium'
         )
       }}
     runs-on: ubuntu-24.04
     env:
-      AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
 
     steps:
-      - name: Verify validation gates for current dev commit
+      - name: Verify Trilium release gates
         id: gates
-        shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
         run: |
-          dev_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" --jq '.object.sha')"
-          ready=true
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-trilium" --jq '.object.sha')"
+          conclusion="$(gh run list             --repo "${GITHUB_REPOSITORY}"             --workflow validate.yml             --branch dev-trilium             --commit "${sha}"             --status completed             --limit 1             --json conclusion             --jq '.[0].conclusion // empty')"
 
-          require_success() {
-            local workflow="$1"
-            local label="$2"
-            local conclusion
-
-            conclusion="$(gh run list \
-              --repo "${GITHUB_REPOSITORY}" \
-              --workflow "${workflow}" \
-              --branch dev \
-              --commit "${dev_sha}" \
-              --status completed \
-              --limit 1 \
-              --json conclusion \
-              --jq '.[0].conclusion // empty')"
-
-            if [[ "${conclusion}" != "success" ]]; then
-              echo "${label} is not successful for dev commit ${dev_sha}: ${conclusion:-not completed}"
-              ready=false
-            else
-              echo "${label} passed for dev commit ${dev_sha}"
-            fi
+          [[ "${conclusion}" == "success" ]] || {
+            echo "Trilium validation is not successful for ${sha}" >&2
+            exit 1
           }
 
-          require_success "validate.yml" "Trilium validation"
-          require_success "validate-mcphub.yml" "MCPHub validation"
+          if [[ "${HAOS_E2E_ENABLED:-false}" == "true" ]]; then
+            haos="$(gh run list               --repo "${GITHUB_REPOSITORY}"               --workflow haos-integration.yml               --branch dev-trilium               --commit "${sha}"               --status completed               --limit 1               --json conclusion               --jq '.[0].conclusion // empty')"
+            [[ "${haos}" == "success" ]] || {
+              echo "Trilium HAOS validation is not successful for ${sha}" >&2
+              exit 1
+            }
+          fi
+
+          changed="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-trilium" --jq '.files | length')"
+          echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create Trilium release pull request
+        if: steps.gates.outputs.changed != '0'
+        run: |
+          existing="$(gh pr list             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-trilium             --state open             --json number             --jq '.[0].number // empty')"
+          if [[ -n "${existing}" ]]; then
+            echo "Trilium release PR #${existing} already exists"
+            exit 0
+          fi
+
+          if ! gh pr create             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-trilium             --title "release(trilium): promote validated candidate"             --body "Promotes only the validated Trilium development branch to main."; then
+            echo "GitHub Actions could not create the release PR; manual promotion remains available." >&2
+          fi
+
+  promote-mcphub:
+    name: Maintain MCPHub release pull request
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'dev-mcphub'
+        )
+      }}
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+
+    steps:
+      - name: Verify MCPHub release gates
+        id: gates
+        env:
+          HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
+        run: |
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-mcphub" --jq '.object.sha')"
+          conclusion="$(gh run list             --repo "${GITHUB_REPOSITORY}"             --workflow validate-mcphub.yml             --branch dev-mcphub             --commit "${sha}"             --status completed             --limit 1             --json conclusion             --jq '.[0].conclusion // empty')"
+
+          [[ "${conclusion}" == "success" ]] || {
+            echo "MCPHub validation is not successful for ${sha}" >&2
+            exit 1
+          }
 
           if [[ "${HAOS_E2E_ENABLED:-false}" == "true" ]]; then
-            require_success "haos-integration.yml" "Trilium HAOS integration"
-            require_success "haos-mcphub.yml" "MCPHub HAOS integration"
+            haos="$(gh run list               --repo "${GITHUB_REPOSITORY}"               --workflow haos-mcphub.yml               --branch dev-mcphub               --commit "${sha}"               --status completed               --limit 1               --json conclusion               --jq '.[0].conclusion // empty')"
+            [[ "${haos}" == "success" ]] || {
+              echo "MCPHub HAOS validation is not successful for ${sha}" >&2
+              exit 1
+            }
           fi
 
-          echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
+          changed="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-mcphub" --jq '.files | length')"
+          echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
 
-      - name: Create or update dev to main pull request
-        id: pr
-        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN != ''
-        env:
-          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
+      - name: Create MCPHub release pull request
+        if: steps.gates.outputs.changed != '0'
         run: |
-          pr_number="$(gh pr list \
-            --repo "${GITHUB_REPOSITORY}" \
-            --base main \
-            --head dev \
-            --state open \
-            --json number \
-            --jq '.[0].number // empty')"
-
-          if [[ -z "${pr_number}" ]]; then
-            if [[ "$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev" --jq '.ahead_by')" == "0" ]]; then
-              echo "dev has nothing to promote"
-              exit 0
-            fi
-
-            pr_url="$(gh pr create \
-              --repo "${GITHUB_REPOSITORY}" \
-              --base main \
-              --head dev \
-              --title "chore: promote validated dev to main" \
-              --body "Automated release PR. The current dev commit passed all configured add-on validation gates.")"
-            pr_number="${pr_url##*/}"
+          existing="$(gh pr list             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-mcphub             --state open             --json number             --jq '.[0].number // empty')"
+          if [[ -n "${existing}" ]]; then
+            echo "MCPHub release PR #${existing} already exists"
+            exit 0
           fi
 
-          echo "number=${pr_number}" >> "${GITHUB_OUTPUT}"
-
-      - name: Report manual promotion requirement
-        if: steps.gates.outputs.ready == 'true' && env.AUTOMATION_TOKEN == ''
-        run: |
-          {
-            echo "## Promotion ready"
-            echo
-            echo "All configured validation gates passed for the current dev commit."
-            echo
-            echo "No AUTOMATION_TOKEN secret is configured, so GitHub Actions cannot create"
-            echo "the dev to main pull request with the current repository settings."
-          } >> "${GITHUB_STEP_SUMMARY}"
-
-      - name: Enable automatic release to main
-        if: steps.pr.outputs.number != '' && vars.AUTO_RELEASE_TO_MAIN == 'true'
-        env:
-          GH_TOKEN: ${{ env.AUTOMATION_TOKEN }}
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
-        run: |
-          gh pr merge "${PR_NUMBER}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --merge \
-            --auto
+          if ! gh pr create             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-mcphub             --title "release(mcphub): promote validated candidate"             --body "Promotes only the validated MCPHub development branch to main."; then
+            echo "GitHub Actions could not create the release PR; manual promotion remains available." >&2
+          fi

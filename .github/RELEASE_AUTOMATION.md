@@ -1,58 +1,35 @@
 # Trilium add-on release automation
 
-The repository keeps the released Home Assistant app on `main`, the clean release candidate on `dev`, and a generated Home Assistant test repository on `dev-store`.
+Trilium uses a dedicated release-candidate branch, `dev-trilium`. MCPHub uses `dev-mcphub`. Both feed the shared generated `dev-store`, while `main` remains the user-facing stable repository.
 
-## Pipeline
+## Trilium pipeline
 
-1. `Update Trilium` runs every day and reads the latest stable GitHub release from `TriliumNext/Trilium`.
-2. When a newer release exists it updates the pinned Docker image, bumps the date-based Home Assistant app version, updates the visible Trilium version in the store description, and prepends a changelog entry on an automation branch.
-3. The updater explicitly dispatches `Validate add-on` for that exact update commit. The validation run must pass before `dev` can be changed.
-4. When GitHub Actions is allowed to create pull requests, the updater creates an update PR against `dev` and automatically merges it after validation. If repository settings block Actions from creating PRs, the same validated commit is fast-forwarded to `dev` instead. The fallback refuses to run if `dev` changed while validation was in progress.
-5. After promotion, the updater explicitly re-runs validation on `dev` and refreshes `dev-store`. This explicit dispatch is required because events produced with `GITHUB_TOKEN` do not recursively start workflows.
-6. `dev-store` is generated from `dev` and changes only development metadata such as `(Dev)`, the `-dev.N` version suffix, and `stage: experimental`. It is the installable Home Assistant test channel and must never be merged back into `dev` or `main`.
-7. A successful `dev` validation maintains a `dev -> main` release PR. Promotion to `main` remains the manual user-facing release gate unless `AUTO_RELEASE_TO_MAIN=true` is deliberately enabled.
-8. If a dedicated Home Assistant OS runner is configured, `HAOS integration` becomes an additional release gate before promotion.
+1. `Update Trilium` runs daily and reads the latest stable TriliumNext release.
+2. A newer release is prepared on `automation/trilium-<version>`.
+3. The exact candidate commit must pass the full Trilium validation workflow.
+4. The validated candidate is merged or fast-forwarded into `dev-trilium`; red validation can never update `dev-trilium`.
+5. The shared `dev-store` is rebuilt using Trilium from `dev-trilium` and MCPHub from `dev-mcphub`.
+6. Home Assistant testing therefore sees both current candidates in one development repository.
+7. User-facing Trilium release is exclusively `dev-trilium -> main`.
+8. MCPHub has an independent `dev-mcphub -> main` release flow.
 
-`Validate add-on` performs static validation, upstream image/architecture checks, native and cross-platform builds, functional HTTP tests, a Home Assistant-style reverse-proxy test, a WebSocket test, Playwright browser E2E, restart persistence, and an upgrade test from the version currently on `main`.
+After a `main` release, the stable branch is merged back into both App development branches so each candidate branch stays based on the current production repository.
+
+## Validation
+
+Trilium CI validates metadata, amd64/aarch64 images, native and cross-platform builds, Home Assistant-style Ingress proxying, WebSockets, browser E2E, restart persistence, and database upgrades from the stable version currently on `main`.
 
 ## Dependency ownership
 
-Trilium Docker image updates are owned exclusively by `Update Trilium`. Dependabot must not create Docker update PRs for `TriliumNext Notes`, because those PRs would bypass the app-version, changelog, store-description, and integration-test update transaction.
+- Trilium Docker releases are owned by `Update Trilium`.
+- MCPHub dependencies target `dev-mcphub`.
+- Trilium browser-test npm dependencies target `dev-trilium`.
+- Shared GitHub Actions dependency PRs target `main` because they are repository infrastructure rather than an App release.
 
-Dependabot may still maintain other dependency classes, but its PRs target `dev` rather than the user-facing `main` branch.
+## Branch protection
 
-## Repository variables
+`dev-trilium`, `dev-mcphub`, and `dev-store` are permanent protected branches. Deletion and non-fast-forward updates are blocked. `main` keeps its stricter pull-request-only protection.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `AUTO_RELEASE_TO_MAIN` | `false` | When `true`, the validated `dev -> main` PR is put into GitHub auto-merge. Keep this disabled while releases require manual approval. |
-| `HAOS_E2E_ENABLED` | `false` | Enables the dedicated HAOS release gate. |
-| `HAOS_ADDONS_DIR` | unset | Path on the self-hosted runner that maps to the HAOS local add-ons directory. Required when HAOS E2E is enabled. |
-| `HAOS_BASE_URL` | unset | Optional Home Assistant URL used to test the real Ingress endpoint. |
-| `HA_CLI` | `ha` | Command used by the dedicated runner to control the HAOS test instance. |
+## Optional HAOS gate
 
-When enabling `AUTO_RELEASE_TO_MAIN`, also enable GitHub's repository setting **Allow auto-merge** and protect `main` with the required validation checks.
-
-## Secrets
-
-- `AUTOMATION_TOKEN` is optional. If present, use a fine-grained token or GitHub App token with repository contents, Actions, and pull-request write access. It allows the updater to create and merge its normal update PR even when the repository blocks PR creation by `GITHUB_TOKEN`.
-- Without `AUTOMATION_TOKEN`, the updater still validates the exact update branch and then uses the guarded fast-forward fallback to keep `dev` current automatically.
-- `HAOS_TOKEN` is optional unless real Ingress is tested. It must be a token accepted by the dedicated Home Assistant test instance.
-
-## Dedicated HAOS runner
-
-The HAOS job is skipped unless `HAOS_E2E_ENABLED=true`, so a missing self-hosted runner never blocks normal CI.
-
-The runner must have these labels:
-
-- `self-hosted`
-- `linux`
-- `haos-addon-test`
-
-It also needs a working `ha` CLI (or wrapper configured via `HA_CLI`), `rsync`, `curl`, Python 3, and a writable/mounted HAOS local add-ons directory exposed via `HAOS_ADDONS_DIR`.
-
-Use a disposable/dedicated Home Assistant OS instance. Do not point this runner at a production Home Assistant installation.
-
-## What CI can and cannot prove
-
-The pipeline detects startup failures, broken architectures, proxy/rate-limit regressions, broken WebSockets, browser-load failures, basic note create/read persistence, database migration failures, and Home Assistant Supervisor failures when the optional HAOS gate is enabled. No automated suite can guarantee that every Trilium feature is bug-free, so major upstream architectural changes still deserve review before promoting `dev` to `main`.
+If `HAOS_E2E_ENABLED=true`, Trilium and MCPHub each use their own dedicated HAOS integration workflow before release promotion.

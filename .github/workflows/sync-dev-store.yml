@@ -4,7 +4,8 @@ name: Sync development store
 on:
   push:
     branches:
-      - dev
+      - dev-trilium
+      - dev-mcphub
   workflow_dispatch:
 
 permissions:
@@ -16,28 +17,30 @@ concurrency:
 
 jobs:
   sync:
-    name: Publish dev as Home Assistant development store
+    name: Publish combined Home Assistant development store
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
 
     steps:
-      - name: Check out dev
+      - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: dev
+          ref: main
           fetch-depth: 0
 
-      - name: Merge dev into development store
+      - name: Compose dev-store from both app branches
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin dev-store
 
-          if git show-ref --verify --quiet refs/remotes/origin/dev-store; then
-            git checkout -B dev-store origin/dev-store
-            git merge --no-ff --no-edit -X theirs origin/dev
-          else
-            git checkout -B dev-store origin/dev
-          fi
+          git fetch origin             main             dev-trilium             dev-mcphub             dev-store
+
+          git checkout -B dev-store origin/dev-store
+          git merge --no-ff --no-edit -X theirs origin/main
+
+          git checkout origin/dev-trilium -- "TriliumNext Notes"
+          git checkout origin/dev-mcphub -- "MCPHub"
+          git checkout origin/main -- repository.json
 
       - name: Generate development metadata
         env:
@@ -71,8 +74,7 @@ jobs:
               if version_match is None:
                   raise SystemExit(f"Unable to read version from {path}")
 
-              base_version = version_match.group(1)
-              base_version = re.sub(r"-dev\.\d+$", "", base_version)
+              base_version = re.sub(r"-dev\.\d+$", "", version_match.group(1))
               dev_version = f"{base_version}-dev.{run_number}"
 
               replacements = {
@@ -110,20 +112,20 @@ jobs:
               "MCPHub/config.yaml",
               "MCPHub (Dev)",
               "MCPHub (Dev)",
-              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/MCPHub",
+              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev-mcphub/MCPHub",
           )
           patch_config(
               "TriliumNext Notes/config.yaml",
               "Trilium Notes (Dev)",
               "Trilium Notes (Dev)",
-              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev/TriliumNext%20Notes",
+              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev-trilium/TriliumNext%20Notes",
           )
           PY
 
       - name: Publish generated dev-store branch
         run: |
-          git add repository.json "MCPHub/config.yaml" "TriliumNext Notes/config.yaml"
+          git add repository.json "MCPHub" "TriliumNext Notes"
           if ! git diff --cached --quiet; then
-            git commit -m "chore(dev-store): sync from dev ${GITHUB_SHA::7}"
+            git commit -m "chore(dev-store): compose current app candidates"
           fi
           git push origin HEAD:dev-store
