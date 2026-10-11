@@ -37,7 +37,7 @@ Then search for **MCPHub**, install it, start it with the default configuration,
 
 ### Development testing
 
-To test the current `dev` branch before it is promoted to `main`, add the generated
+To test the current `dev-mcphub` candidate before it is promoted to `main`, add the shared generated
 development store:
 
 [![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
