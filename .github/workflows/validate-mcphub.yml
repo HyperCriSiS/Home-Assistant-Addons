@@ -120,25 +120,31 @@ jobs:
           assert list(config["options"])[-1] == "tunnel_log_level"
           assert list(config["schema"])[-1] == "tunnel_log_level"
 
-          expected = "samanhappy/mcphub:1.1.1"
-          assert build["build_from"] == {
-              "amd64": expected,
-              "aarch64": expected,
-          }
-          PY
+          build_images = set(build["build_from"].values())
+          assert len(build_images) == 1, (
+              f"MCPHub build_from must use one pinned image: {sorted(build_images)}"
+          )
+          upstream_image = build_images.pop()
+          upstream_match = re.fullmatch(
+              r"(?:docker\\.io/)?samanhappy/mcphub:(\\d+\\.\\d+\\.\\d+)",
+              upstream_image,
+          )
+          assert upstream_match is not None, (
+              f"Unexpected MCPHub image: {upstream_image}"
+          )
+          upstream_version = upstream_match.group(1)
 
-          MCPHUB_VERSION="$(python3 - <<'PY'
-          from pathlib import Path
-          import yaml
-          config = yaml.safe_load(Path("MCPHub/config.yaml").read_text(encoding="utf-8"))
-          print(config["version"])
+          import os
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"MCPHUB_VERSION={version}\\n")
+              env_file.write(f"MCPHUB_UPSTREAM_VERSION={upstream_version}\\n")
           PY
-          )"
-          echo "MCPHUB_VERSION=${MCPHUB_VERSION}" >> "${GITHUB_ENV}"
 
       - name: Validate upstream image architectures
         run: |
-          docker manifest inspect "docker.io/samanhappy/mcphub:1.1.1" > /tmp/mcphub-manifest.json
+          docker manifest inspect \
+            "docker.io/samanhappy/mcphub:${MCPHUB_UPSTREAM_VERSION}" \
+            > /tmp/mcphub-manifest.json
           docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.15" > /tmp/tunnel-manifest.json
           docker manifest inspect "docker.io/cloudflare/cloudflared:2026.9.3" > /tmp/cloudflared-manifest.json
 
