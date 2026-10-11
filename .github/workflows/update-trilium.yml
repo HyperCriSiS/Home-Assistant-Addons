@@ -177,5 +177,7 @@ jobs:
             git push "${remote}" --delete "${BRANCH}" || true
           fi
 
+          # GITHUB_TOKEN-generated repository events do not recursively start workflows.
+          # Explicit dispatch keeps validation, the development store, and release promotion in sync.
           gh workflow run validate.yml --repo "${GITHUB_REPOSITORY}" --ref dev
           gh workflow run sync-dev-store.yml --repo "${GITHUB_REPOSITORY}" --ref dev

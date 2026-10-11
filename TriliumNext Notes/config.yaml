@@ -1,10 +1,9 @@
 ---
 name: "Trilium Notes"
-version: "v2026.09.21"
+version: "v2026.10.11"
 slug: trilium
 description: >-
-  Hierarchical note-taking application with encryption, Markdown support,
-  synchronization, and personal knowledge base features.
+  Trilium v0.106.0 - hierarchical note-taking and personal knowledge base.
 url: "https://github.com/HyperCriSiS/Home-Assistant-Addons"
 ingress: true
 ingress_port: 8080
@@ -41,5 +40,5 @@ environment:
   TRILIUM_NETWORK_HOST: "0.0.0.0"
   TRILIUM_NETWORK_PORT: "8080"
   TRILIUM_NETWORK_TRUSTEDREVERSEPROXY: "172.30.32.2"
-  TRILIUM_LOGGING_RETENTIONDAYS: "{{ options.log_retention_days }}"
-  TZ: "{{ options.timezone }}"
+  TRILIUM_LOGGING_RETENTIONDAYS: "${{ options.log_retention_days }}"
+  TZ: "${{ options.timezone }}"

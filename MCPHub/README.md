@@ -23,33 +23,35 @@ It supports MCPHub Market / Registry discovery, local stdio servers, remote MCP 
 
 ## Installation
 
-### 1. Add this repository to Home Assistant
+### Stable
 
-Click the button below to add the HyperCriSiS Apps repository to your Home Assistant instance:
+[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
 
-[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+If the button opens the App store without showing the repository dialog, add it manually:
 
-If the button opens the App store without showing the repository dialog, add the repository manually:
+```text
+https://github.com/HyperCriSiS/Home-Assistant-Addons
+```
 
-1. Open **Settings → Apps → Install app**.
-2. Open the **⋮** menu and choose **Repositories**.
-3. Add:
+Then search for **MCPHub**, install it, start it with the default configuration, and open **Web UI**.
 
-   ```text
-   https://github.com/HyperCriSiS/Home-Assistant-Addons
-   ```
+### Development testing
 
-4. Reload the App store if necessary.
+To test the current `dev` branch before it is promoted to `main`, add the generated
+development store:
 
-### 2. Install MCPHub
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
 
-1. Search for **MCPHub** in the Home Assistant App store.
-2. Open **MCPHub** and click **Install**.
-3. Start the App with the default configuration.
-4. Open **Web UI** to access the MCPHub dashboard.
-5. Add MCP servers from MCPHub Market / Registry or configure them manually.
+```text
+https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+```
 
-The OpenAI tunnel is disabled by default. Verify that MCPHub works locally before enabling remote ChatGPT access.
+The development App is shown as **MCPHub (Dev)** under
+**HyperCriSiS Add-ons (Dev)**, so it can be distinguished from the stable App at a glance.
+
+> [!WARNING]
+> Development builds may contain incomplete or breaking changes. Use the stable repository
+> for normal production use.
 
 ## Features
 
@@ -60,7 +62,8 @@ The OpenAI tunnel is disabled by default. Verify that MCPHub works locally befor
 - Persistent MCPHub configuration
 - Persistent npm / npx and uv / uvx package caches
 - Home Assistant Ingress dashboard
-- Optional OpenAI Secure MCP Tunnel
+- Optional OpenAI Secure MCP Tunnel for ChatGPT / OpenAI clients
+- Optional Cloudflare Tunnel for Claude, Cursor, VS Code, and other remote MCP clients
 - No public MCPHub port required
 - No Home Assistant Docker socket access
 - No privileged mode
@@ -70,7 +73,11 @@ The OpenAI tunnel is disabled by default. Verify that MCPHub works locally befor
 - Home Assistant cold-backup support
 - `amd64` and `aarch64` support
 
-## ChatGPT through OpenAI Secure MCP Tunnel
+## Remote access
+
+MCPHub supports two independent remote-access paths. Both are optional and can be enabled at the same time.
+
+### ChatGPT through OpenAI Secure MCP Tunnel
 
 The optional tunnel lets ChatGPT reach MCPHub without publishing MCPHub to the internet.
 
@@ -93,7 +100,25 @@ No router port forwarding, public reverse proxy, public MCPHub URL, or Cloudflar
 
 Enable the tunnel only after creating an OpenAI Secure MCP Tunnel and obtaining its Runtime API Key and Tunnel ID.
 
-See [DOCS.md](DOCS.md) for the complete tunnel configuration.
+See [DOCS.md](DOCS.md) for the complete OpenAI tunnel configuration.
+
+### Generic remote MCP through Cloudflare Tunnel
+
+Cloudflare Tunnel exposes one explicitly selected MCPHub route through a normal HTTPS hostname. This is useful for Claude, Cursor, VS Code, and other clients that support remote Streamable HTTP MCP.
+
+The App runs a loopback-only Cloudflare origin on `127.0.0.1:8098`. That adapter exposes exactly the configured `cloudflare_mcp_path`; all other paths return 404. Remote clients must also provide the configured client key.
+
+For the smallest tool surface, create a focused MCPHub group and expose only that group:
+
+```text
+/mcp/development
+/mcp/home
+/mcp/web
+```
+
+This prevents clients from discovering every server and tool in MCPHub at once.
+
+See [DOCS.md](DOCS.md) for the Cloudflare setup.
 
 ## Security model
 
@@ -101,7 +126,9 @@ MCPHub itself binds only to the App container loopback interface.
 
 The dashboard is exposed through a dedicated Home Assistant Ingress adapter. The App does not publish MCPHub directly on the Home Assistant host network.
 
-MCP transport authentication remains enabled independently from Home Assistant Ingress. A dedicated persistent bearer token is generated for the local connection between the OpenAI tunnel client and MCPHub.
+Home Assistant Ingress provides single sign-on for the dashboard. The Supervisor-provided Home Assistant user identity is mapped into MCPHub only when the request also carries a private per-installation proxy trust secret injected by the local Ingress adapter.
+
+MCP transport authentication remains independent from Home Assistant Ingress. OpenAI and Cloudflare each use their own route-scoped internal credentials. The public Cloudflare client key is validated by the local adapter and is never registered as a dashboard credential in MCPHub.
 
 Secrets, MCPHub configuration, and package caches are stored in the persistent App data directory and are included in Home Assistant cold backups.
 
@@ -118,13 +145,37 @@ The Home Assistant App configuration contains only tunnel-related options:
 | `openai_runtime_api_key` | empty | Runtime API Key used by the tunnel client |
 | `tunnel_id` | empty | OpenAI Secure MCP Tunnel ID |
 | `tunnel_mcp_path` | `/mcp` | MCPHub route exposed through the tunnel |
-| `tunnel_log_level` | `info` | Tunnel log verbosity |
+| `tunnel_log_level` | `info` | OpenAI tunnel log verbosity |
+| `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
+| `cloudflare_tunnel_token` | empty | Connector token for a remotely managed Cloudflare Tunnel |
+| `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
+| `cloudflare_access_token` | empty | Client key required from remote MCP clients |
 
 MCP server configuration itself is managed from the MCPHub Web UI.
 
 For detailed configuration, security notes, persistence paths, backups, and troubleshooting, see:
 
 **[Full MCPHub App documentation →](DOCS.md)**
+
+## Versioning
+
+MCPHub wrapper releases use calendar versioning:
+
+```text
+vYYYY.MM.DD
+```
+
+If more than one release is published on the same day, subsequent releases append a
+numeric suffix:
+
+```text
+v2026.10.05
+v2026.10.05-1
+v2026.10.05-2
+```
+
+Development-store builds keep the same release base and add a temporary
+`-dev.<build>` suffix.
 
 ## Updating
 
