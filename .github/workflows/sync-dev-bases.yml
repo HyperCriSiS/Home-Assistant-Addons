@@ -50,3 +50,8 @@ jobs:
             git merge --no-ff --no-edit origin/main
             git push origin "HEAD:${branch}"
           done
+
+      - name: Refresh combined development store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run sync-dev-store.yml --ref main
