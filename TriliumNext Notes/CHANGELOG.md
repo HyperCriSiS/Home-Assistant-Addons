@@ -2,58 +2,86 @@
 
 ## v2026.10.11
 
-- Update Trilium Notes from v0.105.0 to v0.106.0.
-- Upstream release notes: https://github.com/TriliumNext/Trilium/releases/tag/v0.106.0
-- Automated CI verifies Home Assistant metadata, amd64/aarch64 builds, Ingress proxying, WebSockets, browser behavior, persistence, and database upgrades.
+### Changed
+
+- Updated Trilium from v0.105.0 to v0.106.0.
 
 ## v2026.09.21
 
-- Restrict Trilium reverse-proxy trust to the Home Assistant Ingress proxy at `172.30.32.2` instead of trusting arbitrary forwarded clients.
-- Fix `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` from `express-rate-limit` when Trilium is accessed through Home Assistant Ingress.
-- Avoid the insecure `trustedReverseProxy=true` configuration, which can allow spoofed `X-Forwarded-For` values and trigger `ERR_ERL_PERMISSIVE_TRUST_PROXY`.
-- Add CI validation to prevent accidentally reverting the trusted-proxy setting.
+### Fixed
+
+- Fixed Home Assistant Ingress requests triggering `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR`.
+- Restricted trusted reverse-proxy handling to the Home Assistant Ingress proxy at `172.30.32.2`.
+
+### Security
+
+- Removed permissive reverse-proxy trust so forwarded client addresses cannot be accepted from arbitrary sources.
 
 ## v2026.09.07
 
-- Update Trilium Notes to v0.105.0.
-- Keep Home Assistant Ingress, TCP watchdog, persistent data mapping, and current Trilium environment configuration unchanged.
-- Note upstream ARM64 change: the v0.105.0 Docker image uses Debian 13 and requires a host with sufficiently recent `libseccomp` support for the `clone3` syscall.
-- Extend CI validation to verify that the pinned upstream Docker image publishes both `amd64` and `arm64` Linux manifests before building and smoke-testing the add-on.
+### Changed
+
+- Updated Trilium to v0.105.0.
+- Trilium's ARM64 image now uses Debian 13 and requires a host with sufficiently recent `libseccomp` support.
 
 ## v2026.07.26
 
-- Update Trilium Notes to v0.104.1.
-- Migrate away from the obsolete `build.yaml` mechanism and pin the upstream image directly in the Dockerfile.
-- Use Trilium's upstream startup command and health check instead of maintaining a custom wrapper.
-- Configure the current Trilium environment variables for host, port, trusted reverse proxy, and log retention.
-- Add a Home Assistant TCP watchdog for automatic supervision of the Trilium service.
-- Add automated validation, image build, container health smoke tests, and Dependabot updates.
-- Deprecate the non-functional `log_level` and `https_only` options while retaining schema compatibility for existing installations.
+### Added
+
+- Added a Home Assistant TCP watchdog for automatic service supervision.
+
+### Changed
+
+- Updated Trilium to v0.104.1.
+- Switched to Trilium's upstream startup command and health check.
+- Updated the Trilium environment configuration for host, port, trusted reverse proxy, and log retention.
+- Deprecated the non-functional `log_level` and `https_only` options while retaining compatibility with existing installations.
 
 ## v2026.07.07
 
-- Update to Trilium v0.103.0 (sync protocol version 39).
+### Changed
+
+- Updated Trilium to v0.103.0.
 
 ## v2025.11.30
 
-- Update to v0.99.5.
-- Change name to Trilium Notes.
-- Fix startup parameter.
+### Changed
+
+- Updated Trilium to v0.99.5.
+- Renamed the Home Assistant App to Trilium Notes.
+
+### Fixed
+
+- Fixed the Trilium startup parameters.
 
 ## v2025.09.22
 
-- Fix startup and health check.
+### Fixed
+
+- Fixed Trilium startup and health-check handling.
 
 ## v2025.09.17
 
-- Update to v0.98.1.
+### Changed
+
+- Updated Trilium to v0.98.1.
 
 ## v2025.03.13
 
-- Add timezone and log-level options.
-- Add new logo with the correct name.
-- Fix naming across files.
+### Added
+
+- Added timezone and log-level configuration options.
+
+### Changed
+
+- Updated the Trilium Notes branding and logo.
+
+### Fixed
+
+- Fixed inconsistent Trilium naming across the Home Assistant App files.
 
 ## v2025.03.12
 
-- Initial release.
+### Added
+
+- Initial Home Assistant App release.

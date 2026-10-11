@@ -81,13 +81,10 @@ def main() -> None:
     config_path.write_text(config, encoding="utf-8")
 
     changelog = changelog_path.read_text(encoding="utf-8")
-    release_url = f"https://github.com/TriliumNext/Trilium/releases/tag/{args.upstream}"
     entry = (
         f"## {new_addon_version}\n\n"
-        f"- Update Trilium Notes from {current_upstream} to {args.upstream}.\n"
-        f"- Upstream release notes: {release_url}\n"
-        "- Automated CI verifies Home Assistant metadata, amd64/aarch64 builds, "
-        "Ingress proxying, WebSockets, browser behavior, persistence, and database upgrades.\n\n"
+        "### Changed\n\n"
+        f"- Updated Trilium from {current_upstream} to {args.upstream}.\n\n"
     )
     marker = "# Changelog\n\n"
     if not changelog.startswith(marker):
