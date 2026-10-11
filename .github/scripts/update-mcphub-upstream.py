@@ -159,13 +159,6 @@ def main() -> None:
         f"MCPHub {args.version}",
         2,
     )
-    replace_exact(
-        ".github/workflows/validate-mcphub.yml",
-        f"samanhappy/mcphub:{current}",
-        f"samanhappy/mcphub:{args.version}",
-        2,
-    )
-
     _, wrapper = bump_wrapper_version(today)
     prepend_changelog(
         wrapper,

@@ -109,8 +109,7 @@ jobs:
             MCPHub/NOTICE.md \
             MCPHub/config.yaml \
             MCPHub/CHANGELOG.md \
-            MCPHub/patch_home_assistant_auth.py \
-            .github/workflows/validate-mcphub.yml
+            MCPHub/patch_home_assistant_auth.py
           git commit -m "chore(mcphub): update upstream to ${VERSION}"
 
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
