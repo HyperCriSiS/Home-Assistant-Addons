@@ -3,10 +3,24 @@ name: Validate MCPHub
 
 on:
   pull_request:
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/integration-test-mcphub.sh"
+      - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/update-mcphub-upstream.py"
+      - ".github/workflows/**"
+      - ".yamllint"
   push:
     branches:
       - main
-      - dev
+      - dev-mcphub
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/integration-test-mcphub.sh"
+      - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/update-mcphub-upstream.py"
+      - ".github/workflows/**"
+      - ".yamllint"
   workflow_dispatch:
 
 permissions:
@@ -24,7 +38,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
           persist-credentials: false
 
