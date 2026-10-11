@@ -146,7 +146,7 @@ jobs:
           [[ -n "${run_id}" ]] || { echo "Validation run did not start" >&2; exit 1; }
           gh run watch "${run_id}" --repo "${GITHUB_REPOSITORY}" --exit-status
 
-      - name: Promote validated update into dev
+      - name: Promote validated update into dev-trilium
         if: steps.version.outputs.update == 'true'
         env:
           BRANCH: ${{ steps.update.outputs.branch }}
@@ -155,7 +155,7 @@ jobs:
         run: |
           current_dev="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-trilium" --jq '.object.sha')"
           if [[ "${current_dev}" != "${BASE_SHA}" ]]; then
-            echo "dev changed during validation; refusing to promote stale update" >&2
+            echo "dev-trilium changed during validation; refusing to promote stale update" >&2
             exit 1
           fi
 
@@ -180,4 +180,4 @@ jobs:
           # GITHUB_TOKEN-generated repository events do not recursively start workflows.
           # Explicit dispatch keeps validation, the development store, and release promotion in sync.
           gh workflow run validate.yml --repo "${GITHUB_REPOSITORY}" --ref dev-trilium
-          gh workflow run sync-dev-store.yml --repo "${GITHUB_REPOSITORY}" --ref dev
+          gh workflow run sync-dev-store.yml --repo "${GITHUB_REPOSITORY}" --ref main
