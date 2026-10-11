@@ -24,10 +24,10 @@ jobs:
       GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
 
     steps:
-      - name: Check out dev branch
+      - name: Check out Trilium development branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: dev
+          ref: dev-trilium
           fetch-depth: 0
           persist-credentials: false
 
@@ -90,7 +90,7 @@ jobs:
 
           existing="$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
-            --base dev \
+            --base dev-trilium \
             --head "${branch}" \
             --state open \
             --json number \
@@ -99,13 +99,13 @@ jobs:
           pr_number="${existing}"
           if [[ -z "${pr_number}" ]]; then
             body="$(printf \
-              'Automated Trilium update to %s. Full CI must pass before promotion to dev.\n\nUpstream: %s\n' \
+              'Automated Trilium update to %s. Full CI must pass before promotion to dev-trilium.\n\nUpstream: %s\n' \
               "${LATEST}" \
               "https://github.com/TriliumNext/Trilium/releases/tag/${LATEST}")"
 
             if pr_url="$(gh pr create \
               --repo "${GITHUB_REPOSITORY}" \
-              --base dev \
+              --base dev-trilium \
               --head "${branch}" \
               --title "chore: update Trilium to ${LATEST}" \
               --body "${body}" 2>/tmp/trilium-pr-error)"; then
@@ -153,7 +153,7 @@ jobs:
           BASE_SHA: ${{ steps.update.outputs.base_sha }}
           PR_NUMBER: ${{ steps.update.outputs.number }}
         run: |
-          current_dev="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" --jq '.object.sha')"
+          current_dev="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-trilium" --jq '.object.sha')"
           if [[ "${current_dev}" != "${BASE_SHA}" ]]; then
             echo "dev changed during validation; refusing to promote stale update" >&2
             exit 1
@@ -173,11 +173,11 @@ jobs:
 
           if [[ "${promoted}" != "true" ]]; then
             remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-            git push "${remote}" "refs/heads/${BRANCH}:refs/heads/dev"
+            git push "${remote}" "refs/heads/${BRANCH}:refs/heads/dev-trilium"
             git push "${remote}" --delete "${BRANCH}" || true
           fi
 
           # GITHUB_TOKEN-generated repository events do not recursively start workflows.
           # Explicit dispatch keeps validation, the development store, and release promotion in sync.
-          gh workflow run validate.yml --repo "${GITHUB_REPOSITORY}" --ref dev
+          gh workflow run validate.yml --repo "${GITHUB_REPOSITORY}" --ref dev-trilium
           gh workflow run sync-dev-store.yml --repo "${GITHUB_REPOSITORY}" --ref dev

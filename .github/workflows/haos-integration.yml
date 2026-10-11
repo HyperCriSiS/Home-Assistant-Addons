@@ -26,7 +26,7 @@ jobs:
           github.event_name == 'workflow_dispatch' ||
           (
             github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'dev'
+            github.event.workflow_run.head_branch == 'dev-trilium'
           )
         )
       }}
@@ -37,10 +37,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Check out validated dev branch
+      - name: Check out validated Trilium development branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: dev
+          ref: dev-trilium
           persist-credentials: false
 
       - name: Run Home Assistant OS add-on test harness

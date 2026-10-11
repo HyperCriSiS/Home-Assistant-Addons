@@ -3,10 +3,30 @@ name: Validate add-on
 
 on:
   pull_request:
+    paths:
+      - "TriliumNext Notes/**"
+      - ".github/scripts/integration-test.sh"
+      - ".github/scripts/upgrade-test.sh"
+      - ".github/scripts/test_websocket.py"
+      - ".github/scripts/validate_metadata.py"
+      - ".github/tests/e2e/**"
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+      - ".yamllint"
   push:
     branches:
       - main
-      - dev
+      - dev-trilium
+    paths:
+      - "TriliumNext Notes/**"
+      - ".github/scripts/integration-test.sh"
+      - ".github/scripts/upgrade-test.sh"
+      - ".github/scripts/test_websocket.py"
+      - ".github/scripts/validate_metadata.py"
+      - ".github/tests/e2e/**"
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+      - ".yamllint"
   workflow_dispatch:
 
 permissions:

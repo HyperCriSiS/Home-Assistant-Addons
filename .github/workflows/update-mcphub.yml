@@ -23,10 +23,10 @@ jobs:
       GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Check out dev
+      - name: Check out MCPHub development branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: dev
+          ref: dev-mcphub
           fetch-depth: 0
           persist-credentials: false
 
@@ -71,7 +71,7 @@ jobs:
           branch="automation/mcphub-${VERSION}"
           number="$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
-            --base dev \
+            --base dev-mcphub \
             --head "${branch}" \
             --state open \
             --json number \
@@ -116,7 +116,7 @@ jobs:
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force "${remote}" "HEAD:refs/heads/${BRANCH}"
 
-      - name: Open pull request against dev
+      - name: Open pull request against dev-mcphub
         if: steps.upstream.outputs.update == 'true' && steps.existing.outputs.number == ''
         env:
           BRANCH: ${{ steps.existing.outputs.branch }}
@@ -128,14 +128,14 @@ jobs:
 
           Upstream release: ${RELEASE_URL}
 
-          This PR intentionally targets the dev branch.
+          This PR intentionally targets the dev-mcphub branch.
           The existing MCPHub validation workflow must build both architectures
           and verify the Home Assistant wrapper patches before the change is merged.
           EOF
 
           gh pr create \
             --repo "${GITHUB_REPOSITORY}" \
-            --base dev \
+            --base dev-mcphub \
             --head "${BRANCH}" \
             --title "chore(mcphub): update upstream to ${VERSION}" \
             --body-file /tmp/pr-body.md

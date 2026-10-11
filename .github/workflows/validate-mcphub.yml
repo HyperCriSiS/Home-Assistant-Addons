@@ -3,10 +3,24 @@ name: Validate MCPHub
 
 on:
   pull_request:
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/integration-test-mcphub.sh"
+      - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/update-mcphub-upstream.py"
+      - ".github/workflows/**"
+      - ".yamllint"
   push:
     branches:
       - main
-      - dev
+      - dev-mcphub
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/integration-test-mcphub.sh"
+      - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/update-mcphub-upstream.py"
+      - ".github/workflows/**"
+      - ".yamllint"
   workflow_dispatch:
 
 permissions:
