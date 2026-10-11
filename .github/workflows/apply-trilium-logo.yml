@@ -104,7 +104,7 @@ jobs:
             gcU45ffeahi/TPB7Vl8+uJ6GGP1TkBH6CH2EPkIfoY/QR+gj9BH6CH2EPlzyP+C0HPN5kTczAAAA
             AElFTkSuQmCC
         run: |
-          printf '%s' "${LOGO_B64}" | base64 --decode > 'TriliumNext Notes/logo.png'
+          printf '%s' "${LOGO_B64}" | tr -d '[:space:]' | base64 --decode > 'TriliumNext Notes/logo.png'
           echo '5ee956116965a0d551e02b778bdd5cb610619856bb0f1ec58148f543f478437f  TriliumNext Notes/logo.png' | sha256sum -c -
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
