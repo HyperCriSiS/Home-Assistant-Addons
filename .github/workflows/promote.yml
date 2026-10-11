@@ -42,8 +42,21 @@ jobs:
         env:
           HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
         run: |
-          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-trilium" --jq '.object.sha')"
-          conclusion="$(gh run list             --repo "${GITHUB_REPOSITORY}"             --workflow validate.yml             --branch dev-trilium             --commit "${sha}"             --status completed             --limit 1             --json conclusion             --jq '.[0].conclusion // empty')"
+          sha="$(
+            gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-trilium" \
+              --jq '.object.sha'
+          )"
+          conclusion="$(
+            gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow validate.yml \
+              --branch dev-trilium \
+              --commit "${sha}" \
+              --status completed \
+              --limit 1 \
+              --json conclusion \
+              --jq '.[0].conclusion // empty'
+          )"
 
           [[ "${conclusion}" == "success" ]] || {
             echo "Trilium validation is not successful for ${sha}" >&2
@@ -51,26 +64,52 @@ jobs:
           }
 
           if [[ "${HAOS_E2E_ENABLED:-false}" == "true" ]]; then
-            haos="$(gh run list               --repo "${GITHUB_REPOSITORY}"               --workflow haos-integration.yml               --branch dev-trilium               --commit "${sha}"               --status completed               --limit 1               --json conclusion               --jq '.[0].conclusion // empty')"
+            haos="$(
+              gh run list \
+                --repo "${GITHUB_REPOSITORY}" \
+                --workflow haos-integration.yml \
+                --branch dev-trilium \
+                --commit "${sha}" \
+                --status completed \
+                --limit 1 \
+                --json conclusion \
+                --jq '.[0].conclusion // empty'
+            )"
             [[ "${haos}" == "success" ]] || {
               echo "Trilium HAOS validation is not successful for ${sha}" >&2
               exit 1
             }
           fi
 
-          changed="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-trilium" --jq '.files | length')"
+          changed="$(
+            gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-trilium" \
+              --jq '.files | length'
+          )"
           echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
 
       - name: Create Trilium release pull request
         if: steps.gates.outputs.changed != '0'
         run: |
-          existing="$(gh pr list             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-trilium             --state open             --json number             --jq '.[0].number // empty')"
+          existing="$(
+            gh pr list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head dev-trilium \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
           if [[ -n "${existing}" ]]; then
             echo "Trilium release PR #${existing} already exists"
             exit 0
           fi
 
-          if ! gh pr create             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-trilium             --title "release(trilium): promote validated candidate"             --body "Promotes only the validated Trilium development branch to main."; then
+          if ! gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base main \
+            --head dev-trilium \
+            --title "release(trilium): promote validated candidate" \
+            --body "Promotes only the validated Trilium development branch to main."; then
             echo "GitHub Actions could not create the release PR; manual promotion remains available." >&2
           fi
 
@@ -94,8 +133,21 @@ jobs:
         env:
           HAOS_E2E_ENABLED: ${{ vars.HAOS_E2E_ENABLED }}
         run: |
-          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-mcphub" --jq '.object.sha')"
-          conclusion="$(gh run list             --repo "${GITHUB_REPOSITORY}"             --workflow validate-mcphub.yml             --branch dev-mcphub             --commit "${sha}"             --status completed             --limit 1             --json conclusion             --jq '.[0].conclusion // empty')"
+          sha="$(
+            gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev-mcphub" \
+              --jq '.object.sha'
+          )"
+          conclusion="$(
+            gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow validate-mcphub.yml \
+              --branch dev-mcphub \
+              --commit "${sha}" \
+              --status completed \
+              --limit 1 \
+              --json conclusion \
+              --jq '.[0].conclusion // empty'
+          )"
 
           [[ "${conclusion}" == "success" ]] || {
             echo "MCPHub validation is not successful for ${sha}" >&2
@@ -103,25 +155,51 @@ jobs:
           }
 
           if [[ "${HAOS_E2E_ENABLED:-false}" == "true" ]]; then
-            haos="$(gh run list               --repo "${GITHUB_REPOSITORY}"               --workflow haos-mcphub.yml               --branch dev-mcphub               --commit "${sha}"               --status completed               --limit 1               --json conclusion               --jq '.[0].conclusion // empty')"
+            haos="$(
+              gh run list \
+                --repo "${GITHUB_REPOSITORY}" \
+                --workflow haos-mcphub.yml \
+                --branch dev-mcphub \
+                --commit "${sha}" \
+                --status completed \
+                --limit 1 \
+                --json conclusion \
+                --jq '.[0].conclusion // empty'
+            )"
             [[ "${haos}" == "success" ]] || {
               echo "MCPHub HAOS validation is not successful for ${sha}" >&2
               exit 1
             }
           fi
 
-          changed="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-mcphub" --jq '.files | length')"
+          changed="$(
+            gh api "repos/${GITHUB_REPOSITORY}/compare/main...dev-mcphub" \
+              --jq '.files | length'
+          )"
           echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
 
       - name: Create MCPHub release pull request
         if: steps.gates.outputs.changed != '0'
         run: |
-          existing="$(gh pr list             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-mcphub             --state open             --json number             --jq '.[0].number // empty')"
+          existing="$(
+            gh pr list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head dev-mcphub \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
           if [[ -n "${existing}" ]]; then
             echo "MCPHub release PR #${existing} already exists"
             exit 0
           fi
 
-          if ! gh pr create             --repo "${GITHUB_REPOSITORY}"             --base main             --head dev-mcphub             --title "release(mcphub): promote validated candidate"             --body "Promotes only the validated MCPHub development branch to main."; then
+          if ! gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base main \
+            --head dev-mcphub \
+            --title "release(mcphub): promote validated candidate" \
+            --body "Promotes only the validated MCPHub development branch to main."; then
             echo "GitHub Actions could not create the release PR; manual promotion remains available." >&2
           fi
