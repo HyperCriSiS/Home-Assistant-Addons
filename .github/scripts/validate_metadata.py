@@ -66,6 +66,14 @@ def main() -> None:
     if upstream_version in {"latest", "nightly"}:
         fail("Dockerfile must never use a floating Trilium tag")
 
+    expected_description_prefix = f"Trilium {upstream_version} - "
+    description = str(config.get("description", ""))
+    if not description.startswith(expected_description_prefix):
+        fail(
+            "config.yaml description must expose the pinned Trilium version "
+            f"and start with {expected_description_prefix!r}"
+        )
+
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
         with open(output, "a", encoding="utf-8") as handle:
