@@ -126,7 +126,7 @@ jobs:
           )
           upstream_image = build_images.pop()
           upstream_match = re.fullmatch(
-              r"(?:docker\\.io/)?samanhappy/mcphub:(\\d+\\.\\d+\\.\\d+)",
+              r"(?:docker[.]io/)?samanhappy/mcphub:([0-9]+[.][0-9]+[.][0-9]+)",
               upstream_image,
           )
           assert upstream_match is not None, (
@@ -136,8 +136,8 @@ jobs:
 
           import os
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"MCPHUB_VERSION={version}\\n")
-              env_file.write(f"MCPHUB_UPSTREAM_VERSION={upstream_version}\\n")
+              print(f"MCPHUB_VERSION={version}", file=env_file)
+              print(f"MCPHUB_UPSTREAM_VERSION={upstream_version}", file=env_file)
           PY
 
       - name: Validate upstream image architectures
