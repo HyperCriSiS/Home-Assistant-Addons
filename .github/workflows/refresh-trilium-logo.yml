@@ -1,0 +1,84 @@
+---
+name: Refresh Trilium logo asset
+
+on:
+  push:
+    branches:
+      - dev-trilium
+    paths:
+      - .github/workflows/refresh-trilium-logo.yml
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out Trilium development branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: dev-trilium
+          fetch-depth: 0
+
+      - name: Repack logo without changing pixels
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          import zlib
+
+          path = Path("TriliumNext Notes/logo.png")
+          data = path.read_bytes()
+          signature = b"\x89PNG\r\n\x1a\n"
+          if not data.startswith(signature):
+              raise SystemExit("logo.png is not a PNG")
+
+          pos = len(signature)
+          chunks = []
+          while pos < len(data):
+              length = struct.unpack(">I", data[pos:pos + 4])[0]
+              chunk_type = data[pos + 4:pos + 8]
+              chunk_end = pos + 12 + length
+              chunks.append((chunk_type, data[pos:chunk_end]))
+              pos = chunk_end
+
+          if not chunks or chunks[-1][0] != b"IEND":
+              raise SystemExit("logo.png has no final IEND chunk")
+
+          payload = b"HomeAssistantCacheBust\x00v2"
+          chunk_type = b"tEXt"
+          crc = zlib.crc32(chunk_type + payload) & 0xFFFFFFFF
+          text_chunk = (
+              struct.pack(">I", len(payload))
+              + chunk_type
+              + payload
+              + struct.pack(">I", crc)
+          )
+
+          rebuilt = signature
+          for chunk_type_existing, chunk in chunks:
+              if chunk_type_existing == b"IEND":
+                  rebuilt += text_chunk
+              rebuilt += chunk
+
+          path.write_bytes(rebuilt)
+          PY
+
+          file 'TriliumNext Notes/logo.png'
+
+      - name: Commit refreshed logo and remove temporary workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm ".github/workflows/refresh-trilium-logo.yml"
+          git add "TriliumNext Notes/logo.png"
+          git commit -m "Refresh Trilium store logo asset"
+          git push origin HEAD:dev-trilium
+          gh workflow run validate.yml --ref dev-trilium
+          gh workflow run sync-dev-store.yml --ref main
