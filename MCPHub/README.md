@@ -63,6 +63,7 @@ The development App is shown as **MCPHub (Dev)** under
 - Persistent npm / npx and uv / uvx package caches
 - Home Assistant Ingress dashboard
 - Optional managed Home Assistant MCP Server bridge
+- Bundled GitHub CLI (`gh`) for `amd64` / `aarch64` with an optional managed GitHub CLI MCP server
 - Optional OpenAI Secure MCP Tunnel for ChatGPT / OpenAI clients
 - Optional Cloudflare Tunnel for Claude, Cursor, VS Code, and other remote MCP clients
 - No public MCPHub port required
@@ -177,6 +178,8 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | `home_assistant_mcp_auth_mode` | `restricted_user` | Uses either a dedicated user token or the automatic Supervisor token |
 | `home_assistant_mcp_user_token` | empty | Dedicated Home Assistant user's Long-Lived Access Token |
 | `home_assistant_mcp_url` | `http://homeassistant:8123/api/mcp` | Direct MCP endpoint used by `restricted_user` mode |
+| `github_cli_mcp_enabled` | `false` | Adds the bundled GitHub CLI MCP server to MCPHub |
+| `github_token` | empty | Optional GitHub token supplied as `GH_TOKEN` to the CLI |
 | `tunnel_enabled` | `false` | Enables the OpenAI Secure MCP Tunnel |
 | `openai_runtime_api_key` | empty | Runtime API Key used by the tunnel client |
 | `tunnel_id` | empty | OpenAI Secure MCP Tunnel ID |

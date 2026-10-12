@@ -314,13 +314,19 @@ custom Docker image. It is disabled by default.
 
 Default: `false`
 
-When enabled, the App adds the managed `ha-github-cli` stdio server to MCPHub. On its
-first launch, the helper downloads the pinned GitHub CLI release for the current CPU
-architecture, verifies its SHA-256 checksum, and stores it below `/data/tools/github-cli/`.
-The installation survives App/container recreation because `/data` is persistent.
+When enabled, the App registers the managed `ha-github-cli` stdio server in MCPHub.
+The App image already bundles GitHub CLI (`gh` version `2.101.0`) for `amd64` and
+`aarch64`. The release archive is downloaded and SHA-256 verified during the
+Docker image build, not when the MCP server starts.
 
-The MCP server itself is launched through `uvx` as `gh-cli-mcp-server==0.3.0`. The
-existing persistent uv cache is reused.
+The `gh-cli-mcp-server==0.3.0` package and its pinned `mcp==1.30.0` Python SDK
+are also installed at image-build time in `/opt/gh-cli-mcp/`. The helper launches
+the preinstalled MCP server directly, without `uvx` resolution or runtime
+package downloads.
+
+Only the GitHub CLI configuration is persisted in `/data/tools/github-cli/config/`.
+The `gh` binary and MCP server environment are part of the App image and are
+updated with the image, rather than stored in `/data`.
 
 ### `github_token`
 
