@@ -28,7 +28,12 @@ OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
 GITHUB_CLI_SERVER_NAME = "ha-github-cli"
-HOME_ASSISTANT_MCP_SERVER_NAME = "ha-home-assistant"
+HOME_ASSISTANT_MCP_DEFAULT_NAME = "ha-home-assistant"
+HOME_ASSISTANT_MCP_DESCRIPTION = (
+    "Home Assistant MCP Server managed by the Home Assistant MCPHub App wrapper"
+)
+MANAGED_HOME_ASSISTANT_NAME_FILE = DATA_DIR / ".managed_home_assistant_mcp_name"
+HOME_ASSISTANT_MCP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 
@@ -131,6 +136,26 @@ def upsert_system_key(
     item.update(values)
 
 
+def previous_managed_home_assistant_name(mcp_servers: dict) -> str | None:
+    """Find the previously managed entry, including pre-rename installations."""
+    if MANAGED_HOME_ASSISTANT_NAME_FILE.exists():
+        name = MANAGED_HOME_ASSISTANT_NAME_FILE.read_text(
+            encoding="utf-8"
+        ).strip()
+        if not HOME_ASSISTANT_MCP_NAME_PATTERN.fullmatch(name):
+            raise ValueError("Stored managed Home Assistant MCP name is invalid")
+        return name
+
+    legacy = mcp_servers.get(HOME_ASSISTANT_MCP_DEFAULT_NAME)
+    if (
+        isinstance(legacy, dict)
+        and legacy.get("url") == "http://127.0.0.1:8097/mcp"
+        and legacy.get("description") == HOME_ASSISTANT_MCP_DESCRIPTION
+    ):
+        return HOME_ASSISTANT_MCP_DEFAULT_NAME
+    return None
+
+
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     SECRET_DIR.mkdir(parents=True, exist_ok=True)
@@ -210,21 +235,43 @@ def main() -> None:
     home_assistant_mcp_enabled = bool(
         options.get("home_assistant_mcp_enabled", False)
     )
+    previous_name = previous_managed_home_assistant_name(mcp_servers)
+
     if home_assistant_mcp_enabled:
-        mcp_servers[HOME_ASSISTANT_MCP_SERVER_NAME] = {
+        name = str(
+            options.get(
+                "home_assistant_mcp_server_name",
+                HOME_ASSISTANT_MCP_DEFAULT_NAME,
+            )
+        ).strip()
+        if (
+            not HOME_ASSISTANT_MCP_NAME_PATTERN.fullmatch(name)
+            or name == GITHUB_CLI_SERVER_NAME
+        ):
+            raise ValueError(
+                "home_assistant_mcp_server_name must be a unique 1-64 character "
+                "name using letters, digits, dots, underscores, or hyphens "
+                "(and must not equal ha-github-cli)"
+            )
+        if name in mcp_servers and name != previous_name:
+            raise ValueError(
+                f"Cannot use Home Assistant MCP server name {name!r}: "
+                "an existing non-managed server uses this name"
+            )
+        if previous_name and previous_name != name:
+            mcp_servers.pop(previous_name, None)
+
+        mcp_servers[name] = {
             "type": "streamable-http",
             "url": "http://127.0.0.1:8097/mcp",
             "enabled": True,
             "enableKeepAlive": True,
             "keepAliveInterval": 5000,
             "owner": "admin",
-            "description": (
-                "Home Assistant MCP Server managed by the "
-                "Home Assistant MCPHub App wrapper"
-            ),
+            "description": HOME_ASSISTANT_MCP_DESCRIPTION,
         }
-    else:
-        mcp_servers.pop(HOME_ASSISTANT_MCP_SERVER_NAME, None)
+    elif previous_name:
+        mcp_servers.pop(previous_name, None)
 
     github_cli_enabled = bool(options.get("github_cli_mcp_enabled", False))
     github_token = str(options.get("github_token", "")).strip()
@@ -251,6 +298,14 @@ def main() -> None:
     os.chmod(temporary, 0o600)
     temporary.replace(SETTINGS_FILE)
     os.chmod(SETTINGS_FILE, 0o600)
+
+    if home_assistant_mcp_enabled:
+        name_tmp = MANAGED_HOME_ASSISTANT_NAME_FILE.with_suffix(".tmp")
+        name_tmp.write_text(name + "\n", encoding="utf-8")
+        os.chmod(name_tmp, 0o600)
+        name_tmp.replace(MANAGED_HOME_ASSISTANT_NAME_FILE)
+    else:
+        MANAGED_HOME_ASSISTANT_NAME_FILE.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
