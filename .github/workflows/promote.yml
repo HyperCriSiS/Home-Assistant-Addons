@@ -11,6 +11,16 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app should get a release PR?"
+        type: choice
+        required: true
+        default: mcphub
+        options:
+          - mcphub
+          - trilium
+          - both
 
 permissions:
   actions: read
@@ -26,7 +36,10 @@ jobs:
     name: Maintain Trilium release pull request
     if: >-
       ${{
-        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          (inputs.app == 'trilium' || inputs.app == 'both')
+        ) ||
         (
           github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.head_branch == 'dev-trilium'
@@ -117,11 +130,8 @@ jobs:
     name: Maintain MCPHub release pull request
     if: >-
       ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'dev-mcphub'
-        )
+        github.event_name == 'workflow_dispatch' &&
+        (inputs.app == 'mcphub' || inputs.app == 'both')
       }}
     runs-on: ubuntu-24.04
     env:
