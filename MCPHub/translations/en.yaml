@@ -19,7 +19,7 @@ configuration:
     name: "Home Assistant MCP URL"
     description: >-
       Direct Home Assistant MCP endpoint used with restricted_user authentication.
-      The default targets the internal Home Assistant hostname.
+      Supports reachable LAN IPs, IPv6, local DNS names, custom ports, and HTTPS.
   tunnel_enabled:
     name: "Enable OpenAI Secure MCP Tunnel"
     description: >-
