@@ -136,6 +136,15 @@ def upsert_system_key(
     item.update(values)
 
 
+def is_managed_home_assistant_server(server: object) -> bool:
+    """Only entries with our exact managed proxy identity may be removed."""
+    return (
+        isinstance(server, dict)
+        and server.get("url") == "http://127.0.0.1:8097/mcp"
+        and server.get("description") == HOME_ASSISTANT_MCP_DESCRIPTION
+    )
+
+
 def previous_managed_home_assistant_name(mcp_servers: dict) -> str | None:
     """Find the previously managed entry, including pre-rename installations."""
     if MANAGED_HOME_ASSISTANT_NAME_FILE.exists():
@@ -144,14 +153,10 @@ def previous_managed_home_assistant_name(mcp_servers: dict) -> str | None:
         ).strip()
         if not HOME_ASSISTANT_MCP_NAME_PATTERN.fullmatch(name):
             raise ValueError("Stored managed Home Assistant MCP name is invalid")
-        return name
+        return name if is_managed_home_assistant_server(mcp_servers.get(name)) else None
 
     legacy = mcp_servers.get(HOME_ASSISTANT_MCP_DEFAULT_NAME)
-    if (
-        isinstance(legacy, dict)
-        and legacy.get("url") == "http://127.0.0.1:8097/mcp"
-        and legacy.get("description") == HOME_ASSISTANT_MCP_DESCRIPTION
-    ):
+    if is_managed_home_assistant_server(legacy):
         return HOME_ASSISTANT_MCP_DEFAULT_NAME
     return None
 

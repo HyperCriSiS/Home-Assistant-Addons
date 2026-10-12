@@ -95,6 +95,22 @@ class ManagedHomeAssistantMCPTests(unittest.TestCase):
         self.assertEqual(self.servers()["other-server"], {"command": "echo"})
         self.assertIn("ha-home-assistant", self.servers())
 
+    def test_reused_managed_name_is_never_deleted(self):
+        MODULE.main()
+        settings = json.loads(MODULE.SETTINGS_FILE.read_text())
+        settings["mcpServers"]["ha-home-assistant"] = {"command": "my-own-service"}
+        MODULE.SETTINGS_FILE.write_text(json.dumps(settings))
+        self.options(
+            home_assistant_mcp_enabled=True,
+            home_assistant_mcp_server_name="ha-fresh",
+        )
+        MODULE.main()
+        self.assertEqual(
+            self.servers()["ha-home-assistant"],
+            {"command": "my-own-service"},
+        )
+        self.assertIn("ha-fresh", self.servers())
+
     def test_invalid_names(self):
         for name in ("", "/mcp/bad", "with spaces", "ha-github-cli", "x" * 65):
             with self.subTest(name=name):
