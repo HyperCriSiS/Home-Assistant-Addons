@@ -23,7 +23,7 @@ write_options() {
     --volume "${VOLUME}:/data" \
     alpine:3.22 \
     sh -c 'cat > /data/options.json <<EOF
-{"tunnel_enabled":false,"openai_runtime_api_key":"","tunnel_id":"","tunnel_mcp_path":"/mcp","tunnel_log_level":"info"}
+{"home_assistant_mcp_enabled":false,"home_assistant_mcp_auth_mode":"restricted_user","home_assistant_mcp_user_token":"","home_assistant_mcp_url":"http://homeassistant:8123/api/mcp","tunnel_enabled":false,"openai_runtime_api_key":"","tunnel_id":"","tunnel_mcp_path":"/mcp","tunnel_log_level":"info"}
 EOF'
 }
 
@@ -165,6 +165,11 @@ fi
 
 token_before="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tunnel_token)"
 [[ -n "${token_before}" ]]
+
+if docker exec "${CONTAINER}" grep -q '"ha-home-assistant"' /data/mcphub/mcp_settings.json; then
+  echo "Managed Home Assistant MCP server exists while the option is disabled" >&2
+  exit 1
+fi
 
 docker rm -f "${CONTAINER}" >/dev/null
 start_addon

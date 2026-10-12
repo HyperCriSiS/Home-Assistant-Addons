@@ -88,6 +88,11 @@ cloudflare_mcp_path="$(option cloudflare_mcp_path)"
 cloudflare_mcp_path="${cloudflare_mcp_path:-/mcp}"
 cloudflare_access_token="$(option cloudflare_access_token)"
 
+home_assistant_mcp_enabled="$(option home_assistant_mcp_enabled)"
+home_assistant_mcp_enabled="${home_assistant_mcp_enabled:-false}"
+home_assistant_mcp_auth_mode="$(option home_assistant_mcp_auth_mode)"
+home_assistant_mcp_auth_mode="${home_assistant_mcp_auth_mode:-restricted_user}"
+
 mkdir -p     "${MCPHUB_DATA_DIR}"     "${SECRET_DIR}"     /data/home     /data/cache/npm     /data/cache/uv
 
 chmod 0700 "${SECRET_DIR}"
@@ -109,6 +114,10 @@ fi
 
 /usr/local/bin/prepare_mcphub_config.py
 /usr/local/bin/prepare_proxy_config.py
+
+if [[ "${home_assistant_mcp_enabled}" == "true" ]]; then
+    log_info "Managed Home Assistant MCP server enabled with ${home_assistant_mcp_auth_mode} authentication."
+fi
 
 export PORT="3000"
 export BASE_PATH=""

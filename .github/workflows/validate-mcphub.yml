@@ -105,6 +105,8 @@ jobs:
           assert config["ingress"] is True
           assert config["ingress_port"] == 8099
           assert config["panel_admin"] is True
+          assert config["homeassistant_api"] is True
+          assert config["watchdog"] == "http://[HOST]:[PORT:8099]/health"
 
           version = config["version"]
           match = re.fullmatch(r"(v\d{4}\.\d{2}\.\d{2})(?:-([1-9]\d*))?", version)
@@ -114,6 +116,9 @@ jobs:
           datetime.strptime(match.group(1), "v%Y.%m.%d")
           assert changelog.startswith(f"# Changelog\n\n## {version}\n")
 
+          assert config["options"]["home_assistant_mcp_enabled"] is False
+          assert config["options"]["home_assistant_mcp_auth_mode"] == "restricted_user"
+          assert config["options"]["home_assistant_mcp_url"] == "http://homeassistant:8123/api/mcp"
           assert config["options"]["tunnel_enabled"] is False
           assert config["options"]["cloudflare_tunnel_enabled"] is False
           assert config["options"]["cloudflare_mcp_path"] == "/mcp"
@@ -257,6 +262,48 @@ jobs:
           if "Starting gh-cli-mcp-server 0.3.0" not in stderr:
               raise SystemExit(f"Unexpected GitHub CLI MCP stderr:\n{stderr}")
           PY
+
+      - name: Validate Home Assistant MCP bridge modes
+        run: |
+          data_dir="$(mktemp -d)"
+          mkdir -p "${data_dir}/secrets" "${data_dir}/mcphub"
+          printf 'ingress-test-secret\n' > "${data_dir}/secrets/mcphub_ha_ingress_proxy_secret"
+          printf 'cloudflare-test-secret\n' > "${data_dir}/secrets/mcphub_cloudflare_token"
+
+          cat > "${data_dir}/options.json" <<'EOF'
+          {
+            "home_assistant_mcp_enabled": true,
+            "home_assistant_mcp_auth_mode": "restricted_user",
+            "home_assistant_mcp_user_token": "eyJtest_restricted_user_token_0123456789",
+            "home_assistant_mcp_url": "http://127.0.0.1:8123/api/mcp"
+          }
+          EOF
+
+          docker run --rm \
+            --entrypoint /bin/bash \
+            --volume "${data_dir}:/data" \
+            mcphub-addon:test \
+            -c '/usr/local/bin/prepare_mcphub_config.py &&
+                /usr/local/bin/prepare_proxy_config.py &&
+                grep -q "listen 127.0.0.1:8097" /etc/nginx/conf.d/mcphub.conf &&
+                grep -q "proxy_pass http://127.0.0.1:8123/api/mcp" /etc/nginx/conf.d/mcphub.conf &&
+                grep -q "ha-home-assistant" /data/mcphub/mcp_settings.json'
+
+          cat > "${data_dir}/options.json" <<'EOF'
+          {
+            "home_assistant_mcp_enabled": true,
+            "home_assistant_mcp_auth_mode": "supervisor"
+          }
+          EOF
+
+          docker run --rm \
+            --env SUPERVISOR_TOKEN="eyJtest_supervisor_token_0123456789" \
+            --entrypoint /bin/bash \
+            --volume "${data_dir}:/data" \
+            mcphub-addon:test \
+            -c '/usr/local/bin/prepare_mcphub_config.py &&
+                /usr/local/bin/prepare_proxy_config.py &&
+                grep -q "proxy_pass http://supervisor/core/api/mcp" /etc/nginx/conf.d/mcphub.conf'
 
       - name: Validate restricted Cloudflare proxy
         run: |
