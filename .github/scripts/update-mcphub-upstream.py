@@ -156,6 +156,12 @@ def main() -> None:
         f"MCPHub {args.version}",
         2,
     )
+    replace_exact(
+        "MCPHub/config.yaml",
+        f"MCPHub {current} - central MCP server management",
+        f"MCPHub {args.version} - central MCP server management",
+        1,
+    )
     _, wrapper = bump_wrapper_version(today)
     prepend_changelog(
         wrapper,

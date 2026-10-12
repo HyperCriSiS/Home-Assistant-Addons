@@ -148,6 +148,11 @@ jobs:
           )
           upstream_version = upstream_match.group(1)
 
+          assert config["description"] == (
+              f"MCPHub {upstream_version} - central MCP server management "
+              "with optional Home Assistant, OpenAI and Cloudflare integrations"
+          ), "MCPHub description must match the packaged upstream image version"
+
           import os
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
               print(f"MCPHUB_VERSION={version}", file=env_file)
