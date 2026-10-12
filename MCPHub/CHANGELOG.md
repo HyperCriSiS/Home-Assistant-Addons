@@ -1,5 +1,18 @@
 # Changelog
 
+## v2026.10.12
+
+### Added
+
+- Added an optional managed Home Assistant MCP Server bridge.
+- Added selectable Home Assistant MCP authentication using either the automatic Supervisor token or a dedicated Home Assistant user token.
+- Added a Home Assistant Supervisor watchdog for the MCPHub Ingress health endpoint.
+
+### Security
+
+- The managed Home Assistant MCP bridge is loopback-only and never exposes the Home Assistant token through MCPHub settings.
+- Dedicated-user mode can use a non-admin Home Assistant account for a narrower runtime identity.
+
 ## v2026.10.07-4
 
 ### Changed

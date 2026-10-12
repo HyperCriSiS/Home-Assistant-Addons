@@ -28,6 +28,7 @@ OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
 GITHUB_CLI_SERVER_NAME = "ha-github-cli"
+HOME_ASSISTANT_MCP_SERVER_NAME = "ha-home-assistant"
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 
@@ -135,7 +136,6 @@ def main() -> None:
     SECRET_DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(SECRET_DIR, 0o700)
 
-    # The old shared Ingress bearer credential is no longer used after HA SSO.
     if LEGACY_INGRESS_TOKEN_FILE.exists():
         LEGACY_INGRESS_TOKEN_FILE.unlink()
 
@@ -155,7 +155,6 @@ def main() -> None:
         lambda: "mcf_" + secrets.token_urlsafe(48),
     )
 
-    # OpenAI tunnel-client accepts a complete static Authorization value by file.
     OPENAI_AUTH_FILE.write_text(f"Bearer {openai_token}", encoding="utf-8")
     os.chmod(OPENAI_AUTH_FILE, 0o600)
 
@@ -169,8 +168,6 @@ def main() -> None:
     system_config = settings.setdefault("systemConfig", {})
     routing = system_config.setdefault("routing", {})
 
-    # Dashboard/API access is no longer unauthenticated. Home Assistant Ingress
-    # receives a dedicated internal key through the local Nginx adapter.
     routing["skipAuth"] = False
     routing["enableBearerAuth"] = True
     routing["bearerAuthHeaderName"] = "Authorization"
@@ -179,8 +176,6 @@ def main() -> None:
     if not isinstance(bearer_keys, list):
         raise ValueError("bearerKeys must be a JSON list")
 
-    # Home Assistant Ingress authenticates dashboard users through Supervisor-provided
-    # identity headers. Remove the legacy shared Ingress bearer key if it exists.
     bearer_keys[:] = [
         item for item in bearer_keys
         if item.get("name") != INGRESS_KEY_NAME
@@ -212,6 +207,25 @@ def main() -> None:
     if not isinstance(mcp_servers, dict):
         raise ValueError("mcpServers must be a JSON object")
 
+    home_assistant_mcp_enabled = bool(
+        options.get("home_assistant_mcp_enabled", False)
+    )
+    if home_assistant_mcp_enabled:
+        mcp_servers[HOME_ASSISTANT_MCP_SERVER_NAME] = {
+            "type": "streamable-http",
+            "url": "http://127.0.0.1:8097/mcp",
+            "enabled": True,
+            "enableKeepAlive": True,
+            "keepAliveInterval": 60000,
+            "owner": "admin",
+            "description": (
+                "Home Assistant MCP Server managed by the "
+                "Home Assistant MCPHub App wrapper"
+            ),
+        }
+    else:
+        mcp_servers.pop(HOME_ASSISTANT_MCP_SERVER_NAME, None)
+
     github_cli_enabled = bool(options.get("github_cli_mcp_enabled", False))
     github_token = str(options.get("github_token", "")).strip()
     if github_cli_enabled:
@@ -225,8 +239,6 @@ def main() -> None:
         elif GITHUB_TOKEN_FILE.exists():
             GITHUB_TOKEN_FILE.unlink()
     else:
-        # This key is reserved for the Home Assistant managed integration.
-        # User-created GitHub MCP servers under other names are untouched.
         mcp_servers.pop(GITHUB_CLI_SERVER_NAME, None)
         if GITHUB_TOKEN_FILE.exists():
             GITHUB_TOKEN_FILE.unlink()
