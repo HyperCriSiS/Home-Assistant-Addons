@@ -16,7 +16,7 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     io.hass.type="app" \
     io.hass.arch="${BUILD_ARCH}" \
-    org.opencontainers.image.source="https://github.com/HyperCriSiS/Home-Assistant-Apps" \
+    org.opencontainers.image.source="https://github.com/HyperCriSiS/Home-Assistant-Addons" \
     org.opencontainers.image.description="MCPHub with optional OpenAI and Cloudflare remote access for Home Assistant"
 
 USER root
