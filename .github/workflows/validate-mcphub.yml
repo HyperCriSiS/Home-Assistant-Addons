@@ -305,6 +305,51 @@ jobs:
                 /usr/local/bin/prepare_proxy_config.py &&
                 grep -q "proxy_pass http://supervisor/core/api/mcp" /etc/nginx/conf.d/mcphub.conf'
 
+
+          docker run --rm --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
+          import importlib.util
+          from pathlib import Path
+
+          path = Path("/usr/local/bin/prepare_proxy_config.py")
+          spec = importlib.util.spec_from_file_location("proxy_config", path)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+
+          cases = {
+              "http://192.168.1.20:8123/api/mcp":
+                  "http://192.168.1.20:8123/api/mcp",
+              "http://10.20.30.40:8123/api/mcp/custom":
+                  "http://10.20.30.40:8123/api/mcp/custom",
+              "http://172.20.1.20:8123/api/mcp":
+                  "http://172.20.1.20:8123/api/mcp",
+              "http://[fd00::1234]:8123/api/mcp":
+                  "http://[fd00::1234]:8123/api/mcp",
+              "https://ha.internal.example/api/mcp":
+                  "https://ha.internal.example/api/mcp",
+          }
+          for value, expected in cases.items():
+              actual = module.validate_home_assistant_mcp_url(value)
+              assert actual == expected, (value, actual, expected)
+
+          rejected = (
+              "ftp://192.168.1.20/api/mcp",
+              "http://user:pass@192.168.1.20:8123/api/mcp",
+              "http://192.168.1.20:8123/api/mcp?token=x",
+              "http://192.168.1.20:8123/not-mcp",
+          )
+          for value in rejected:
+              try:
+                  module.validate_home_assistant_mcp_url(value)
+              except ValueError:
+                  pass
+              else:
+                  raise AssertionError(
+                      f"Unsafe Home Assistant MCP URL accepted: {value}"
+                  )
+          PY
+
+          grep -q 'allow 172.30.32.2;' "MCPHub/ingress.conf"
+
       - name: Validate restricted Cloudflare proxy
         run: |
           data_dir="$(mktemp -d)"

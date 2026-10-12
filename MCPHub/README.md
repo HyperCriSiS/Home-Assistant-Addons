@@ -72,7 +72,6 @@ The development App is shown as **MCPHub (Dev)** under
 - No privileged mode
 - No host networking
 - No Supervisor API permission
-- No Home Assistant API permission
 - Home Assistant cold-backup support
 - `amd64` and `aarch64` support
 
@@ -103,9 +102,17 @@ into MCPHub's `mcp_settings.json`.
 > require a separate App package without `homeassistant_api`.
 
 For a dedicated user, the default MCP URL is
-`http://homeassistant:8123/api/mcp`. Change it only if the internal Home
-Assistant HTTP configuration differs. Home Assistant may require an
-administrator token for MCP APIs other than the built-in Assist API.
+`http://homeassistant:8123/api/mcp`. The URL is fully configurable and is not
+tied to the Home Assistant Ingress address. You can use a reachable LAN address
+or local DNS name, for example `http://192.168.1.20:8123/api/mcp`,
+`http://10.0.0.20:8123/api/mcp`, `http://172.20.1.20:8123/api/mcp`, an IPv6
+address, or an HTTPS hostname.
+
+The App validates the URL but does not restrict it to a particular private
+subnet. For local DNS names, make sure the name resolves from the Home Assistant
+App network; mDNS-only names such as `*.local` may not resolve inside every
+container environment. Home Assistant may require an administrator token for
+MCP APIs other than the built-in Assist API.
 
 ## Remote access
 
@@ -157,6 +164,11 @@ See [DOCS.md](DOCS.md) for the Cloudflare setup.
 ## Security model
 
 MCPHub itself binds only to the App container loopback interface.
+
+The fixed `172.30.32.2` allow rule on the Ingress listener is the Home
+Assistant-documented Supervisor Ingress source inside the managed App network;
+it is not a user-specific LAN address. User LAN addressing is relevant only for
+the optional direct Home Assistant MCP URL in `restricted_user` mode.
 
 The dashboard is exposed through a dedicated Home Assistant Ingress adapter. The App does not publish MCPHub directly on the Home Assistant host network.
 
