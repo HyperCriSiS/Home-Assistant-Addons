@@ -6,7 +6,7 @@
 
 **Manage multiple MCP servers from one central dashboard inside Home Assistant.**
 
-[![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate-mcphub.yml)
+[![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml)
 ![Architecture amd64](https://img.shields.io/badge/amd64-supported-success)
 ![Architecture aarch64](https://img.shields.io/badge/aarch64-supported-success)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-App-41BDF5?logo=homeassistant&logoColor=white)
@@ -25,13 +25,15 @@ It supports MCPHub Market / Registry discovery, local stdio servers, remote MCP 
 
 ### Stable
 
-[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps)
 
 If the button opens the App store without showing the repository dialog, add it manually:
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons
+https://github.com/HyperCriSiS/Home-Assistant-Apps
 ```
+
+Existing users who added the former `Home-Assistant-Addons` repository should keep that repository entry. Do not add both old and new URLs to the same Home Assistant instance: they are treated as separate repository IDs.
 
 Then search for **MCPHub**, install it, start it with the default configuration, and open **Web UI**.
 
@@ -40,14 +42,14 @@ Then search for **MCPHub**, install it, start it with the default configuration,
 To test the current `dev-mcphub` candidate before it is promoted to `main`, add the shared generated
 development store:
 
-[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps%23dev-store)
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+https://github.com/HyperCriSiS/Home-Assistant-Apps#dev-store
 ```
 
 The development App is shown as **MCPHub (Dev)** under
-**HyperCriSiS Add-ons (Dev)**, so it can be distinguished from the stable App at a glance.
+**HyperCriSiS Apps (Dev)**, so it can be distinguished from the stable App at a glance.
 
 > [!WARNING]
 > Development builds may contain incomplete or breaking changes. Use the stable repository
@@ -227,7 +229,7 @@ Before updating:
 
 For issues with this Home Assistant wrapper, open an issue in:
 
-[HyperCriSiS/Home-Assistant-Addons](https://github.com/HyperCriSiS/Home-Assistant-Addons/issues)
+[HyperCriSiS/Home-Assistant-Apps](https://github.com/HyperCriSiS/Home-Assistant-Apps/issues)
 
 For MCPHub application issues, use the upstream project:
 
