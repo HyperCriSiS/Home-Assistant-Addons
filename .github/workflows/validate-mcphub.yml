@@ -122,7 +122,10 @@ jobs:
           assert config["options"]["home_assistant_mcp_enabled"] is False
           assert config["options"]["home_assistant_mcp_server_name"] == "ha-home-assistant"
           assert config["schema"]["home_assistant_mcp_auth_mode"] == "list(supervisor|restricted_user)"
-          assert list(config["options"]).index("home_assistant_mcp_enabled") > list(config["options"]).index("cloudflare_access_token")
+          assert (
+              list(config["options"]).index("home_assistant_mcp_enabled")
+              > list(config["options"]).index("cloudflare_access_token")
+          )
           assert config["options"]["home_assistant_mcp_auth_mode"] == "restricted_user"
           assert config["options"]["home_assistant_mcp_url"] == "http://homeassistant:8123/api/mcp"
           assert config["options"]["tunnel_enabled"] is False
