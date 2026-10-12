@@ -79,17 +79,18 @@ The development App is shown as **MCPHub (Dev)** under
 ## Home Assistant MCP Server
 
 The App can optionally add Home Assistant's own MCP Server to MCPHub as the
-managed server **ha-home-assistant**. The Home Assistant **MCP Server**
-integration must already be configured.
+managed server **ha-home-assistant** by default. The server name is configurable
+through `home_assistant_mcp_server_name` in the App options. The Home Assistant
+**MCP Server** integration must already be configured.
 
 Two authentication modes are available:
 
-- **restricted_user** — recommended when you want MCP requests to run as a
-  dedicated Home Assistant user. Create a non-admin Home Assistant user, sign
-  in as that user, create a Long-Lived Access Token from that user's profile,
-  and enter the token in the App configuration.
 - **supervisor** — zero-token setup. The App uses the Supervisor-provided Core
   API token and the internal Home Assistant API proxy.
+- **restricted_user** — the default and recommended mode when MCP requests
+  should run as a dedicated non-admin Home Assistant user. Sign in as that user,
+  create a Long-Lived Access Token from the user's profile, and enter the token
+  in the App configuration.
 
 The managed server talks only to a loopback proxy inside the MCPHub App.
 Home Assistant credentials are injected by that proxy and are never written
@@ -189,7 +190,8 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | Option | Default | Description |
 | --- | --- | --- |
 | `home_assistant_mcp_enabled` | `false` | Adds the managed Home Assistant MCP Server to MCPHub |
-| `home_assistant_mcp_auth_mode` | `restricted_user` | Uses either a dedicated user token or the automatic Supervisor token |
+| `home_assistant_mcp_server_name` | `ha-home-assistant` | Unique MCPHub server name; renaming migrates the managed entry |
+| `home_assistant_mcp_auth_mode` | `restricted_user` | Uses either the Supervisor token or a dedicated user token |
 | `home_assistant_mcp_user_token` | empty | Dedicated Home Assistant user's Long-Lived Access Token |
 | `home_assistant_mcp_url` | `http://homeassistant:8123/api/mcp` | Direct MCP endpoint used by `restricted_user` mode |
 | `github_cli_mcp_enabled` | `false` | Adds the bundled GitHub CLI MCP server to MCPHub |
@@ -204,7 +206,9 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
 | `cloudflare_access_token` | empty | Client key required from remote MCP clients |
 
-MCP server configuration itself is managed from the MCPHub Web UI.
+MCP server configuration itself is managed from the MCPHub Web UI. Changing
+`home_assistant_mcp_server_name` removes the old managed entry; update any
+MCPHub groups or client routes that referred to its previous name.
 
 For detailed configuration, security notes, persistence paths, backups, and troubleshooting, see:
 

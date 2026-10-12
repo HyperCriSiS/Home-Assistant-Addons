@@ -21,10 +21,6 @@ watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
 options:
-  home_assistant_mcp_enabled: false
-  home_assistant_mcp_auth_mode: "restricted_user"
-  home_assistant_mcp_user_token: ""
-  home_assistant_mcp_url: "http://homeassistant:8123/api/mcp"
   tunnel_enabled: false
   openai_runtime_api_key: ""
   tunnel_id: ""
@@ -33,14 +29,15 @@ options:
   cloudflare_tunnel_token: ""
   cloudflare_mcp_path: "/mcp"
   cloudflare_access_token: ""
+  home_assistant_mcp_enabled: false
+  home_assistant_mcp_server_name: "ha-home-assistant"
+  home_assistant_mcp_auth_mode: "restricted_user"
+  home_assistant_mcp_user_token: ""
+  home_assistant_mcp_url: "http://homeassistant:8123/api/mcp"
   github_cli_mcp_enabled: false
   github_token: ""
   tunnel_log_level: "info"
 schema:
-  home_assistant_mcp_enabled: bool
-  home_assistant_mcp_auth_mode: "list(restricted_user|supervisor)"
-  home_assistant_mcp_user_token: password
-  home_assistant_mcp_url: str
   tunnel_enabled: bool
   openai_runtime_api_key: password
   tunnel_id: str
@@ -49,6 +46,11 @@ schema:
   cloudflare_tunnel_token: password
   cloudflare_mcp_path: str
   cloudflare_access_token: password
+  home_assistant_mcp_enabled: bool
+  home_assistant_mcp_server_name: str
+  home_assistant_mcp_auth_mode: "list(supervisor|restricted_user)"
+  home_assistant_mcp_user_token: password
+  home_assistant_mcp_url: str
   github_cli_mcp_enabled: bool
   github_token: password
   tunnel_log_level: "list(debug|info|warn)"
