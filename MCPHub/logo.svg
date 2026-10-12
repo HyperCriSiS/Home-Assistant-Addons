@@ -10,5 +10,5 @@
       <stop offset="1" stop-color="#34d399"/>
     </linearGradient>
   </defs>
-  <text x="74" y="51" font-family="DejaVu Sans, Arial, sans-serif" font-size="43" font-weight="bold" dominant-baseline="central" text-anchor="middle"><tspan fill="url(#mcp)">MCP</tspan><tspan fill="url(#hub)">Hub</tspan></text>
+  <text x="23" y="51" font-family="DejaVu Sans, Arial, sans-serif" font-size="43" font-weight="bold" dominant-baseline="central" text-anchor="start"><tspan fill="url(#mcp)">MCP</tspan><tspan fill="url(#hub)">Hub</tspan></text>
 </svg>
