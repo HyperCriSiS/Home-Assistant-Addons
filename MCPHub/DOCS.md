@@ -72,8 +72,9 @@ does not automatically enable that extra infrastructure.
 
 ## Home Assistant MCP Server
 
-The wrapper can reserve and manage the MCPHub server name
-`ha-home-assistant`. When enabled, MCPHub connects to a loopback-only Nginx
+The wrapper registers its managed MCPHub server under
+`home_assistant_mcp_server_name` (default: `ha-home-assistant`). When enabled,
+MCPHub connects to a loopback-only Nginx
 bridge on `127.0.0.1:8097`; that bridge forwards Streamable HTTP requests to
 Home Assistant and injects the selected Home Assistant credential.
 
@@ -81,7 +82,7 @@ The Home Assistant **MCP Server** integration must already be configured. The
 wrapper intentionally does not create Home Assistant users, authentication
 entries, or config entries through undocumented internal APIs.
 
-### Authentication mode: `restricted_user`
+### Authentication mode: `restricted_user` (default)
 
 Use this mode when MCP requests should run as a dedicated Home Assistant user.
 
@@ -134,9 +135,14 @@ and injects the `SUPERVISOR_TOKEN` supplied by Home Assistant.
 
 ### Managed-server behavior
 
-- The reserved MCPHub server name is `ha-home-assistant`.
-- Disabling the option removes only this wrapper-managed server.
-- User-created MCP servers with other names are untouched.
+- The default MCPHub server name is `ha-home-assistant`; configure a distinct name
+  with `home_assistant_mcp_server_name` using 1-64 letters, digits, dots,
+  underscores, or hyphens, beginning with a letter or digit.
+- Renaming or disabling removes the previous managed entry, including entries
+  created by older versions of the App. Existing MCPHub groups or routes
+  referencing the old name must be updated manually after a rename.
+- Name conflicts with existing user-created servers are rejected rather than
+  overwriting those servers.
 - The Home Assistant token is injected by the local proxy and is not written to
   `mcp_settings.json`.
 - The local bridge listens only on `127.0.0.1:8097`.

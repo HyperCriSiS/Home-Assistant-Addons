@@ -74,6 +74,9 @@ jobs:
           python3 -m py_compile "MCPHub/patch_home_assistant_auth.py"
           python3 -m py_compile ".github/scripts/update-mcphub-upstream.py"
 
+      - name: Test managed Home Assistant MCP server lifecycle
+        run: python3 -m unittest discover -s MCPHub/tests -p 'test_*.py' -v
+
       - name: Lint MCPHub Dockerfile
         run: |
           image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
@@ -117,6 +120,9 @@ jobs:
           assert changelog.startswith(f"# Changelog\n\n## {version}\n")
 
           assert config["options"]["home_assistant_mcp_enabled"] is False
+          assert config["options"]["home_assistant_mcp_server_name"] == "ha-home-assistant"
+          assert config["schema"]["home_assistant_mcp_auth_mode"] == "list(supervisor|restricted_user)"
+          assert list(config["options"]).index("home_assistant_mcp_enabled") > list(config["options"]).index("cloudflare_access_token")
           assert config["options"]["home_assistant_mcp_auth_mode"] == "restricted_user"
           assert config["options"]["home_assistant_mcp_url"] == "http://homeassistant:8123/api/mcp"
           assert config["options"]["tunnel_enabled"] is False
