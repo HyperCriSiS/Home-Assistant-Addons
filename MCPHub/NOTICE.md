@@ -5,7 +5,7 @@ This Home Assistant wrapper includes third-party software.
 ## MCPHub
 
 - Project: https://github.com/samanhappy/mcphub
-- Version currently packaged: 1.1.1
+- Version currently packaged: 1.1.3
 - License: Apache License 2.0
 
 ## OpenAI Secure MCP Tunnel client
