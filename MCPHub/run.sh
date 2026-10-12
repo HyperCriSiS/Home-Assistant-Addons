@@ -37,6 +37,10 @@ path, key = sys.argv[1], sys.argv[2]
 with open(path, "r", encoding="utf-8") as handle:
     data = json.load(handle)
 
+for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+    nested = data.get(group)
+    if isinstance(nested, dict):
+        data.update(nested)
 value = data.get(key, "")
 if isinstance(value, bool):
     print("true" if value else "false")

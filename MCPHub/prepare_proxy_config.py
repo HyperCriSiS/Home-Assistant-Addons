@@ -22,6 +22,16 @@ HA_MCP_PATH_PATTERN = re.compile(r"^/api/mcp(?:/[A-Za-z0-9._~-]+)?$")
 ACCESS_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._~-]{20,4096}$")
 
 
+def flatten_grouped_options(data: dict) -> dict:
+    """Read legacy flat and grouped options."""
+    result = dict(data)
+    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+        section = data.get(group)
+        if isinstance(section, dict):
+            result.update(section)
+    return result
+
+
 def load_options() -> dict:
     """Load Home Assistant App options."""
     with OPTIONS_FILE.open("r", encoding="utf-8") as handle:
@@ -30,7 +40,7 @@ def load_options() -> dict:
     if not isinstance(data, dict):
         raise ValueError("options.json must contain a JSON object")
 
-    return data
+    return flatten_grouped_options(data)
 
 
 def read_secret(path: Path) -> str:
