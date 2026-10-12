@@ -2,17 +2,24 @@
 
 Home Assistant Apps (formerly Add-ons) maintained by HyperCriSiS.
 
-[![Validate Trilium](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate.yml)
-[![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions/workflows/validate-mcphub.yml)
+[![Validate Trilium](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate.yml)
+[![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml)
 
 ## Install the repository
 
-[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps)
+
+> [!NOTE]
+> **Repository renamed:** Existing Home Assistant installations that use
+> `https://github.com/HyperCriSiS/Home-Assistant-Addons` should **keep their
+> existing repository entry**. GitHub redirects the old address to this repository;
+> re-adding it under the new URL would create a different repository ID and
+> potentially duplicate the Apps. New installations should use the new URL above.
 
 If the button does not open the repository dialog, add it manually:
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons
+https://github.com/HyperCriSiS/Home-Assistant-Apps
 ```
 
 > [!IMPORTANT]
@@ -63,13 +70,13 @@ See [TriliumNext Notes/README.md](TriliumNext%20Notes/README.md) for installatio
 
 A shared development repository is available for testing upcoming releases of both Apps:
 
-[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps%23dev-store)
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+https://github.com/HyperCriSiS/Home-Assistant-Apps#dev-store
 ```
 
-Home Assistant displays it as **HyperCriSiS Add-ons (Dev)**.
+Home Assistant displays it as **HyperCriSiS Apps (Dev)**.
 
 > [!WARNING]
 > Development builds may contain incomplete or breaking changes. Use the stable repository for normal installations and keep a current backup before testing development updates.

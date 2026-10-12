@@ -8,26 +8,28 @@ This Home Assistant add-on runs [Trilium Notes](https://github.com/TriliumNext/T
 
 ### Stable
 
-[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons)
+[![Add stable repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps)
 
 1. Add the stable repository using the button above.
 2. Install **Trilium Notes** from the App store.
 3. Start the App and open its web interface through Home Assistant Ingress.
 4. Complete Trilium's initial setup and choose a strong password.
 
+**Existing Trilium installations:** If you originally added `Home-Assistant-Addons`, keep the existing repository entry. GitHub redirects it to this repository so updates can continue. Do not remove/re-add it or register both the old and new URLs, as Home Assistant assigns them different repository IDs.
+
 ### Development testing
 
 To test the current `dev-trilium` candidate before it is promoted to `main`, add the shared generated
 development store:
 
-[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Addons%23dev-store)
+[![Add development repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FHyperCriSiS%2FHome-Assistant-Apps%23dev-store)
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+https://github.com/HyperCriSiS/Home-Assistant-Apps#dev-store
 ```
 
 The development App is shown as **Trilium Notes (Dev)** under
-**HyperCriSiS Add-ons (Dev)**, so it can be distinguished from the stable App at a glance.
+**HyperCriSiS Apps (Dev)**, so it can be distinguished from the stable App at a glance.
 
 > [!WARNING]
 > Development builds may contain breaking changes. Create a Home Assistant backup before
@@ -60,7 +62,7 @@ Ingress is enabled by default. Port `8080` is also exposed for optional direct a
 
 ## Support
 
-For add-on-specific issues, use the [issue tracker](https://github.com/HyperCriSiS/Home-Assistant-Addons/issues). For Trilium application issues, use the [upstream project](https://github.com/TriliumNext/Trilium/issues).
+For add-on-specific issues, use the [issue tracker](https://github.com/HyperCriSiS/Home-Assistant-Apps/issues). For Trilium application issues, use the [upstream project](https://github.com/TriliumNext/Trilium/issues).
 
 ## License
 
