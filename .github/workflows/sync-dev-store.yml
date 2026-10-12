@@ -33,7 +33,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin             main             dev-trilium             dev-mcphub             dev-store
+          git fetch origin \
+            main \
+            dev-trilium \
+            dev-mcphub \
+            dev-store
 
           git checkout -B dev-store origin/dev-store
           git merge --no-ff --no-edit -X theirs origin/main
@@ -43,32 +47,53 @@ jobs:
           git checkout origin/main -- repository.json
 
       - name: Generate development metadata
+        env:
+          DEV_BUILD: ${{ github.run_number }}
         run: |
           python3 - <<'PY'
           import json
+          import os
           import re
           import subprocess
           from pathlib import Path
 
-          def app_revision(branch, app_path):
+          state_path = Path(".dev-store-revisions.json")
+          if state_path.exists():
+              state = json.loads(state_path.read_text(encoding="utf-8"))
+          else:
+              state = {}
+
+          def source_tree(branch, app_path):
               result = subprocess.run(
-                  [
-                      "git",
-                      "rev-list",
-                      "--count",
-                      branch,
-                      "--",
-                      app_path,
-                  ],
+                  ["git", "rev-parse", f"{branch}:{app_path}"],
                   check=True,
                   capture_output=True,
                   text=True,
               )
-              revision = result.stdout.strip()
-              if not revision.isdigit() or int(revision) < 1:
-                  raise SystemExit(
-                      f"Unable to derive development revision for {app_path}"
-                  )
+              return result.stdout.strip()
+
+          def app_revision(key, branch, app_path):
+              tree = source_tree(branch, app_path)
+              previous = state.get(key)
+
+              if (
+                  isinstance(previous, dict)
+                  and previous.get("tree") == tree
+                  and str(previous.get("revision", "")).isdigit()
+              ):
+                  revision = int(previous["revision"])
+              elif (
+                  isinstance(previous, dict)
+                  and str(previous.get("revision", "")).isdigit()
+              ):
+                  revision = int(previous["revision"]) + 1
+              else:
+                  revision = int(os.environ["DEV_BUILD"])
+
+              state[key] = {
+                  "tree": tree,
+                  "revision": revision,
+              }
               return revision
 
           repository = Path("repository.json")
@@ -121,7 +146,9 @@ jobs:
                       flags=re.MULTILINE,
                   )
                   if count != 1:
-                      raise SystemExit(f"Unable to add development stage to {path}")
+                      raise SystemExit(
+                          f"Unable to add development stage to {path}"
+                      )
 
               config.write_text(text, encoding="utf-8")
 
@@ -130,20 +157,33 @@ jobs:
               "MCPHub (Dev)",
               "MCPHub (Dev)",
               "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/dev-mcphub/MCPHub",
-              app_revision("origin/dev-mcphub", "MCPHub"),
+              app_revision("mcphub", "origin/dev-mcphub", "MCPHub"),
           )
           patch_config(
               "TriliumNext Notes/config.yaml",
               "Trilium Notes (Dev)",
               "Trilium Notes (Dev)",
               "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/dev-trilium/TriliumNext%20Notes",
-              app_revision("origin/dev-trilium", "TriliumNext Notes"),
+              app_revision(
+                  "trilium",
+                  "origin/dev-trilium",
+                  "TriliumNext Notes",
+              ),
+          )
+
+          state_path.write_text(
+              json.dumps(state, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
           )
           PY
 
       - name: Publish generated dev-store branch
         run: |
-          git add repository.json "MCPHub" "TriliumNext Notes"
+          git add \
+            .dev-store-revisions.json \
+            repository.json \
+            "MCPHub" \
+            "TriliumNext Notes"
           if ! git diff --cached --quiet; then
             git commit -m "chore(dev-store): compose current app candidates"
           fi
