@@ -4,7 +4,7 @@ name: HAOS integration
 on:
   workflow_run:
     workflows:
-      - Validate add-on
+      - Validate Trilium
     types:
       - completed
   workflow_dispatch:
