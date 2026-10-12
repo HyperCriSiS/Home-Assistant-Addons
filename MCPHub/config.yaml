@@ -1,6 +1,6 @@
 ---
 name: "MCPHub (Dev)"
-version: "v2026.10.12-dev.80"
+version: "v2026.10.12-dev.81"
 slug: mcphub
 description: "Central MCP server management with optional Home Assistant, OpenAI and Cloudflare integrations"
 url: "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/dev-mcphub/MCPHub"
