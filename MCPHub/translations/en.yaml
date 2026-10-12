@@ -1,5 +1,25 @@
 ---
 configuration:
+  home_assistant_mcp_enabled:
+    name: "Enable managed Home Assistant MCP"
+    description: >-
+      Adds Home Assistant's MCP Server to MCPHub through a loopback-only bridge.
+      The Home Assistant MCP Server integration must already be configured.
+  home_assistant_mcp_auth_mode:
+    name: "Home Assistant MCP authentication"
+    description: >-
+      restricted_user uses a dedicated Home Assistant user's token. supervisor
+      uses the automatic Supervisor token and requires no manually created token.
+  home_assistant_mcp_user_token:
+    name: "Dedicated Home Assistant user token"
+    description: >-
+      Long-Lived Access Token created while signed in as the dedicated Home
+      Assistant user. Used only when authentication is restricted_user.
+  home_assistant_mcp_url:
+    name: "Home Assistant MCP URL"
+    description: >-
+      Direct Home Assistant MCP endpoint used with restricted_user authentication.
+      The default targets the internal Home Assistant hostname.
   tunnel_enabled:
     name: "Enable OpenAI Secure MCP Tunnel"
     description: >-

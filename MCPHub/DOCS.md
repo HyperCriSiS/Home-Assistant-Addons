@@ -7,6 +7,10 @@ This add-on runs MCPHub as a central control plane for MCP servers inside Home A
 MCPHub can discover, configure, start, stop, group, monitor, and route multiple MCP
 servers while exposing them through stable MCP endpoints.
 
+A managed Home Assistant MCP bridge is also available. It can connect MCPHub
+back to Home Assistant's own MCP Server without storing the Home Assistant
+credential in MCPHub.
+
 Two independent remote-access methods are available:
 
 - **OpenAI Secure MCP Tunnel** for ChatGPT and supported OpenAI clients
@@ -65,6 +69,67 @@ groups at the same time.
 Smart Routing is also supported by MCPHub through `/mcp/$smart`, but it requires
 additional PostgreSQL/pgvector and embedding-service setup. This Home Assistant wrapper
 does not automatically enable that extra infrastructure.
+
+## Home Assistant MCP Server
+
+The wrapper can reserve and manage the MCPHub server name
+`ha-home-assistant`. When enabled, MCPHub connects to a loopback-only Nginx
+bridge on `127.0.0.1:8097`; that bridge forwards Streamable HTTP requests to
+Home Assistant and injects the selected Home Assistant credential.
+
+The Home Assistant **MCP Server** integration must already be configured. The
+wrapper intentionally does not create Home Assistant users, authentication
+entries, or config entries through undocumented internal APIs.
+
+### Authentication mode: `restricted_user`
+
+Use this mode when MCP requests should run as a dedicated Home Assistant user.
+
+1. Create a dedicated **non-admin** Home Assistant user.
+2. Sign in as that user in a separate/private browser session.
+3. Open that user's profile and create a Long-Lived Access Token.
+4. Enable `home_assistant_mcp_enabled`.
+5. Set `home_assistant_mcp_auth_mode` to `restricted_user`.
+6. Paste the token into `home_assistant_mcp_user_token`.
+7. Keep `home_assistant_mcp_url` at its default unless the internal Home
+   Assistant HTTP endpoint differs.
+
+The default URL is:
+
+```text
+http://homeassistant:8123/api/mcp
+```
+
+Home Assistant's built-in Assist MCP API can be used by non-admin users.
+Other MCP APIs may require an administrator token depending on the API exposed
+by the Home Assistant MCP Server integration.
+
+### Authentication mode: `supervisor`
+
+This mode requires no manually created user token. The wrapper forwards to:
+
+```text
+http://supervisor/core/api/mcp
+```
+
+and injects the `SUPERVISOR_TOKEN` supplied by Home Assistant.
+
+> [!IMPORTANT]
+> The `homeassistant_api: true` permission required for Supervisor mode is an
+> App-manifest capability and cannot be toggled dynamically from App options.
+> Therefore `restricted_user` controls the credential used by the managed MCP
+> bridge but does not revoke the container's static Home Assistant API
+> capability. True container-level least privilege would require a separate
+> MCPHub App variant without that permission.
+
+### Managed-server behavior
+
+- The reserved MCPHub server name is `ha-home-assistant`.
+- Disabling the option removes only this wrapper-managed server.
+- User-created MCP servers with other names are untouched.
+- The Home Assistant token is injected by the local proxy and is not written to
+  `mcp_settings.json`.
+- The local bridge listens only on `127.0.0.1:8097`.
 
 ## OpenAI Secure MCP Tunnel
 

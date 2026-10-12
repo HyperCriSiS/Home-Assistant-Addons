@@ -64,6 +64,7 @@ The development App is shown as **MCPHub (Dev)** under
 - Persistent MCPHub configuration
 - Persistent npm / npx and uv / uvx package caches
 - Home Assistant Ingress dashboard
+- Optional managed Home Assistant MCP Server bridge
 - Optional OpenAI Secure MCP Tunnel for ChatGPT / OpenAI clients
 - Optional Cloudflare Tunnel for Claude, Cursor, VS Code, and other remote MCP clients
 - No public MCPHub port required
@@ -74,6 +75,37 @@ The development App is shown as **MCPHub (Dev)** under
 - No Home Assistant API permission
 - Home Assistant cold-backup support
 - `amd64` and `aarch64` support
+
+## Home Assistant MCP Server
+
+The App can optionally add Home Assistant's own MCP Server to MCPHub as the
+managed server **ha-home-assistant**. The Home Assistant **MCP Server**
+integration must already be configured.
+
+Two authentication modes are available:
+
+- **restricted_user** — recommended when you want MCP requests to run as a
+  dedicated Home Assistant user. Create a non-admin Home Assistant user, sign
+  in as that user, create a Long-Lived Access Token from that user's profile,
+  and enter the token in the App configuration.
+- **supervisor** — zero-token setup. The App uses the Supervisor-provided Core
+  API token and the internal Home Assistant API proxy.
+
+The managed server talks only to a loopback proxy inside the MCPHub App.
+Home Assistant credentials are injected by that proxy and are never written
+into MCPHub's `mcp_settings.json`.
+
+> [!IMPORTANT]
+> Supporting the automatic Supervisor mode requires the static
+> `homeassistant_api: true` App permission. Selecting `restricted_user`
+> changes the credential actually used for MCP requests, but it does not remove
+> that static container capability. A truly permission-isolated variant would
+> require a separate App package without `homeassistant_api`.
+
+For a dedicated user, the default MCP URL is
+`http://homeassistant:8123/api/mcp`. Change it only if the internal Home
+Assistant HTTP configuration differs. Home Assistant may require an
+administrator token for MCP APIs other than the built-in Assist API.
 
 ## Remote access
 
@@ -139,10 +171,14 @@ Secrets, MCPHub configuration, and package caches are stored in the persistent A
 
 ## Configuration
 
-The Home Assistant App configuration contains only tunnel-related options:
+The Home Assistant App configuration contains Home Assistant MCP and remote-access options:
 
 | Option | Default | Description |
 | --- | --- | --- |
+| `home_assistant_mcp_enabled` | `false` | Adds the managed Home Assistant MCP Server to MCPHub |
+| `home_assistant_mcp_auth_mode` | `restricted_user` | Uses either a dedicated user token or the automatic Supervisor token |
+| `home_assistant_mcp_user_token` | empty | Dedicated Home Assistant user's Long-Lived Access Token |
+| `home_assistant_mcp_url` | `http://homeassistant:8123/api/mcp` | Direct MCP endpoint used by `restricted_user` mode |
 | `tunnel_enabled` | `false` | Enables the OpenAI Secure MCP Tunnel |
 | `openai_runtime_api_key` | empty | Runtime API Key used by the tunnel client |
 | `tunnel_id` | empty | OpenAI Secure MCP Tunnel ID |

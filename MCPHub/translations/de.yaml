@@ -1,5 +1,26 @@
 ---
 configuration:
+  home_assistant_mcp_enabled:
+    name: "Verwaltetes Home Assistant MCP aktivieren"
+    description: >-
+      Fügt den Home Assistant MCP Server über eine nur lokal erreichbare Bridge
+      zu MCPHub hinzu. Die MCP-Server-Integration muss in Home Assistant bereits
+      eingerichtet sein.
+  home_assistant_mcp_auth_mode:
+    name: "Home Assistant MCP-Authentifizierung"
+    description: >-
+      restricted_user verwendet den Token eines separaten Home-Assistant-
+      Benutzers. supervisor verwendet automatisch den Supervisor-Token.
+  home_assistant_mcp_user_token:
+    name: "Token des separaten Home-Assistant-Benutzers"
+    description: >-
+      Long-Lived Access Token, der angemeldet als der separate Home-Assistant-
+      Benutzer erstellt wurde. Wird nur bei restricted_user verwendet.
+  home_assistant_mcp_url:
+    name: "Home Assistant MCP-URL"
+    description: >-
+      Direkter Home-Assistant-MCP-Endpunkt für restricted_user. Der Standardwert
+      verwendet den internen Home-Assistant-Hostnamen.
   tunnel_enabled:
     name: "OpenAI Secure MCP Tunnel aktivieren"
     description: "Verbindet den gewählten MCPHub-Endpunkt mit ChatGPT und unterstützten OpenAI-Clients."
