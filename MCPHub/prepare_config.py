@@ -216,7 +216,7 @@ def main() -> None:
             "url": "http://127.0.0.1:8097/mcp",
             "enabled": True,
             "enableKeepAlive": True,
-            "keepAliveInterval": 60000,
+            "keepAliveInterval": 5000,
             "owner": "admin",
             "description": (
                 "Home Assistant MCP Server managed by the "
