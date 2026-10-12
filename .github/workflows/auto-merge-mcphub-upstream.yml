@@ -1,0 +1,49 @@
+---
+name: Auto-merge validated MCPHub upstream updates
+
+on:
+  workflow_run:
+    workflows:
+      - Validate MCPHub
+    types:
+      - completed
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-mcphub-upstream
+  cancel-in-progress: false
+
+jobs:
+  merge-upstream-to-dev:
+    name: Merge CI-green upstream update into dev-mcphub
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        startsWith(github.event.workflow_run.head_branch, 'automation/mcphub-')
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+
+    steps:
+      - name: Check out trusted automation code from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Test auto-merge safety gates
+        run: >-
+          python3 -m unittest discover
+          -s .github/tests
+          -p test_merge_mcphub_upstream_pr.py
+          -v
+
+      - name: Verify source, commit and changed files before merging
+        run: python3 .github/scripts/merge_mcphub_upstream_pr.py
