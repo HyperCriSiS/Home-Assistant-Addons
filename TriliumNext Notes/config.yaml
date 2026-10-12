@@ -4,7 +4,7 @@ version: "v2026.10.11"
 slug: trilium
 description: >-
   Trilium v0.106.0 - hierarchical note-taking and personal knowledge base.
-url: "https://github.com/HyperCriSiS/Home-Assistant-Addons"
+url: "https://github.com/HyperCriSiS/Home-Assistant-Apps"
 ingress: true
 ingress_port: 8080
 ingress_stream: true

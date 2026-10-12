@@ -1,4 +1,4 @@
-# Current Work — Home-Assistant-Addons
+# Current Work — Home-Assistant-Apps
 
 Last reviewed: 2026-10-08. Authoritative integrated branch: `main`. This is the common work-resumption entry point, **not** a synthetic roadmap or an approval to merge pending implementation.
 
@@ -6,8 +6,8 @@ Last reviewed: 2026-10-08. Authoritative integrated branch: `main`. This is the 
 
 - [README](../../README.md) and [documentation index](../DOCUMENTATION.md) — project-specific directions.
 - [Agent instructions](../../AGENTS.md) — local engineering and safety policy.
-- [Open pull requests](https://github.com/HyperCriSiS/Home-Assistant-Addons/pulls) and [issues](https://github.com/HyperCriSiS/Home-Assistant-Addons/issues) — actual work queue; always recheck the current state.
-- [CI and Actions](https://github.com/HyperCriSiS/Home-Assistant-Addons/actions) — build, security and release evidence.
+- [Open pull requests](https://github.com/HyperCriSiS/Home-Assistant-Apps/pulls) and [issues](https://github.com/HyperCriSiS/Home-Assistant-Apps/issues) — actual work queue; always recheck the current state.
+- [CI and Actions](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions) — build, security and release evidence.
 
 ## Current scope and resumption
 

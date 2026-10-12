@@ -56,7 +56,7 @@ jobs:
 
           repository = Path("repository.json")
           repo_data = json.loads(repository.read_text(encoding="utf-8"))
-          repo_data["name"] = "HyperCriSiS Add-ons (Dev)"
+          repo_data["name"] = "HyperCriSiS Apps (Dev)"
           repository.write_text(
               json.dumps(repo_data, indent=2, ensure_ascii=False) + "\n",
               encoding="utf-8",
@@ -112,13 +112,13 @@ jobs:
               "MCPHub/config.yaml",
               "MCPHub (Dev)",
               "MCPHub (Dev)",
-              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev-mcphub/MCPHub",
+              "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/dev-mcphub/MCPHub",
           )
           patch_config(
               "TriliumNext Notes/config.yaml",
               "Trilium Notes (Dev)",
               "Trilium Notes (Dev)",
-              "https://github.com/HyperCriSiS/Home-Assistant-Addons/tree/dev-trilium/TriliumNext%20Notes",
+              "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/dev-trilium/TriliumNext%20Notes",
           )
           PY
 

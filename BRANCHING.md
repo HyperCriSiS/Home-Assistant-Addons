@@ -27,8 +27,10 @@ Both development branches periodically merge the latest `main` so they inherit a
 Home Assistant development repository URL:
 
 ```text
-https://github.com/HyperCriSiS/Home-Assistant-Addons#dev-store
+https://github.com/HyperCriSiS/Home-Assistant-Apps#dev-store
 ```
+
+Old repository URLs are kept operational by GitHub redirects after the rename. For new Home Assistant installations, use the new `Home-Assistant-Apps` URL; existing installations should not register both URL variants, because Home Assistant derives different repository IDs from them.
 
 The generator adds `(Dev)`, `-dev.<run>`, and `stage: experimental` metadata so test installations are clearly distinguishable.
 
