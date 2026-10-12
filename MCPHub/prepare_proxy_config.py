@@ -126,6 +126,9 @@ def home_assistant_mcp_server_block(options: dict) -> str:
         proxy_set_header X-Forwarded-For "";
         proxy_set_header X-Forwarded-Proto "";
 
+        # HTTPS local endpoints may require SNI. This is harmless for HTTP.
+        proxy_ssl_server_name on;
+
         proxy_buffering off;
         proxy_request_buffering off;
         proxy_read_timeout 3600s;

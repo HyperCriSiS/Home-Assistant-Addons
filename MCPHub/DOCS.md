@@ -100,6 +100,16 @@ The default URL is:
 http://homeassistant:8123/api/mcp
 ```
 
+The direct URL is not tied to any particular LAN subnet. Any Home Assistant MCP
+endpoint reachable from the App network can be used, including addresses in
+`192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`, IPv6, or a resolvable
+local DNS hostname. Non-default ports and HTTPS are supported. For HTTPS
+hostnames the proxy enables SNI.
+
+Prefer a normal LAN IP or DNS name that resolves from containers. An mDNS-only
+`*.local` hostname is not guaranteed to resolve in every Home Assistant App
+network.
+
 Home Assistant's built-in Assist MCP API can be used by non-admin users.
 Other MCP APIs may require an administrator token depending on the API exposed
 by the Home Assistant MCP Server integration.
