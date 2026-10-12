@@ -18,7 +18,7 @@ Both are optional and can be enabled at the same time.
 
 Add this repository to the Home Assistant App store:
 
-`https://github.com/HyperCriSiS/Home-Assistant-Addons`
+`https://github.com/HyperCriSiS/Home-Assistant-Apps`
 
 Install **MCPHub** and start it with the default configuration first. Both remote-access
 methods are disabled by default so the dashboard can be verified independently.
