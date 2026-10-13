@@ -12,11 +12,15 @@ configuration:
       openai_runtime_api_key:
         name: "OpenAI Runtime API Key"
         description: >-
-          Runtime key used by OpenAI Secure MCP Tunnel. Leave empty while the
-          OpenAI tunnel is disabled.
+          Runtime key for OpenAI Secure MCP Tunnel. Create a Restricted key
+          with Tunnels Read + Use: https://platform.openai.com/settings/organization/api-keys
+          Leave empty while the OpenAI tunnel is disabled.
       tunnel_id:
         name: "OpenAI Tunnel ID"
-        description: "Tunnel ID created for OpenAI Secure MCP Tunnel."
+        description: >-
+          Tunnel ID starts with tunnel_. Find it in OpenAI Tunnel settings:
+          https://platform.openai.com/settings/organization/tunnels
+          Do not use an API key Tracking ID.
       tunnel_mcp_path:
         name: "OpenAI MCP route"
         description: >-

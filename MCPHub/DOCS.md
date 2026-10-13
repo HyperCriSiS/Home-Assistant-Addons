@@ -157,11 +157,16 @@ Enables the OpenAI Secure MCP Tunnel.
 
 ### `openai_runtime_api_key`
 
-OpenAI Runtime API Key used by the Secure MCP Tunnel client.
+OpenAI Runtime API Key used by the Secure MCP Tunnel client. Create it in
+[OpenAI Runtime API keys](https://platform.openai.com/settings/organization/api-keys) with **Restricted** access and
+**Tunnels: Read + Use**. Do not use an Admin API key for the tunnel daemon.
 
 ### `tunnel_id`
 
-The OpenAI Secure MCP Tunnel ID.
+The OpenAI Secure MCP Tunnel ID. Find it in
+[OpenAI Tunnel settings](https://platform.openai.com/settings/organization/tunnels). It starts with `tunnel_`
+(for example `tunnel_0123456789abcdef0123456789abcdef`).
+It is separate from the Runtime API Key. **Do not use the API key Tracking ID.**
 
 ### `tunnel_mcp_path`
 
@@ -456,3 +461,22 @@ Verify that:
 - the Tunnel ID is correct
 - the selected `tunnel_mcp_path` exists
 - MCPHub itself is healthy
+
+## Development changelog and stable promotion
+
+The development store builds the MCPHub App from `dev-mcphub` and gives it an
+independently increasing `-dev.N` version. These development revisions do not
+create new source `CHANGELOG.md` headings: their changes must be documented
+under the current App wrapper version in `MCPHub/CHANGELOG.md`.
+
+When merging user-visible App changes into `dev-mcphub`, update the current
+changelog entry with the actual new features, fixes, security changes, and any
+migration caveats. The upstream-update script records the upstream image bump;
+it cannot describe unrelated App wrapper changes made between upstream releases.
+
+Before promoting `dev-mcphub` to `main`, compare the candidate with the
+**currently released** MCPHub App on `main` and review all intervening
+changelog entries. Ensure the next stable release notes cover the full change
+set, including previously shipped development-only features, while retaining
+existing release history. Passing CI and a correct changelog version header
+alone do not establish that the notes are complete.
