@@ -7,6 +7,7 @@ import json
 import os
 import re
 import secrets
+import sys
 import uuid
 from pathlib import Path
 
@@ -221,27 +222,31 @@ def main() -> None:
         if item.get("name") != INGRESS_KEY_NAME
     ]
 
-    openai_path = str(options.get("tunnel_mcp_path", "/mcp"))
-    openai_scope = scope_for_path(openai_path)
-    upsert_system_key(
-        bearer_keys,
-        name=OPENAI_KEY_NAME,
-        token=openai_token,
-        access_type=openai_scope[0],
-        allowed_groups=openai_scope[1],
-        allowed_servers=openai_scope[2],
-    )
-
-    cloudflare_path = str(options.get("cloudflare_mcp_path", "/mcp"))
-    cloudflare_scope = scope_for_path(cloudflare_path)
-    upsert_system_key(
-        bearer_keys,
-        name=CLOUDFLARE_KEY_NAME,
-        token=cloudflare_internal_token,
-        access_type=cloudflare_scope[0],
-        allowed_groups=cloudflare_scope[1],
-        allowed_servers=cloudflare_scope[2],
-    )
+    for label, enabled_flag, path_option, key_name, token in (
+        ("OpenAI", "tunnel_enabled", "tunnel_mcp_path", OPENAI_KEY_NAME, openai_token),
+        ("Cloudflare", "cloudflare_tunnel_enabled", "cloudflare_mcp_path",
+         CLOUDFLARE_KEY_NAME, cloudflare_internal_token),
+    ):
+        bearer_keys[:] = [item for item in bearer_keys if item.get("name") != key_name]
+        if not bool(options.get(enabled_flag, False)):
+            continue
+        route = str(options.get(path_option, "/mcp"))
+        try:
+            access_type, groups, servers = scope_for_path(route)
+        except ValueError:
+            print(
+                f"[WARN] {label} tunnel MCP path invalid; bearer key remains disabled",
+                file=sys.stderr,
+            )
+            continue
+        upsert_system_key(
+            bearer_keys,
+            name=key_name,
+            token=token,
+            access_type=access_type,
+            allowed_groups=groups,
+            allowed_servers=servers,
+        )
 
     mcp_servers = settings["mcpServers"]
     if not isinstance(mcp_servers, dict):

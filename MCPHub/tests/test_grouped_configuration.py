@@ -24,7 +24,7 @@ GROUPS = {
     "home_assistant": (
         "home_assistant_mcp_enabled", "home_assistant_mcp_server_name",
         "home_assistant_mcp_auth_mode", "home_assistant_mcp_user_token",
-        "home_assistant_mcp_url",
+        "home_assistant_mcp_url", "home_assistant_mcp_ca_file",
     ),
     "github": ("github_cli_mcp_enabled", "github_token"),
     "logging": ("tunnel_log_level",),

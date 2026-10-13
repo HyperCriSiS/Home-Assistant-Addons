@@ -94,14 +94,14 @@ mkdir -p     "${MCPHUB_DATA_DIR}"     "${SECRET_DIR}"     /data/home     /data/c
 
 chmod 0700 "${SECRET_DIR}"
 
-if ! valid_mcp_path "${cloudflare_mcp_path}"; then
-    log_error "cloudflare_mcp_path must be /mcp or contain at most two safe path segments."
-    exit 1
+if [[ "${cloudflare_tunnel_enabled}" == "true" ]] && ! valid_mcp_path "${cloudflare_mcp_path}"; then
+    log_warn "Invalid Cloudflare MCP path; tunnel stays disabled while MCPHub starts."
+    cloudflare_tunnel_enabled="false"
 fi
 
 if [[ "${cloudflare_tunnel_enabled}" == "true" ]]     && [[ ! "${cloudflare_access_token}" =~ ^[A-Za-z0-9_-]{32,256}$ ]]; then
-    log_error "cloudflare_access_token must contain 32-256 letters, numbers, underscores, or dashes."
-    exit 1
+    log_warn "Invalid Cloudflare client token; tunnel stays disabled while MCPHub starts."
+    cloudflare_tunnel_enabled="false"
 fi
 
 /usr/local/bin/prepare_mcphub_config.py
@@ -127,6 +127,9 @@ export NPM_CONFIG_CACHE="/data/cache/npm"
 export UV_CACHE_DIR="/data/cache/uv"
 
 log_info "Starting MCPHub 1.1.3 on internal loopback port 3000."
+if [[ -r /etc/mcphub-source-revision ]]; then
+    log_info "Build source revision: $(cat /etc/mcphub-source-revision)"
+fi
 (
     cd /app
     /usr/local/bin/entrypoint.sh node dist/index.js

@@ -93,6 +93,7 @@ COPY prepare_proxy_config.py /usr/local/bin/prepare_proxy_config.py
 COPY github_cli_mcp.sh /usr/local/bin/github_cli_mcp.sh
 COPY tunnel_manager.py /usr/local/bin/tunnel_manager.py
 COPY run.sh /run.sh
+COPY .haos-source-revision /etc/mcphub-source-revision
 
 RUN chmod 0755 \
     /run.sh \
