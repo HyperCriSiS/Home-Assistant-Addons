@@ -141,7 +141,10 @@ Home Assistant
 
 No router port forwarding, public reverse proxy, public MCPHub URL, or Cloudflare Tunnel is required for this setup.
 
-Enable the tunnel only after creating an OpenAI Secure MCP Tunnel and obtaining its Runtime API Key and Tunnel ID.
+Get the **Runtime API Key** from [OpenAI API keys](https://platform.openai.com/settings/organization/api-keys)
+(select **Restricted** with **Tunnels: Read + Use**).
+Find the separate **Tunnel ID** in [OpenAI Tunnel settings](https://platform.openai.com/settings/organization/tunnels).
+It starts with `tunnel_`. Do not use the API key's Tracking ID.
 
 See [DOCS.md](DOCS.md) for the complete OpenAI tunnel configuration.
 
@@ -198,7 +201,7 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | `github_token` | empty | Optional GitHub token supplied as `GH_TOKEN` to the CLI |
 | `tunnel_enabled` | `false` | Enables the OpenAI Secure MCP Tunnel |
 | `openai_runtime_api_key` | empty | Runtime API Key used by the tunnel client |
-| `tunnel_id` | empty | OpenAI Secure MCP Tunnel ID |
+| `tunnel_id` | empty | Tunnel ID (`tunnel_...`) from [OpenAI Tunnel settings](https://platform.openai.com/settings/organization/tunnels); not the API key Tracking ID |
 | `tunnel_mcp_path` | `/mcp` | MCPHub route exposed through the tunnel |
 | `tunnel_log_level` | `info` | OpenAI tunnel log verbosity |
 | `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
