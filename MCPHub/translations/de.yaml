@@ -15,7 +15,7 @@ configuration:
           Ohne aktivierten Tunnel kann das Feld leer bleiben.
       tunnel_id:
         name: "OpenAI Tunnel-ID"
-        description: "Tunnel-ID hier erstellen oder anzeigen: https://platform.openai.com/settings/organization/tunnels"
+        description: "Tunnel-ID auf derselben OpenAI-Seite wie der API-Key: https://platform.openai.com/settings/organization/api-keys"
       tunnel_mcp_path:
         name: "OpenAI MCP-Route"
         description: "MCPHub-Endpunkt für ChatGPT, zum Beispiel /mcp, /mcp/$smart oder /mcp/<gruppe>."

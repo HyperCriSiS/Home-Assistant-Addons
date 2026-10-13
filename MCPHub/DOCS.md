@@ -163,8 +163,9 @@ OpenAI Runtime API Key used by the Secure MCP Tunnel client. Create it in
 
 ### `tunnel_id`
 
-The OpenAI Secure MCP Tunnel ID. Create or find it in
-[OpenAI Tunnels](https://platform.openai.com/settings/organization/tunnels). It is a separate value from the Runtime API Key.
+The OpenAI Secure MCP Tunnel ID. Find it through the same
+[OpenAI API key setup page](https://platform.openai.com/settings/organization/api-keys) as the Runtime API Key.
+The Tunnel ID and the Runtime API Key are separate values.
 
 ### `tunnel_mcp_path`
 
