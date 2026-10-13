@@ -5,6 +5,7 @@
 ### Added
 
 - Grouped Home Assistant App settings into OpenAI, Cloudflare, Home Assistant MCP, GitHub CLI, and logging sections, with updated English and German translations.
+- Linked directly to OpenAI Runtime API keys and Tunnel management from the setup guidance.
 - Added a supervisor for the OpenAI Secure MCP Tunnel with liveness and readiness checks, automatic restart after prolonged failures, and backoff between retries.
 - Added an Ingress-only OpenAI tunnel control page with connection status and Start, Stop, and Reload actions, without restarting MCPHub.
 - Added configurable names for the managed Home Assistant MCP server, including safe rename and name-collision handling.

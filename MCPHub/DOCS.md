@@ -157,11 +157,14 @@ Enables the OpenAI Secure MCP Tunnel.
 
 ### `openai_runtime_api_key`
 
-OpenAI Runtime API Key used by the Secure MCP Tunnel client.
+OpenAI Runtime API Key used by the Secure MCP Tunnel client. Create it in
+[OpenAI Runtime API keys](https://platform.openai.com/settings/organization/api-keys) with **Restricted** access and
+**Tunnels: Read + Use**. Do not use an Admin API key for the tunnel daemon.
 
 ### `tunnel_id`
 
-The OpenAI Secure MCP Tunnel ID.
+The OpenAI Secure MCP Tunnel ID. Create or find it in
+[OpenAI Tunnels](https://platform.openai.com/settings/organization/tunnels). It is a separate value from the Runtime API Key.
 
 ### `tunnel_mcp_path`
 
