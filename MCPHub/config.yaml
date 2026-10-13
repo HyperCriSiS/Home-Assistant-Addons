@@ -1,6 +1,6 @@
 ---
 name: "MCPHub (Dev)"
-version: "v2026.10.12-1-dev.89"
+version: "v2026.10.12-1-dev.90"
 slug: mcphub
 description: >-
   MCPHub 1.1.3 - central MCP server management with optional Home Assistant,
@@ -23,36 +23,46 @@ watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
 options:
-  tunnel_enabled: false
-  openai_runtime_api_key: ""
-  tunnel_id: ""
-  tunnel_mcp_path: "/mcp"
-  cloudflare_tunnel_enabled: false
-  cloudflare_tunnel_token: ""
-  cloudflare_mcp_path: "/mcp"
-  cloudflare_access_token: ""
-  home_assistant_mcp_enabled: false
-  home_assistant_mcp_server_name: "ha-home-assistant"
-  home_assistant_mcp_auth_mode: "restricted_user"
-  home_assistant_mcp_user_token: ""
-  home_assistant_mcp_url: "http://homeassistant:8123/api/mcp"
-  github_cli_mcp_enabled: false
-  github_token: ""
-  tunnel_log_level: "info"
+  openai:
+    tunnel_enabled: false
+    openai_runtime_api_key: ""
+    tunnel_id: ""
+    tunnel_mcp_path: "/mcp"
+  cloudflare:
+    cloudflare_tunnel_enabled: false
+    cloudflare_tunnel_token: ""
+    cloudflare_mcp_path: "/mcp"
+    cloudflare_access_token: ""
+  home_assistant:
+    home_assistant_mcp_enabled: false
+    home_assistant_mcp_server_name: "ha-home-assistant"
+    home_assistant_mcp_auth_mode: "restricted_user"
+    home_assistant_mcp_user_token: ""
+    home_assistant_mcp_url: "http://homeassistant:8123/api/mcp"
+  github:
+    github_cli_mcp_enabled: false
+    github_token: ""
+  logging:
+    tunnel_log_level: "info"
 schema:
-  tunnel_enabled: bool
-  openai_runtime_api_key: password
-  tunnel_id: str
-  tunnel_mcp_path: str
-  cloudflare_tunnel_enabled: bool
-  cloudflare_tunnel_token: password
-  cloudflare_mcp_path: str
-  cloudflare_access_token: password
-  home_assistant_mcp_enabled: bool
-  home_assistant_mcp_server_name: str
-  home_assistant_mcp_auth_mode: "list(supervisor|restricted_user)"
-  home_assistant_mcp_user_token: password
-  home_assistant_mcp_url: str
-  github_cli_mcp_enabled: bool
-  github_token: password
-  tunnel_log_level: "list(debug|info|warn)"
+  openai:
+    tunnel_enabled: bool
+    openai_runtime_api_key: password
+    tunnel_id: str
+    tunnel_mcp_path: str
+  cloudflare:
+    cloudflare_tunnel_enabled: bool
+    cloudflare_tunnel_token: password
+    cloudflare_mcp_path: str
+    cloudflare_access_token: password
+  home_assistant:
+    home_assistant_mcp_enabled: bool
+    home_assistant_mcp_server_name: str
+    home_assistant_mcp_auth_mode: "list(supervisor|restricted_user)"
+    home_assistant_mcp_user_token: password
+    home_assistant_mcp_url: str
+  github:
+    github_cli_mcp_enabled: bool
+    github_token: password
+  logging:
+    tunnel_log_level: "list(debug|info|warn)"

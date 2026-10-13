@@ -1,76 +1,96 @@
 ---
 configuration:
-  tunnel_enabled:
-    name: "Enable OpenAI Secure MCP Tunnel"
-    description: >-
-      Connect the selected MCPHub endpoint to ChatGPT and other supported
-      OpenAI clients.
-  openai_runtime_api_key:
-    name: "OpenAI Runtime API Key"
-    description: >-
-      Runtime key used by OpenAI Secure MCP Tunnel. Leave empty while the
-      OpenAI tunnel is disabled.
-  tunnel_id:
-    name: "OpenAI Tunnel ID"
-    description: "Tunnel ID created for OpenAI Secure MCP Tunnel."
-  tunnel_mcp_path:
-    name: "OpenAI MCP route"
-    description: >-
-      MCPHub route exposed to OpenAI, for example /mcp, /mcp/development,
-      or /mcp/$smart.
-  cloudflare_tunnel_enabled:
-    name: "Enable Cloudflare Tunnel"
-    description: >-
-      Expose one restricted MCPHub route through a remotely managed
-      Cloudflare Tunnel.
-  cloudflare_tunnel_token:
-    name: "Cloudflare Tunnel token"
-    description: "Connector token from a remotely managed Cloudflare Tunnel."
-  cloudflare_mcp_path:
-    name: "Cloudflare MCP route"
-    description: >-
-      Exact MCPHub route exposed through Cloudflare, for example
-      /mcp/development.
-  cloudflare_access_token:
-    name: "Cloudflare MCP client token"
-    description: >-
-      32-256 character client key that remote MCP clients must send in the
-      Authorization header.
-  home_assistant_mcp_enabled:
-    name: "Enable managed Home Assistant MCP"
-    description: >-
-      Adds Home Assistant's MCP Server to MCPHub through a loopback-only bridge.
-      The Home Assistant MCP Server integration must already be configured.
-  home_assistant_mcp_server_name:
-    name: "Home Assistant MCP server name"
-    description: >-
-      Name used for the automatically registered MCPHub server (default: ha-home-assistant).
-      Must be unique. Renaming may affect existing MCPHub groups.
-  home_assistant_mcp_auth_mode:
-    name: "Home Assistant MCP authentication"
-    description: >-
-      restricted_user uses a dedicated Home Assistant user's token. supervisor
-      uses the automatic Supervisor token and requires no manually created token.
-  home_assistant_mcp_user_token:
-    name: "Dedicated Home Assistant user token"
-    description: >-
-      Long-Lived Access Token created while signed in as the dedicated Home
-      Assistant user. Used only when authentication is restricted_user.
-  home_assistant_mcp_url:
-    name: "Home Assistant MCP URL"
-    description: >-
-      Direct Home Assistant MCP endpoint used with restricted_user authentication.
-      Supports reachable LAN IPs, IPv6, local DNS names, custom ports, and HTTPS.
-  github_cli_mcp_enabled:
-    name: "Enable GitHub CLI MCP"
-    description: >-
-      Persistently installs GitHub CLI on demand and automatically adds the
-      universal gh-cli-mcp-server to MCPHub.
-  github_token:
-    name: "GitHub token"
-    description: >-
-      Optional GitHub Personal Access Token for authenticated gh commands.
-      Required for private repositories and write operations.
-  tunnel_log_level:
-    name: "OpenAI tunnel log level"
-    description: "Verbosity of the OpenAI tunnel-client logs."
+  openai:
+    name: "OpenAI Secure Tunnel"
+    description: "Settings for OpenAI Secure Tunnel"
+    fields:
+      tunnel_enabled:
+        name: "Enable OpenAI Secure MCP Tunnel"
+        description: >-
+          Connect the selected MCPHub endpoint to ChatGPT and other supported
+          OpenAI clients.
+      openai_runtime_api_key:
+        name: "OpenAI Runtime API Key"
+        description: >-
+          Runtime key used by OpenAI Secure MCP Tunnel. Leave empty while the
+          OpenAI tunnel is disabled.
+      tunnel_id:
+        name: "OpenAI Tunnel ID"
+        description: "Tunnel ID created for OpenAI Secure MCP Tunnel."
+      tunnel_mcp_path:
+        name: "OpenAI MCP route"
+        description: >-
+          MCPHub route exposed to OpenAI, for example /mcp, /mcp/development,
+          or /mcp/$smart.
+  cloudflare:
+    name: "Cloudflare Tunnel"
+    description: "Settings for Cloudflare Tunnel"
+    fields:
+      cloudflare_tunnel_enabled:
+        name: "Enable Cloudflare Tunnel"
+        description: >-
+          Expose one restricted MCPHub route through a remotely managed
+          Cloudflare Tunnel.
+      cloudflare_tunnel_token:
+        name: "Cloudflare Tunnel token"
+        description: "Connector token from a remotely managed Cloudflare Tunnel."
+      cloudflare_mcp_path:
+        name: "Cloudflare MCP route"
+        description: >-
+          Exact MCPHub route exposed through Cloudflare, for example
+          /mcp/development.
+      cloudflare_access_token:
+        name: "Cloudflare MCP client token"
+        description: >-
+          32-256 character client key that remote MCP clients must send in the
+          Authorization header.
+  home_assistant:
+    name: "Home Assistant MCP"
+    description: "Settings for Home Assistant MCP"
+    fields:
+      home_assistant_mcp_enabled:
+        name: "Enable managed Home Assistant MCP"
+        description: >-
+          Adds Home Assistant's MCP Server to MCPHub through a loopback-only bridge.
+          The Home Assistant MCP Server integration must already be configured.
+      home_assistant_mcp_server_name:
+        name: "Home Assistant MCP server name"
+        description: >-
+          Name used for the automatically registered MCPHub server (default: ha-home-assistant).
+          Must be unique. Renaming may affect existing MCPHub groups.
+      home_assistant_mcp_auth_mode:
+        name: "Home Assistant MCP authentication"
+        description: >-
+          restricted_user uses a dedicated Home Assistant user's token. supervisor
+          uses the automatic Supervisor token and requires no manually created token.
+      home_assistant_mcp_user_token:
+        name: "Dedicated Home Assistant user token"
+        description: >-
+          Long-Lived Access Token created while signed in as the dedicated Home
+          Assistant user. Used only when authentication is restricted_user.
+      home_assistant_mcp_url:
+        name: "Home Assistant MCP URL"
+        description: >-
+          Direct Home Assistant MCP endpoint used with restricted_user authentication.
+          Supports reachable LAN IPs, IPv6, local DNS names, custom ports, and HTTPS.
+  github:
+    name: "GitHub CLI MCP Server"
+    description: "Settings for GitHub CLI MCP Server"
+    fields:
+      github_cli_mcp_enabled:
+        name: "Enable GitHub CLI MCP"
+        description: >-
+          Persistently installs GitHub CLI on demand and automatically adds the
+          universal gh-cli-mcp-server to MCPHub.
+      github_token:
+        name: "GitHub token"
+        description: >-
+          Optional GitHub Personal Access Token for authenticated gh commands.
+          Required for private repositories and write operations.
+  logging:
+    name: "Logging"
+    description: "Settings for Logging"
+    fields:
+      tunnel_log_level:
+        name: "OpenAI tunnel log level"
+        description: "Verbosity of the OpenAI tunnel-client logs."
