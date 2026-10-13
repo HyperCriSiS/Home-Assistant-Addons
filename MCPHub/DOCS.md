@@ -456,3 +456,22 @@ Verify that:
 - the Tunnel ID is correct
 - the selected `tunnel_mcp_path` exists
 - MCPHub itself is healthy
+
+## Development changelog and stable promotion
+
+The development store builds the MCPHub App from `dev-mcphub` and gives it an
+independently increasing `-dev.N` version. These development revisions do not
+create new source `CHANGELOG.md` headings: their changes must be documented
+under the current App wrapper version in `MCPHub/CHANGELOG.md`.
+
+When merging user-visible App changes into `dev-mcphub`, update the current
+changelog entry with the actual new features, fixes, security changes, and any
+migration caveats. The upstream-update script records the upstream image bump;
+it cannot describe unrelated App wrapper changes made between upstream releases.
+
+Before promoting `dev-mcphub` to `main`, compare the candidate with the
+**currently released** MCPHub App on `main` and review all intervening
+changelog entries. Ensure the next stable release notes cover the full change
+set, including previously shipped development-only features, while retaining
+existing release history. Passing CI and a correct changelog version header
+alone do not establish that the notes are complete.

@@ -2,9 +2,33 @@
 
 ## v2026.10.12-1
 
+### Added
+
+- Grouped Home Assistant App settings into OpenAI, Cloudflare, Home Assistant MCP, GitHub CLI, and logging sections, with updated English and German translations.
+- Added a supervisor for the OpenAI Secure MCP Tunnel with liveness and readiness checks, automatic restart after prolonged failures, and backoff between retries.
+- Added an Ingress-only OpenAI tunnel control page with connection status and Start, Stop, and Reload actions, without restarting MCPHub.
+- Added configurable names for the managed Home Assistant MCP server, including safe rename and name-collision handling.
+
 ### Changed
 
 - Updated MCPHub from 1.1.1 to 1.1.3.
+- Showed the bundled MCPHub upstream version in the Home Assistant App description.
+- Allowed reachable LAN IPv4/IPv6 addresses, custom ports, and HTTPS hostnames with SNI for the managed Home Assistant MCP bridge.
+- Updated the MCPHub SVG wordmark and README logo positioning for consistent centering across browsers.
+
+### Fixed
+
+- Prevented optional OpenAI and Cloudflare tunnel failures, and an invalid OpenAI Tunnel ID, from shutting down MCPHub and Home Assistant Ingress.
+- Preserved an existing GitHub CLI token when its option is empty or the managed integration is disabled.
+- Kept runtime option readers compatible with both legacy flat and new grouped settings.
+
+### Security
+
+- Restricted OpenAI tunnel controls to the local Ingress adapter; tunnel credentials are not exposed by its status endpoint.
+
+### Upgrade notes
+
+- Home Assistant may not migrate saved App options when the option structure changes to groups. Check the OpenAI, Cloudflare, Home Assistant, and GitHub settings after upgrading; re-enter missing values before enabling affected integrations.
 
 ## v2026.10.12
 
