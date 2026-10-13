@@ -4,15 +4,13 @@ set -Eeuo pipefail
 readonly OPTIONS_FILE="/data/options.json"
 readonly MCPHUB_DATA_DIR="/data/mcphub"
 readonly SECRET_DIR="/data/secrets"
-readonly OPENAI_KEY_FILE="${SECRET_DIR}/openai_runtime_api_key"
-readonly OPENAI_AUTH_FILE="${SECRET_DIR}/mcphub_tunnel_authorization"
 readonly JWT_SECRET_FILE="${SECRET_DIR}/mcphub_jwt_secret"
 readonly HA_INGRESS_PROXY_SECRET_FILE="${SECRET_DIR}/mcphub_ha_ingress_proxy_secret"
 readonly CLOUDFLARE_TUNNEL_TOKEN_FILE="${SECRET_DIR}/cloudflare_tunnel_token"
 
 mcphub_pid=""
 nginx_pid=""
-openai_tunnel_pid=""
+tunnel_manager_pid=""
 cloudflare_tunnel_pid=""
 
 log_info() {
@@ -61,13 +59,13 @@ shutdown_processes() {
 
     trap - TERM INT EXIT
 
-    for pid in         "${cloudflare_tunnel_pid}"         "${openai_tunnel_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
+    for pid in         "${cloudflare_tunnel_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
         if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
             kill -TERM "${pid}" 2>/dev/null || true
         fi
     done
 
-    for pid in         "${cloudflare_tunnel_pid}"         "${openai_tunnel_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
+    for pid in         "${cloudflare_tunnel_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
         if [[ -n "${pid}" ]]; then
             wait "${pid}" 2>/dev/null || true
         fi
@@ -79,11 +77,6 @@ shutdown_processes() {
 trap 'shutdown_processes 143' TERM
 trap 'shutdown_processes 130' INT
 
-tunnel_enabled="$(option tunnel_enabled)"
-openai_runtime_api_key="$(option openai_runtime_api_key)"
-tunnel_id="$(option tunnel_id)"
-tunnel_mcp_path="$(option tunnel_mcp_path)"
-tunnel_log_level="$(option tunnel_log_level)"
 
 cloudflare_tunnel_enabled="$(option cloudflare_tunnel_enabled)"
 cloudflare_tunnel_enabled="${cloudflare_tunnel_enabled:-false}"
@@ -100,11 +93,6 @@ home_assistant_mcp_auth_mode="${home_assistant_mcp_auth_mode:-restricted_user}"
 mkdir -p     "${MCPHUB_DATA_DIR}"     "${SECRET_DIR}"     /data/home     /data/cache/npm     /data/cache/uv
 
 chmod 0700 "${SECRET_DIR}"
-
-if ! valid_mcp_path "${tunnel_mcp_path}"; then
-    log_error "tunnel_mcp_path must be /mcp or contain at most two safe path segments."
-    exit 1
-fi
 
 if ! valid_mcp_path "${cloudflare_mcp_path}"; then
     log_error "cloudflare_mcp_path must be /mcp or contain at most two safe path segments."
@@ -175,34 +163,9 @@ log_info "MCPHub is ready. Starting the Home Assistant Ingress adapter on port 8
 nginx -g 'daemon off;' &
 nginx_pid="$!"
 
-if [[ "${tunnel_enabled}" == "true" ]]; then
-    if [[ -z "${openai_runtime_api_key}" || -z "${tunnel_id}" ]]; then
-        log_warn "The OpenAI tunnel is enabled, but the Runtime API Key or Tunnel ID is missing."
-        log_warn "MCPHub will continue without the OpenAI tunnel."
-    elif [[ ! "${tunnel_id}" =~ ^tunnel_[0-9a-f]{32}$ ]]; then
-        log_warn "Invalid OpenAI Tunnel ID; skipping the optional tunnel while MCPHub remains available."
-    else
-        umask 077
-        printf '%s' "${openai_runtime_api_key}" > "${OPENAI_KEY_FILE}"
-        chmod 0600 "${OPENAI_KEY_FILE}"
-        unset openai_runtime_api_key
-
-        export CONTROL_PLANE_TUNNEL_ID="${tunnel_id}"
-        export MCP_SERVER_URL="http://127.0.0.1:3000${tunnel_mcp_path}"
-        export MCP_EXTRA_HEADERS="Authorization: file:${OPENAI_AUTH_FILE}"
-        export MCP_DISCOVERY_EXTRA_HEADERS="Authorization: file:${OPENAI_AUTH_FILE}"
-        export MCP_STARTUP_WAIT_TIMEOUT="30s"
-        export MCP_MAX_CONCURRENT_REQUESTS="20"
-        export HEALTH_LISTEN_ADDR="127.0.0.1:8080"
-        export LOG_LEVEL="${tunnel_log_level}"
-        export LOG_FORMAT="struct-text"
-        export LOG_HTTP_RAW_UNSAFE="false"
-
-        log_info "Starting the OpenAI Secure MCP Tunnel for ${tunnel_mcp_path}."
-        /usr/local/bin/tunnel-client run             --control-plane.api-key="file:${OPENAI_KEY_FILE}" &
-        openai_tunnel_pid="$!"
-    fi
-fi
+log_info "Starting isolated OpenAI Tunnel health and control manager."
+/usr/local/bin/tunnel_manager.py &
+tunnel_manager_pid="$!"
 
 if [[ "${cloudflare_tunnel_enabled}" == "true" ]]; then
     if [[ -z "${cloudflare_tunnel_token}" ]]; then
@@ -233,10 +196,11 @@ while true; do
         shutdown_processes 1
     fi
 
-    if [[ -n "${openai_tunnel_pid}" ]] && ! kill -0 "${openai_tunnel_pid}" 2>/dev/null; then
-        wait "${openai_tunnel_pid}" || true
-        log_warn "The OpenAI Secure MCP Tunnel exited; MCPHub remains available."
-        openai_tunnel_pid=""
+    if [[ -n "${tunnel_manager_pid}" ]] && ! kill -0 "${tunnel_manager_pid}" 2>/dev/null; then
+        wait "${tunnel_manager_pid}" || true
+        log_warn "OpenAI Tunnel manager exited; restarting supervisor, MCPHub remains available."
+        /usr/local/bin/tunnel_manager.py &
+        tunnel_manager_pid="$!"
     fi
     if [[ -n "${cloudflare_tunnel_pid}" ]] && ! kill -0 "${cloudflare_tunnel_pid}" 2>/dev/null; then
         wait "${cloudflare_tunnel_pid}" || true
