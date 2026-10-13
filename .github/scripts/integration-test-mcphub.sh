@@ -80,6 +80,41 @@ write_options
 start_addon
 wait_ready
 
+# The OpenAI tunnel supervisor must be reachable through Supervisor Ingress
+# without exposing a separate unauthenticated port or requiring a running tunnel.
+for _ in $(seq 1 15); do
+  if ingress_curl --fail --silent --show-error \
+      "http://${CONTAINER}:8099/_mcphub_tunnel/api/status" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+manager_status="$(ingress_curl --fail --silent --show-error \
+  "http://${CONTAINER}:8099/_mcphub_tunnel/api/status")"
+python3 - "${manager_status}" <<'PYTEST'
+import json
+import sys
+status = json.loads(sys.argv[1])
+assert status['state'] == 'stopped', status
+assert not status['process_alive'], status
+assert 'openai_runtime_api_key' not in status, status
+PYTEST
+
+# Browser form-like cross-origin requests must not be able to mutate the tunnel.
+response_code="$(ingress_curl --silent --output /dev/null --write-out '%{http_code}' \
+  --request POST --header 'Content-Type: application/json' --data '{}' \
+  "http://${CONTAINER}:8099/_mcphub_tunnel/api/start")"
+[[ "${response_code}" == "403" ]] || { echo 'Tunnel control accepted unauthenticated POST' >&2; exit 1; }
+
+# Even a requested start with incomplete credentials must not shut down MCPHub.
+ingress_curl --fail --silent --show-error \
+  --request POST --header 'Content-Type: application/json' \
+  --header 'X-MCPHub-Tunnel-Control: 1' --data '{}' \
+  "http://${CONTAINER}:8099/_mcphub_tunnel/api/start" >/dev/null
+docker exec "${CONTAINER}" curl --fail --silent --max-time 3 \
+  http://127.0.0.1:3000/health >/dev/null
+
 config_json="$(ingress_curl --fail --silent --show-error \
   --header "X-Ingress-Path: ${INGRESS_PATH}" \
   "http://${CONTAINER}:8099/config")"
