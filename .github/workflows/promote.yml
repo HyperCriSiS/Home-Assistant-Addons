@@ -4,7 +4,7 @@ name: Promote app development branches to main
 on:
   workflow_run:
     workflows:
-      - Validate add-on
+      - Validate Trilium
       - Validate MCPHub
       - HAOS integration
       - HAOS MCPHub integration

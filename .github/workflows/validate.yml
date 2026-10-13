@@ -1,5 +1,5 @@
 ---
-name: Validate add-on
+name: Validate Trilium
 
 on:
   pull_request:
