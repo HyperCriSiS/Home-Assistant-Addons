@@ -185,6 +185,36 @@ Allowed values are `debug`, `info`, and `warn`.
 Raw HTTP logging remains disabled so Authorization headers are not intentionally written
 to the App log.
 
+### Live tunnel controls and automatic recovery
+
+The OpenAI tunnel is supervised separately from MCPHub. Open the MCPHub Web UI
+through Home Assistant Ingress and append `/_mcphub_tunnel/` to its browser URL.
+For example, if the Ingress page ends in `/api/hassio_ingress/<session>/`, open
+`/api/hassio_ingress/<session>/_mcphub_tunnel/` on the same Home Assistant host.
+The control page provides **Start**, **Stop**, and **Reload** without restarting
+MCPHub itself. Access is restricted to the Home Assistant Ingress adapter.
+
+- The App starts the tunnel automatically if `tunnel_enabled` is true.
+- **Stop** pauses it for the running App session; the configured setting remains
+  unchanged and takes effect after an App restart.
+- **Reload** rereads the current App options, including the Runtime API Key,
+  without exposing the credentials to the page.
+- The manager checks `/healthz` and `/readyz` every five seconds. A running
+  but temporarily unready client is allowed to recover on its own. If its
+  process exits, its liveness fails for one minute, or its readiness stays
+  unavailable for ten minutes, it retries after exponential backoff (maximum
+  five minutes). An invalid/missing credential suspends retries until an
+  operator corrects the configuration and presses **Reload**.
+- Tunnel failure or restart does not stop MCPHub's Ingress dashboard or local
+  MCP servers. OpenAI connection availability is distinct from MCPHub health.
+- Changes to the MCP path may require an App restart to regenerate MCPHub's
+  own bearer-key scope; live reload only changes the tunnel client itself.
+
+The tunnel manager binds `127.0.0.1:8096`. The OpenAI client's native health
+listener is `127.0.0.1:8080`. Neither address is exposed directly through the
+Home Assistant host or the Cloudflare tunnel. The control page and JSON API
+contain no API keys, Tunnel IDs, or user tokens.
+
 ## Cloudflare Tunnel
 
 Cloudflare Tunnel provides a normal public HTTPS endpoint for remote MCP clients while

@@ -298,12 +298,11 @@ def main() -> None:
         if github_token:
             GITHUB_TOKEN_FILE.write_text(github_token, encoding="utf-8")
             os.chmod(GITHUB_TOKEN_FILE, 0o600)
-        elif GITHUB_TOKEN_FILE.exists():
-            GITHUB_TOKEN_FILE.unlink()
+        # An empty option after an App schema migration must never destroy a
+        # previously persisted credential. Explicit revocation is a separate action.
     else:
         mcp_servers.pop(GITHUB_CLI_SERVER_NAME, None)
-        if GITHUB_TOKEN_FILE.exists():
-            GITHUB_TOKEN_FILE.unlink()
+        # Keep saved credentials across disable/enable and schema migrations.
 
     temporary = SETTINGS_FILE.with_suffix(".json.tmp")
     with temporary.open("w", encoding="utf-8") as handle:
