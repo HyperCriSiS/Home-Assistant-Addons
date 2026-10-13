@@ -51,6 +51,16 @@ def ensure_secret(path: Path, factory) -> str:
     return value
 
 
+def flatten_grouped_options(data: dict) -> dict:
+    """Read legacy flat and grouped options."""
+    result = dict(data)
+    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+        section = data.get(group)
+        if isinstance(section, dict):
+            result.update(section)
+    return result
+
+
 def load_options() -> dict:
     """Load Home Assistant App options."""
     if not OPTIONS_FILE.exists():
@@ -62,7 +72,7 @@ def load_options() -> dict:
     if not isinstance(data, dict):
         raise ValueError("options.json must contain a JSON object")
 
-    return data
+    return flatten_grouped_options(data)
 
 
 def load_settings() -> dict:
