@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Isolated OpenAI tunnel health supervisor; control is only proxied via HA Ingress."""
+"""Isolated OpenAI tunnel supervisor and Ingress-only local control UI.
+
+Only the Nginx Home Assistant Ingress adapter may proxy this loopback service.
+Credentials are never returned through its API, logs, or status endpoint.
+"""
+
 from __future__ import annotations
 
 import json
@@ -54,6 +59,7 @@ def probe(route: str) -> bool:
 def private_key_file(value: str) -> None:
     KEY_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(KEY_FILE.parent, 0o700)
+    # Replace the key atomically without ever creating world-readable files.
     temporary = KEY_FILE.with_suffix('.tmp')
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
@@ -142,12 +148,11 @@ class TunnelManager:
             )
             self.started = now
             self.ready_since = self.not_live_since = self.not_ready_since = 0.0
-            self.last_checked = 0.0
             self.state = 'starting'
             self.last_error = ''
             LOG.info('Started optional OpenAI tunnel process (pid %d)', self.process.pid)
         except (ValueError, OSError, subprocess.SubprocessError) as exc:
-            # Invalid credentials must not trigger an endless restart loop.
+            # Invalid configuration requires a manual change/reload. Do not churn.
             self._stop()
             self.state = 'error'
             self.requested = False
@@ -231,32 +236,34 @@ class TunnelManager:
             self._stop()
 
 
-PAGE = """<!doctype html>
+PAGE = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OpenAI Tunnel Control</title><style>
 :root{font-family:system-ui,sans-serif;color-scheme:light dark}body{max-width:650px;margin:3rem auto;padding:0 1rem;line-height:1.5}
 button{font:inherit;padding:.55rem .9rem;margin:.25rem .4rem .25rem 0;cursor:pointer}button:disabled{cursor:wait;opacity:.5}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;border:1px solid #777;border-radius:.4rem}
 </style></head><body><h1>OpenAI Secure Tunnel</h1><p>Manage the tunnel without restarting MCPHub.</p>
 <p><strong id="state">Checking…</strong></p><p id="detail" aria-live="polite"></p>
 <div><button data-action="start">Start</button><button data-action="stop">Stop</button><button data-action="reload">Reload</button></div>
-<p>Automatic health checks isolate tunnel failures from MCPHub. Changes to bearer-key scopes may require an App restart.</p>
-<script src="app.js" defer></script></body></html>"""
+<p>Health monitoring checks the local tunnel process and readiness. Temporary network failures are left to the client;
+prolonged failures trigger a delayed restart. Changes to MCPHub bearer-key scopes may still require an App restart.</p>
+<script src="app.js" defer></script></body></html>'''
 
-SCRIPT = """async function refresh(){try{const r=await fetch('api/status',{cache:'no-store'});
+SCRIPT = '''async function refresh(){try{const r=await fetch('api/status',{cache:'no-store'});
 const d=await r.json();document.getElementById('state').textContent=d.state;
-document.getElementById('detail').textContent=d.last_error || (d.state==='retrying'?\u0060Retry in ${d.retry_in_seconds}s\u0060:'');
+document.getElementById('detail').textContent=d.last_error || (d.state==='retrying'?`Retry in ${d.retry_in_seconds}s`:'');
 }catch(_){document.getElementById('state').textContent='Status unavailable';}}
 document.querySelectorAll('button[data-action]').forEach(b=>b.addEventListener('click',async()=>{
 for(const x of document.querySelectorAll('button'))x.disabled=true;
 try{await fetch('api/'+b.dataset.action,{method:'POST',headers:{'Content-Type':'application/json','X-MCPHub-Tunnel-Control':'1'},body:'{}'});await refresh();}
 finally{for(const x of document.querySelectorAll('button'))x.disabled=false;}}));
-refresh();setInterval(refresh,5000);"""
+refresh();setInterval(refresh,5000);'''
 
 
 def handler_for(manager: TunnelManager):
     class Handler(BaseHTTPRequestHandler):
-        def log_message(self, fmt: str, *args) -> None:
-            LOG.debug('Control HTTP: ' + fmt, *args)
+        def log_message(self, format: str, *args) -> None:
+            LOG.debug('Control HTTP: ' + format, *args)
 
         def send(self, content: bytes, mime: str, status: int = 200) -> None:
             self.send_response(status)
@@ -307,6 +314,7 @@ def main() -> None:
 
     def stop(_signum, _frame):
         halted.set()
+        # shutdown() must be called by another thread, not the signal handler.
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
