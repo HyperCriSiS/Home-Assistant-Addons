@@ -17,7 +17,10 @@ configuration:
           Leave empty while the OpenAI tunnel is disabled.
       tunnel_id:
         name: "OpenAI Tunnel ID"
-        description: "The Tunnel ID is shown on the OpenAI API key setup page: https://platform.openai.com/settings/organization/api-keys"
+        description: >-
+          Tunnel ID starts with tunnel_. Find it in OpenAI Tunnel settings:
+          https://platform.openai.com/settings/organization/tunnels
+          Do not use an API key Tracking ID.
       tunnel_mcp_path:
         name: "OpenAI MCP route"
         description: >-
