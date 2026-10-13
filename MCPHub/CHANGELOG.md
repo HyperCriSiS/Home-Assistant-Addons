@@ -19,6 +19,10 @@
 
 ### Fixed
 
+- Verify Home Assistant MCP HTTPS certificates and hostnames, retaining certificate-free LAN HTTP and supporting trusted private CA files.
+- Isolate invalid or disabled OpenAI and Cloudflare tunnel settings so MCPHub and Ingress remain available.
+- Execute URL security assertions in CI and rebuild and verify the exact tested HAOS image revision.
+
 - Prevented optional OpenAI and Cloudflare tunnel failures, and an invalid OpenAI Tunnel ID, from shutting down MCPHub and Home Assistant Ingress.
 - Preserved an existing GitHub CLI token when its option is empty or the managed integration is disabled.
 - Kept runtime option readers compatible with both legacy flat and new grouped settings.

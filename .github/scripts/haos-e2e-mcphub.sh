@@ -16,6 +16,13 @@ rm -rf "${TARGET_DIR}"
 mkdir -p "${TARGET_DIR}"
 rsync -a --delete "MCPHub/" "${TARGET_DIR}/"
 
+checked_out_sha="$(git rev-parse HEAD)"
+if [[ -n "${HAOS_EXPECTED_SHA:-}" && "${checked_out_sha}" != "${HAOS_EXPECTED_SHA}" ]]; then
+  echo "Checked-out SHA does not match validated commit" >&2
+  exit 1
+fi
+printf '%s\n' "${checked_out_sha}" > "${TARGET_DIR}/.haos-source-revision"
+
 "${ha_cli[@]}" addons reload
 
 if ! "${ha_cli[@]}" addons info "${ADDON_SLUG}" >/dev/null 2>&1; then
@@ -29,6 +36,9 @@ installed="$(python3 -c 'import json,sys; d=json.loads(sys.argv[1]); print(str(d
 
 if [[ "${installed}" != "true" ]]; then
   "${ha_cli[@]}" addons install "${ADDON_SLUG}"
+else
+  # Restart alone can execute the old image; rebuild the validated source.
+  "${ha_cli[@]}" addons rebuild "${ADDON_SLUG}"
 fi
 
 "${ha_cli[@]}" addons restart "${ADDON_SLUG}" || "${ha_cli[@]}" addons start "${ADDON_SLUG}"
@@ -71,6 +81,11 @@ fi
 
 logs="$("${ha_cli[@]}" addons logs "${ADDON_SLUG}" 2>&1 || true)"
 printf '%s\n' "${logs}"
+
+if ! grep -Fq "Build source revision: ${checked_out_sha}" <<<"${logs}"; then
+  echo "HAOS is not running an image built from the validated commit" >&2
+  exit 1
+fi
 
 if grep -Eiq 'uncaught exception|unhandled rejection|FATAL|migration failed|SQLITE_CORRUPT' <<<"${logs}"; then
   echo "Critical error pattern found in HAOS MCPHub logs" >&2
