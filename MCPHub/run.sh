@@ -180,8 +180,7 @@ if [[ "${tunnel_enabled}" == "true" ]]; then
         log_warn "The OpenAI tunnel is enabled, but the Runtime API Key or Tunnel ID is missing."
         log_warn "MCPHub will continue without the OpenAI tunnel."
     elif [[ ! "${tunnel_id}" =~ ^tunnel_[0-9a-f]{32}$ ]]; then
-        log_error "The OpenAI Tunnel ID must match tunnel_ followed by 32 lowercase hexadecimal characters."
-        shutdown_processes 1
+        log_warn "Invalid OpenAI Tunnel ID; skipping the optional tunnel while MCPHub remains available."
     else
         umask 077
         printf '%s' "${openai_runtime_api_key}" > "${OPENAI_KEY_FILE}"
