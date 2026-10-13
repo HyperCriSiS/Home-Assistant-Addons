@@ -222,23 +222,28 @@ if [[ "${cloudflare_tunnel_enabled}" == "true" ]]; then
     fi
 fi
 
-pids=("${mcphub_pid}" "${nginx_pid}")
-[[ -n "${openai_tunnel_pid}" ]] && pids+=("${openai_tunnel_pid}")
-[[ -n "${cloudflare_tunnel_pid}" ]] && pids+=("${cloudflare_tunnel_pid}")
+# Optional remote tunnels must never take MCPHub or its Ingress adapter down.
+# Monitor their lifecycle independently; only core process failures stop the App.
+while true; do
+    if ! kill -0 "${mcphub_pid}" 2>/dev/null; then
+        log_error "MCPHub exited unexpectedly."
+        shutdown_processes 1
+    fi
+    if ! kill -0 "${nginx_pid}" 2>/dev/null; then
+        log_error "The Home Assistant proxy adapter exited unexpectedly."
+        shutdown_processes 1
+    fi
 
-set +e
-wait -n "${pids[@]}"
-status="$?"
-set -e
-
-if ! kill -0 "${mcphub_pid}" 2>/dev/null; then
-    log_error "MCPHub exited unexpectedly."
-elif ! kill -0 "${nginx_pid}" 2>/dev/null; then
-    log_error "The Home Assistant proxy adapter exited unexpectedly."
-elif [[ -n "${openai_tunnel_pid}" ]]     && ! kill -0 "${openai_tunnel_pid}" 2>/dev/null; then
-    log_error "The OpenAI Secure MCP Tunnel exited unexpectedly."
-elif [[ -n "${cloudflare_tunnel_pid}" ]]     && ! kill -0 "${cloudflare_tunnel_pid}" 2>/dev/null; then
-    log_error "Cloudflare Tunnel exited unexpectedly."
-fi
-
-shutdown_processes "${status}"
+    if [[ -n "${openai_tunnel_pid}" ]] && ! kill -0 "${openai_tunnel_pid}" 2>/dev/null; then
+        wait "${openai_tunnel_pid}" || true
+        log_warn "The OpenAI Secure MCP Tunnel exited; MCPHub remains available."
+        openai_tunnel_pid=""
+    fi
+    if [[ -n "${cloudflare_tunnel_pid}" ]] && ! kill -0 "${cloudflare_tunnel_pid}" 2>/dev/null; then
+        wait "${cloudflare_tunnel_pid}" || true
+        log_warn "Cloudflare Tunnel exited; MCPHub remains available."
+        cloudflare_tunnel_pid=""
+    fi
+    sleep 2 &
+    wait "$!" || true
+done
