@@ -231,6 +231,6 @@ jobs:
             --base main \
             --head release/mcphub-candidate \
             --title "release(mcphub): validated candidate with complete changelog" \
-            --body "Release candidate generated from dev-mcphub. Its changelog lists every relevant commit and changed file since the current stable main release, followed by the human-written release notes. Requires manual review and merge; main is never updated automatically."; then
+            --body "Promotes the reviewed MCPHub candidate with a complete Stable changelog. Manual merge only."; then
             echo "Unable to open stable release PR; manual promotion remains available." >&2
           fi
