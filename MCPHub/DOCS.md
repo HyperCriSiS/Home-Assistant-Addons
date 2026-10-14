@@ -105,7 +105,13 @@ The direct URL is not tied to any particular LAN subnet. Any Home Assistant MCP
 endpoint reachable from the App network can be used, including addresses in
 `192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`, IPv6, or a resolvable
 local DNS hostname. Non-default ports and HTTPS are supported. For HTTPS
-hostnames the proxy enables SNI.
+hostnames the proxy enables SNI and **verifies the certificate and hostname**.
+Ordinary LAN HTTP works without a certificate and is unchanged. For an HTTPS
+endpoint with a private CA, place a PEM CA file in Home Assistant's SSL share,
+for example `/ssl/home-assistant-ca.pem`, and set `home_assistant_mcp_ca_file`
+to that path. The SSL share is mounted read-only. Untrusted or hostname-mismatched
+HTTPS certificates are rejected without an insecure fallback. A malformed CA
+file disables only the managed Home Assistant MCP bridge, not MCPHub or Ingress.
 
 Prefer a normal LAN IP or DNS name that resolves from containers. An mDNS-only
 `*.local` hostname is not guaranteed to resolve in every Home Assistant App

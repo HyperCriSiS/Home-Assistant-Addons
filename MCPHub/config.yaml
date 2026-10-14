@@ -1,6 +1,6 @@
 ---
 name: "MCPHub (Dev)"
-version: "v2026.10.12-1-dev.92"
+version: "v2026.10.12-1-dev.93"
 slug: mcphub
 description: >-
   MCPHub 1.1.3 - central MCP server management with optional Home Assistant,
@@ -22,6 +22,9 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
+map:
+  - type: ssl
+    read_only: true
 options:
   openai:
     tunnel_enabled: false
@@ -39,6 +42,7 @@ options:
     home_assistant_mcp_auth_mode: "restricted_user"
     home_assistant_mcp_user_token: ""
     home_assistant_mcp_url: "http://homeassistant:8123/api/mcp"
+    home_assistant_mcp_ca_file: ""
   github:
     github_cli_mcp_enabled: false
     github_token: ""
@@ -61,6 +65,7 @@ schema:
     home_assistant_mcp_auth_mode: "list(supervisor|restricted_user)"
     home_assistant_mcp_user_token: password
     home_assistant_mcp_url: str
+    home_assistant_mcp_ca_file: str?
   github:
     github_cli_mcp_enabled: bool
     github_token: password
