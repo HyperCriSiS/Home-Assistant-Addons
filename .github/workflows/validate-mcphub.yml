@@ -327,7 +327,7 @@ jobs:
                 grep -q "proxy_pass http://supervisor/core/api/mcp" /etc/nginx/conf.d/mcphub.conf'
 
 
-          docker run --rm --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
+          docker run --rm -i --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
           import importlib.util
           from pathlib import Path
 
@@ -368,6 +368,15 @@ jobs:
                       f"Unsafe Home Assistant MCP URL accepted: {value}"
                   )
           PY
+
+          # Negative control: ensure heredoc assertions do execute in Docker.
+          if docker run --rm -i --entrypoint /usr/bin/python3 mcphub-addon:test - <<'PY'
+          raise AssertionError("Container stdin test must fail")
+          PY
+          then
+            echo "Docker container ignored Python stdin" >&2
+            exit 1
+          fi
 
           grep -q 'allow 172.30.32.2;' "MCPHub/ingress.conf"
 

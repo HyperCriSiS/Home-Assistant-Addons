@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import ssl
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -20,6 +22,10 @@ CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 HA_MCP_PATH_PATTERN = re.compile(r"^/api/mcp(?:/[A-Za-z0-9._~-]+)?$")
 ACCESS_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._~-]{20,4096}$")
+SYSTEM_CA_FILE = Path("/etc/ssl/certs/ca-certificates.crt")
+CUSTOM_CA_ROOT = Path("/ssl")
+# Only allow PEM files within the read-only Home Assistant SSL share.
+CUSTOM_CA_PATTERN = re.compile(r"^/ssl/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.pem$")
 
 
 def flatten_grouped_options(data: dict) -> dict:
@@ -77,6 +83,32 @@ def validate_home_assistant_mcp_url(value: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
 
 
+def trusted_home_assistant_ca_file(configured: str) -> Path:
+    """Select a verified CA bundle without falling back to insecure HTTPS."""
+    if not configured:
+        return SYSTEM_CA_FILE
+    if not CUSTOM_CA_PATTERN.fullmatch(configured):
+        raise ValueError("home_assistant_mcp_ca_file must be a PEM file below /ssl")
+    try:
+        ca_file = (CUSTOM_CA_ROOT / configured.removeprefix("/ssl/")).resolve(strict=True)
+        ca_file.relative_to(CUSTOM_CA_ROOT.resolve())
+        if not ca_file.is_file():
+            raise ValueError("home_assistant_mcp_ca_file must be a regular file")
+        ssl.create_default_context(cafile=str(ca_file))
+    except (OSError, ValueError, ssl.SSLError) as err:
+        raise ValueError("home_assistant_mcp_ca_file is invalid or unreadable") from err
+    return ca_file
+
+
+def unavailable_home_assistant_mcp_block() -> str:
+    """Fail closed for invalid CA settings without taking down Ingress."""
+    return """server {
+    listen 127.0.0.1:8097;
+    access_log off;
+    location / { return 502; }
+}"""
+
+
 def home_assistant_mcp_server_block(options: dict) -> str:
     """Build a loopback-only bridge to Home Assistant's MCP endpoint."""
     if not bool(options.get("home_assistant_mcp_enabled", False)):
@@ -118,6 +150,23 @@ def home_assistant_mcp_server_block(options: dict) -> str:
             f"{mode_label} token is missing or contains unexpected characters"
         )
 
+    # HTTPS must verify the CA and hostname; LAN HTTP needs no TLS settings.
+    ssl_directives = ""
+    if upstream.startswith("https://"):
+        try:
+            ca_file = trusted_home_assistant_ca_file(
+                str(options.get("home_assistant_mcp_ca_file", "")).strip()
+            )
+        except ValueError as err:
+            print(f"[WARN] Home Assistant MCP HTTPS unavailable: {err}", file=sys.stderr)
+            return unavailable_home_assistant_mcp_block()
+        ssl_directives = (
+            "        proxy_ssl_server_name on;\n"
+            "        proxy_ssl_verify on;\n"
+            f"        proxy_ssl_trusted_certificate {ca_file};\n"
+            "        proxy_ssl_verify_depth 5;"
+        )
+
     return f"""server {{
     listen 127.0.0.1:8097;
 
@@ -136,8 +185,7 @@ def home_assistant_mcp_server_block(options: dict) -> str:
         proxy_set_header X-Forwarded-For "";
         proxy_set_header X-Forwarded-Proto "";
 
-        # HTTPS local endpoints may require SNI. This is harmless for HTTP.
-        proxy_ssl_server_name on;
+{ssl_directives}
 
         proxy_buffering off;
         proxy_request_buffering off;
@@ -170,14 +218,20 @@ def cloudflare_server_block(
 }"""
 
     if not MCP_PATH_PATTERN.fullmatch(mcp_path):
-        raise ValueError(
-            "cloudflare_mcp_path must be /mcp or contain at most two safe path segments"
-        )
+        print("[WARN] Invalid Cloudflare path; origin denies all requests", file=sys.stderr)
+        return """server {
+    listen 127.0.0.1:8098;
+    access_log off;
+    location / { return 404; }
+}"""
 
     if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", client_token):
-        raise ValueError(
-            "cloudflare_access_token must contain 32-256 letters, numbers, underscores, or dashes"
-        )
+        print("[WARN] Invalid Cloudflare client key; origin denies all requests", file=sys.stderr)
+        return """server {
+    listen 127.0.0.1:8098;
+    access_log off;
+    location / { return 404; }
+}"""
 
     location_pattern = re.escape(mcp_path)
 

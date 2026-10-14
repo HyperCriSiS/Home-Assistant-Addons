@@ -77,6 +77,11 @@ configuration:
         description: >-
           Direct Home Assistant MCP endpoint used with restricted_user authentication.
           Supports reachable LAN IPs, IPv6, local DNS names, custom ports, and HTTPS.
+      home_assistant_mcp_ca_file:
+        name: "Home Assistant HTTPS CA file (optional)"
+        description: >-
+          Only for HTTPS with a private CA: trusted PEM file path under /ssl,
+          e.g. /ssl/home-assistant-ca.pem. Leave empty for HTTP or public HTTPS.
   github:
     name: "GitHub CLI MCP Server"
     description: "Settings for GitHub CLI MCP Server"

@@ -37,14 +37,15 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Check out validated MCPHub development branch
+      - name: Check out validated MCPHub commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: dev-mcphub
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'dev-mcphub' }}
           persist-credentials: false
 
       - name: Run Home Assistant OS MCPHub test harness
         env:
+          HAOS_EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
           HAOS_ADDONS_DIR: ${{ vars.HAOS_ADDONS_DIR }}
           HAOS_BASE_URL: ${{ vars.HAOS_BASE_URL }}
           HAOS_TOKEN: ${{ secrets.HAOS_TOKEN }}
