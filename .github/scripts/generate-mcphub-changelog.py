@@ -37,7 +37,7 @@ def git(*args: str) -> str:
 
 def commits(previous: str, current: str) -> list[dict[str, str]]:
     output = git(
-        "log", "--no-merges", "--format=%H%x1f%s%x1e",
+        "log", "--full-history", "--format=%H%x1f%s%x1e",
         f"{previous}..{current}", "--", *RELATED,
     )
     entries = []
@@ -131,7 +131,10 @@ def dev(repository: str) -> None:
         })
     HISTORY.write_text(json.dumps(previous, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    source = CHANGELOG.read_text(encoding="utf-8")
+    # Read only the curated source, never a generated dev-store changelog.
+    source = subprocess.check_output(
+        ["git", "show", "origin/dev-mcphub:MCPHub/CHANGELOG.md"], text=True
+    )
     prefix = "# Changelog\n\n"
     if not source.startswith(prefix):
         raise ValueError("Unexpected source changelog header")
