@@ -51,6 +51,8 @@ SSH_ARGS=(
   -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
   -o ConnectTimeout=5 -o LogLevel=ERROR
 )
+# Remote command arguments intentionally expand locally before SSH transmits them.
+# shellcheck disable=SC2029
 remote() { ssh "${SSH_ARGS[@]}" root@127.0.0.1 "$@"; }
 
 echo "Waiting for HAOS Supervisor bootstrap"
@@ -117,11 +119,11 @@ wait_for_health() {
   done
   return 1
 }
-wait_for_app && wait_for_health || {
+if ! wait_for_app || ! wait_for_health; then
   remote "ha apps logs $APP" || true
   echo "MCPHub failed to become healthy on HAOS" >&2
   exit 1
-}
+fi
 
 echo "Checking Nginx and disabled remote origins inside Supervisor-managed app"
 remote "docker exec app_$APP nginx -t"
@@ -131,7 +133,10 @@ for port in 8094 8095; do
 done
 
 remote "ha apps restart $APP"
-wait_for_app && wait_for_health || { echo "MCPHub failed after Supervisor restart" >&2; exit 1; }
+if ! wait_for_app || ! wait_for_health; then
+  echo "MCPHub failed after Supervisor restart" >&2
+  exit 1
+fi
 logs="$(remote "ha apps logs $APP" 2>&1)"
 printf '%s\n' "$logs" > "${GITHUB_WORKSPACE:-.}/haos-test-logs-app.log"
 grep -Fq "Build source revision: $commit" <<< "$logs" || {
