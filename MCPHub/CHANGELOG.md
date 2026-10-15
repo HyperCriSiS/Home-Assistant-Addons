@@ -5,7 +5,7 @@
 ### Added
 
 - Central tunnel management for OpenAI, Cloudflare, Tailscale Serve and Funnel, including independent status checks and access controls.
-- Optional Tailscale Serve/Funnel MCP access with dedicated tokens and restricted routes; disabled by default.
+- Optional Tailscale Serve/Funnel MCP access through private Unix sockets, with dedicated tokens and restricted routes; disabled by default.
 - Configurable names for the managed Home Assistant MCP server.
 
 ### Changed

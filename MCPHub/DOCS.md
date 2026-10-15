@@ -299,61 +299,60 @@ dashboard credential in MCPHub.
 
 ## Tailscale Serve and Funnel (existing Community App required)
 
-**Prerequisite:** Install and connect the separate [Tailscale Home Assistant Community App](https://github.com/hassio-addons/app-tailscale). MCPHub does not install or control another Tailscale daemon. If Tailscale is missing/offline, MCPHub and existing OpenAI/Cloudflare paths stay available.
+Install and connect the separate [Tailscale Community App](https://github.com/hassio-addons/app-tailscale). Leave `share_homeassistant: disabled` — enabling it for Funnel would publish the Home Assistant UI, not MCPHub.
 
-Do **not** use `share_homeassistant: funnel` for this purpose: it publishes the **Home Assistant interface**, not MCPHub. Leave that option disabled (or keep an independently configured Home Assistant-only Serve listener on another port). The community App's `services` option offers only private Serve; a separate Funnel for MCPHub must be configured with the Tailscale CLI in its container.
+### MCPHub setup and safe origins
 
-### MCPHub configuration
+MCPHub provides **two Unix-domain sockets**, not host-published TCP ports:
 
-1. Make a Home Assistant backup of MCPHub.
-2. Enable `tailscale_serve_enabled` and/or `tailscale_funnel_enabled` in the new Tailscale configuration group.
-3. Select a **narrow** MCPHub group route (for example `/mcp/development`) instead of granting access to every MCP server using `/mcp`.
-4. Generate **different** random keys for `tailscale_serve_access_token` and `tailscale_funnel_access_token`. They must each be 32–256 letters/digits/underscore/dash characters. These keys are distinct from the private MCPHub system keys.
-5. In MCPHub's App **Network** tab, map `8094/tcp` to host port **8094** for Serve, and/or `8095/tcp` to host port **8095** for Funnel. Both mappings default to **disabled**. Restart the App.
+- Serve: `/share/mcphub/tailscale-serve.sock`
+- Funnel: `/share/mcphub/tailscale-funnel.sock`
 
-These backend ports may also be accessible on the LAN when published by Home Assistant; they are **not guaranteed loopback-only**. This is why both paths **always** require a client bearer token, including private Serve. Do not forward these ports from your router to the internet. The origin returns 404 for every route other than the explicitly configured MCP path (including the MCPHub dashboard and API), returns 401 for a missing/wrong token on the allowed path, strips Home Assistant identity/trust headers, and substitutes a separate route-scoped internal MCPHub key. If a mode is disabled or misconfigured, its origin returns only 404.
+MCPHub creates a 0700-protected directory in the Home Assistant `/share` volume. The Community Tailscale App already mounts this volume and can access these sockets directly. No MCPHub Network tab port mapping is needed or permitted. If you configured port 8094 or 8095 in an earlier PR draft, remove that mapping before restarting MCPHub. Other privileged Apps with access to the shared volume could potentially reach these sockets, so independent client bearer tokens are **still mandatory**.
 
-### Existing Tailscale App configuration
+1. Back up MCPHub. Enable `tailscale_serve_enabled` and/or `tailscale_funnel_enabled`.
+2. Use a narrowly scoped route such as `/mcp/development`.
+3. Generate a **different** random 32–256-character key for each of `tailscale_serve_access_token` and `tailscale_funnel_access_token`.
+4. Restart MCPHub after changing credentials or routes. The origin sockets are created on startup; external Tailscale listeners are configured separately.
 
-In the [Tailscale admin console](https://login.tailscale.com/admin), enable MagicDNS and HTTPS certificates; Funnel additionally requires Funnel node permission. **Home Assistant itself may continue using local HTTP.** The Community App runs on the host network, so its Tailscale reverse proxy can use the MCPHub host port as a loopback origin.
+Each socket permits only its configured exact MCP route. A missing or incorrect bearer key returns 401, a closed local access gate returns 403, and unrelated routes return 404. Home Assistant identity/trust headers are stripped and replaced by distinct internal, route-scoped MCPHub keys.
 
-From **inside the separate Tailscale App container**, run only the modes you enabled (the Tailscale executable is normally `/opt/tailscale`):
+### Tailscale Community App setup
+
+Enable MagicDNS and HTTPS certificates in the [Tailscale admin console](https://login.tailscale.com/admin); public Funnel requires Funnel permission in the tailnet policy. Home Assistant itself can remain on local HTTP.
+
+Run only the relevant commands **inside the separate Tailscale App container**. Its executable is usually `/opt/tailscale`:
 
 ```sh
 /opt/tailscale serve status
 /opt/tailscale funnel status
-/opt/tailscale serve --bg --https=10000 http://127.0.0.1:8094
-/opt/tailscale funnel --bg --https=8443 http://127.0.0.1:8095
+/opt/tailscale serve --bg --https=10000 unix:/share/mcphub/tailscale-serve.sock
+/opt/tailscale funnel --bg --https=8443 unix:/share/mcphub/tailscale-funnel.sock
 ```
 
-A Home Assistant administrator needs container CLI access to set these up. Verify the version-specific CLI syntax with `/opt/tailscale serve --help` and `/opt/tailscale funnel --help` before running. The Community App does **not** provide dedicated MCPHub Funnel toggles, and MCPHub cannot turn a Tailscale listener on or off just by changing an MCPHub checkbox. Enabling/disabling Funnel at Tailscale must be done separately.
+Ensure the installed Tailscale version supports `unix:` targets (check `serve --help` and `funnel --help`). These modes **must use different external HTTPS ports**. Funnel supports 443, 8443 and 10000.
 
-The two modes **must not** use the same external HTTPS port: the last Serve/Funnel command would otherwise change the entire port's visibility. If `share_homeassistant` uses the default port 443, the example ports 8443 and 10000 remain separate. Check they are otherwise unused. Funnel external ports are limited to 443, 8443, and 10000.
+Example addresses: `https://ha-device.tailnet.ts.net:10000/mcp/development` (private Serve) and `https://ha-device.tailnet.ts.net:8443/mcp/development` (public Funnel). Configure the client with `Authorization: Bearer <corresponding-client-key>`. Test 401 without the token, 404 on unrelated paths, and a successful MCP request with the correct token. Test Funnel from outside the tailnet.
 
-Example URLs (replace the host and group):
+### Important limits
 
-- Serve, tailnet devices only: `https://ha-device.tailnet.ts.net:10000/mcp/development`
-- Funnel, public HTTPS: `https://ha-device.tailnet.ts.net:8443/mcp/development`
+MCPHub's Start/Stop dashboard actions **only grant or block MCP access**. They do not start/stop the external Tailscale daemon or remove the public Funnel listener; external transport health is displayed as unknown until a supported integration exists. Listener changes require the Tailscale CLI.
 
-Configure the remote MCP client to send `Authorization: Bearer <matching-mode-client-key>`. Test first without the header (401 expected on the selected path), with an invalid path (404 expected), and finally with a valid token (MCP works). Test Serve from a tailnet-connected device and Funnel from a device **outside** the tailnet.
-
-**Client compatibility:** This design uses static bearer headers; remote MCP clients that only support OAuth discovery or dynamic OAuth registration may require an additional OAuth proxy. In particular, do not assume a raw Funnel URL can be registered as a ChatGPT MCP connector without checking the client's authentication capabilities.
-
-Tailscale Funnel is available even on the free Personal tier, but is currently beta with relay bandwidth limits. Review the [official Funnel documentation](https://tailscale.com/docs/features/tailscale-funnel) and [Community App documentation](https://github.com/hassio-addons/app-tailscale/blob/main/tailscale/DOCS.md) before public exposure.
+Clients that require OAuth registration instead of static bearer headers may need an OAuth-capable proxy. Tailscale Funnel remains beta; review the [official Funnel documentation](https://tailscale.com/docs/features/tailscale-funnel) and [Community App documentation](https://github.com/hassio-addons/app-tailscale/blob/main/tailscale/DOCS.md) before enabling public access.
 
 ## Tunnelverwaltung (Home Assistant Ingress only)
 
-Die zentrale Steueroberfläche ist über `/_mcphub_tunnels/` unter der authentifizierten MCPHub-Ingress-URL erreichbar. Sie zeigt OpenAI, Cloudflare, Tailscale Serve und Tailscale Funnel getrennt an.
+Die zentrale SteueroberflÃ¤che ist Ã¼ber `/_mcphub_tunnels/` unter der authentifizierten MCPHub-Ingress-URL erreichbar. Sie zeigt OpenAI, Cloudflare, Tailscale Serve und Tailscale Funnel getrennt an.
 
-- **OpenAI**: eigener überwachter Tunnel-Prozess mit `/healthz` und `/readyz`; Start/Stop/Reload und Backoff.
-- **Cloudflare**: `cloudflared` wird eigenständig verwaltet; HTTP-`/ready` am ausschließlich lokalen Metrics-Port sowie die MCP-Proxy-Route werden geprüft. Für längere Fehler erfolgt ein verzögerter Neustart. Tunnel- und Client-Tokens werden niemals in API-Statusmeldungen oder Prozessargumenten angezeigt.
-- **Tailscale Serve/Funnel**: Zugang freigeben/sperren über einen in Nginx erzwungenen lokalen Status-Gate, getrennt für beide Modi. Gesperrte Zugänge werden unmittelbar blockiert, auch wenn der Tailscale-Listener weiterhin läuft. Ein abgesicherter, dokumentierter Kontrollkanal zum **externen** Tailscale Community App Daemon existiert nicht. Die Oberfläche gibt den tatsächlichen Status des Tailnet-/Funnel-Listeners deshalb ausdrücklich als *nicht verifizierbar* an. Sie behauptet weder, durch den Zugangsschalter die CLI-Freigabe zu entfernen, noch, den öffentlichen Zugang vollständig auszuschalten. Bei Freigabe zeigt ein lokaler 401-Probe, dass das Origin Token-Authentication erzwingt; das beweist keine öffentliche Erreichbarkeit.
+- **OpenAI**: eigener Ã¼berwachter Tunnel-Prozess mit `/healthz` und `/readyz`; Start/Stop/Reload und Backoff.
+- **Cloudflare**: `cloudflared` wird eigenstÃ¤ndig verwaltet; HTTP-`/ready` am ausschlieÃlich lokalen Metrics-Port sowie die MCP-Proxy-Route werden geprÃ¼ft. FÃ¼r lÃ¤ngere Fehler erfolgt ein verzÃ¶gerter Neustart. Tunnel- und Client-Tokens werden niemals in API-Statusmeldungen oder Prozessargumenten angezeigt.
+- **Tailscale Serve/Funnel**: Zugang freigeben/sperren Ã¼ber einen in Nginx erzwungenen lokalen Status-Gate, getrennt fÃ¼r beide Modi. Gesperrte ZugÃ¤nge werden unmittelbar blockiert, auch wenn der Tailscale-Listener weiterhin lÃ¤uft. Ein abgesicherter, dokumentierter Kontrollkanal zum **externen** Tailscale Community App Daemon existiert nicht. Die OberflÃ¤che gibt den tatsÃ¤chlichen Status des Tailnet-/Funnel-Listeners deshalb ausdrÃ¼cklich als *nicht verifizierbar* an. Sie behauptet weder, durch den Zugangsschalter die CLI-Freigabe zu entfernen, noch, den Ã¶ffentlichen Zugang vollstÃ¤ndig auszuschalten. Bei Freigabe zeigt ein lokaler 401-Probe, dass das Origin Token-Authentication erzwingt; das beweist keine Ã¶ffentliche Erreichbarkeit.
 
-Die gesamte Verwaltungsoberfläche ist wie der bisherige OpenAI-Manager nur vom festen Home Assistant Supervisor-Ingress-Gateway erreichbar; der lokale Dienst bindet an `127.0.0.1:8093`. Kein Steuerendpunkt wird auf den Serve-/Funnel-Ursprungsports oder über OpenAI/Cloudflare exponiert.
+Die gesamte VerwaltungsoberflÃ¤che ist wie der bisherige OpenAI-Manager nur vom festen Home Assistant Supervisor-Ingress-Gateway erreichbar; der lokale Dienst bindet an `127.0.0.1:8093`. Kein Steuerendpunkt wird auf den Serve-/Funnel-Ursprungsports oder Ã¼ber OpenAI/Cloudflare exponiert.
 
 ### Sicherheitsgrenzen
 
-Die Tailscale-Ursprungsports `8094`/`8095` können bei Home Assistant Host-Portfreigaben im LAN erreichbar sein. Die dortige HTTP-Verbindung ist dann nicht automatisch TLS-gesichert. Ein zusätzlicher Bearer-Token beseitigt dieses Risiko nicht. **Keine Freigabe auf unsicheren Netzen oder vor einem echten HAOS-Integrationstest**. Tailscale-Serve-/Funnel-Listener im Fremd-Add-on müssen separat eingerichtet und ihre Berechtigungen und Erreichbarkeit außerhalb von MCPHub geprüft werden.
+Die Tailscale-Ursprungsports `8094`/`8095` kÃ¶nnen bei Home Assistant Host-Portfreigaben im LAN erreichbar sein. Die dortige HTTP-Verbindung ist dann nicht automatisch TLS-gesichert. Ein zusÃ¤tzlicher Bearer-Token beseitigt dieses Risiko nicht. **Keine Freigabe auf unsicheren Netzen oder vor einem echten HAOS-Integrationstest**. Tailscale-Serve-/Funnel-Listener im Fremd-Add-on mÃ¼ssen separat eingerichtet und ihre Berechtigungen und Erreichbarkeit auÃerhalb von MCPHub geprÃ¼ft werden.
 
 ## Dashboard and local proxy architecture
 
@@ -361,9 +360,9 @@ MCPHub is patched to bind to `127.0.0.1:3000` inside the App container.
 
 Nginx provides local adapters:
 
-- `8099` — Home Assistant Ingress, reachable only from the Supervisor Ingress gateway
-- `127.0.0.1:8098` — Cloudflare origin, reachable only from processes inside the App
-- `8094` and `8095` — Tailscale Serve/Funnel origins, publishable only by enabling App network mappings
+- `8099` â Home Assistant Ingress, reachable only from the Supervisor Ingress gateway
+- `127.0.0.1:8098` â Cloudflare origin, reachable only from processes inside the App
+- `8094` and `8095` â Tailscale Serve/Funnel origins, publishable only by enabling App network mappings
 
 MCPHub dashboard authentication is not globally disabled. Instead, authenticated Home
 Assistant Ingress requests carry the Home Assistant user identity plus a private
