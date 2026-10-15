@@ -100,74 +100,38 @@ if ! check_schema mcphub_ci; then
   candidate_schema_ok=false
 fi
 
-echo "Waiting for direct Supervisor app refresh API"
-reloaded=false
-for _ in $(seq 1 120); do
-  if remote 'ha apps reload >/dev/null 2>&1' 2>/dev/null; then reloaded=true; break; fi
-  sleep 5
-done
-[[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
+echo "Refreshing Supervisor app store once after staging both manifests"
+# The 'ha apps reload' command is not supported by current CLI versions.
+# Repeated 'ha store reload' calls can overlap slow remote repository updates.
+remote 'ha store reload'
 
-echo "Checking A/B registration of known-good control and candidate"
+echo "Waiting for known-good control and candidate to appear in Supervisor"
 control_found=false
-for attempt in $(seq 1 18); do
-  if (( (attempt - 1) % 4 == 0 )); then remote 'ha apps reload' || true; fi
+found=false
+for attempt in $(seq 1 120); do
   if remote 'ha apps info local_mcphub_ci_control >/dev/null 2>&1'; then
     control_found=true
-    break
   fi
+  if remote "ha apps info $APP >/dev/null 2>&1"; then
+    found=true
+  fi
+  [[ "$control_found" == true && "$found" == true ]] && break
   sleep 5
 done
-if [[ "$control_found" != true ]]; then
-  echo "KNOWN-GOOD CONTROL WAS NOT DISCOVERED: this is a HAOS harness/store registration issue, not proof of a Tailscale regression." >&2
-  remote 'ha apps list' || true
-  remote 'docker logs --tail 120 hassio_supervisor' || true
-  exit 1
-fi
-echo "Known-good control is registered with real Supervisor."
-if [[ "$candidate_schema_ok" != true ]]; then
-  echo "Candidate failed schema while control passed; fix the MCPHub manifest." >&2
-  exit 1
-fi
 
-
-found=false
-for attempt in $(seq 1 24); do
-  # A fresh HAOS boot can finish starting Core after the first store reload.
-  # Re-request discovery periodically instead of treating one successful CLI call
-  # as proof that Supervisor has already indexed our staged local app.
-  if (( (attempt - 1) % 6 == 0 )); then
-    remote "ha apps reload" || true
-  fi
-  if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
-  sleep 5
-done
-if [[ "$found" != true ]]; then
-  echo "Local app not yet indexed; restarting the disposable HAOS Supervisor once after staging."
-  remote 'docker restart hassio_supervisor >/dev/null'
-  supervisor_ready=false
-  for attempt in $(seq 1 120); do
-    if remote 'ha supervisor info >/dev/null 2>&1'; then supervisor_ready=true; break; fi
-    sleep 5
-  done
-  [[ "$supervisor_ready" == true ]] || { echo "Supervisor did not restart" >&2; exit 1; }
-  for attempt in $(seq 1 42); do
-    if (( (attempt - 1) % 6 == 0 )); then remote 'ha apps reload' || true; fi
-    if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
-    sleep 5
-  done
-fi
-
-if [[ "$found" != true ]]; then
-  remote 'ls -l /mnt/data/supervisor/apps/local/ /mnt/data/supervisor/apps/local/mcphub_ci/' || true
-  remote 'ha apps list' || true
-  echo 'Supervisor diagnostic logs for missing MCPHub app:'
+if [[ "$control_found" != true || "$found" != true ]]; then
+  echo "Local app discovery incomplete (known-good=$control_found candidate=$found)." >&2
+  remote 'docker exec hassio_supervisor python3 -c "from supervisor.config import CoreConfig; c=CoreConfig(); p=c.path_apps_local; print(\"SUPERVISOR_LOCAL_APPS_PATH\",p); print(\"APP_CONFIG_PATHS\",list(p.glob(\"**/config.yaml\")))"' || true
   remote 'ha supervisor logs' || true
-  remote 'docker exec hassio_supervisor ls -la /data/apps/local /data/apps/local/mcphub_ci' || true
-  remote 'docker logs --since 15m hassio_supervisor 2>&1 | grep -Ei "local|mcphub|schema|invalid|error|warning|reload|store"' || true
-  echo "Supervisor did not discover MCPHub app" >&2
+  remote 'docker logs --since 10m hassio_supervisor 2>&1 | grep -Ei "mcphub|local|schema|invalid|error|warning|reload|store"' || true
   exit 1
 fi
+
+echo "Both manifest variants discovered by Supervisor"
+[[ "$candidate_schema_ok" == true ]] || {
+  echo "Candidate configuration was rejected by the live Supervisor schema." >&2
+  exit 1
+}
 
 info="$(remote "ha --raw-json apps info $APP")"
 installed="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(str(d.get("data",d).get("installed",False)).lower())' <<< "$info")"
