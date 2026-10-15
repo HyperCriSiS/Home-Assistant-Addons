@@ -142,6 +142,8 @@ class IndependentTunnelTests(unittest.TestCase):
             "JWT_SECRET_FILE", "OPENAI_TOKEN_FILE", "OPENAI_AUTH_FILE",
             "HA_INGRESS_PROXY_SECRET_FILE", "LEGACY_INGRESS_TOKEN_FILE",
             "CLOUDFLARE_INTERNAL_TOKEN_FILE", "GITHUB_TOKEN_FILE",
+            "TAILSCALE_SERVE_INTERNAL_TOKEN_FILE",
+            "TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE",
         ):
             patcher = patch.object(self.prepare, name, root / "secrets" / name.lower())
             patcher.start()

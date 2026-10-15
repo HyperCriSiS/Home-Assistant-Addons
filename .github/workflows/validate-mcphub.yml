@@ -119,7 +119,7 @@ jobs:
           datetime.strptime(match.group(1), "v%Y.%m.%d")
           assert changelog.startswith(f"# Changelog\n\n## {version}\n")
 
-          groups = ["openai", "cloudflare", "home_assistant", "github", "logging"]
+          groups = ["openai", "cloudflare", "tailscale", "home_assistant", "github", "logging"]
           assert list(config["options"]) == groups
           assert list(config["schema"]) == groups
           for group in groups:
@@ -138,6 +138,10 @@ jobs:
           assert config["options"]["openai"]["tunnel_enabled"] is False
           assert config["options"]["cloudflare"]["cloudflare_tunnel_enabled"] is False
           assert config["options"]["cloudflare"]["cloudflare_mcp_path"] == "/mcp"
+          assert config["options"]["tailscale"]["tailscale_serve_enabled"] is False
+          assert config["options"]["tailscale"]["tailscale_funnel_enabled"] is False
+          assert config["ports"]["8094/tcp"] is None
+          assert config["ports"]["8095/tcp"] is None
           assert list(config["options"]["logging"])[-1] == "tunnel_log_level"
           assert list(config["schema"]["logging"])[-1] == "tunnel_log_level"
 

@@ -21,6 +21,11 @@ GROUPS = {
         "cloudflare_tunnel_enabled", "cloudflare_tunnel_token",
         "cloudflare_mcp_path", "cloudflare_access_token",
     ),
+    "tailscale": (
+        "tailscale_serve_enabled", "tailscale_serve_mcp_path",
+        "tailscale_serve_access_token", "tailscale_funnel_enabled",
+        "tailscale_funnel_mcp_path", "tailscale_funnel_access_token",
+    ),
     "home_assistant": (
         "home_assistant_mcp_enabled", "home_assistant_mcp_server_name",
         "home_assistant_mcp_auth_mode", "home_assistant_mcp_user_token",
