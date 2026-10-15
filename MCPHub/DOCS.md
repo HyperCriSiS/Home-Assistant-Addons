@@ -299,7 +299,7 @@ dashboard credential in MCPHub.
 
 ## Tailscale Serve and Funnel (existing Community App required)
 
-Install and connect the separate [Tailscale Community App](https://github.com/hassio-addons/app-tailscale). Leave `share_homeassistant: disabled` — enabling it for Funnel would publish the Home Assistant UI, not MCPHub.
+Install and connect the separate [Tailscale Community App](https://github.com/hassio-addons/app-tailscale). Leave `share_homeassistant: disabled` â enabling it for Funnel would publish the Home Assistant UI, not MCPHub.
 
 ### MCPHub setup and safe origins
 
@@ -312,7 +312,7 @@ MCPHub creates a 0700-protected directory in the Home Assistant `/share` volume.
 
 1. Back up MCPHub. Enable `tailscale_serve_enabled` and/or `tailscale_funnel_enabled`.
 2. Use a narrowly scoped route such as `/mcp/development`.
-3. Generate a **different** random 32–256-character key for each of `tailscale_serve_access_token` and `tailscale_funnel_access_token`.
+3. Generate a **different** random 32â256-character key for each of `tailscale_serve_access_token` and `tailscale_funnel_access_token`.
 4. Restart MCPHub after changing credentials or routes. The origin sockets are created on startup; external Tailscale listeners are configured separately.
 
 Each socket permits only its configured exact MCP route. A missing or incorrect bearer key returns 401, a closed local access gate returns 403, and unrelated routes return 404. Home Assistant identity/trust headers are stripped and replaced by distinct internal, route-scoped MCPHub keys.
@@ -342,17 +342,17 @@ Clients that require OAuth registration instead of static bearer headers may nee
 
 ## Tunnelverwaltung (Home Assistant Ingress only)
 
-Die zentrale SteueroberflÃ¤che ist Ã¼ber `/_mcphub_tunnels/` unter der authentifizierten MCPHub-Ingress-URL erreichbar. Sie zeigt OpenAI, Cloudflare, Tailscale Serve und Tailscale Funnel getrennt an.
+Die zentrale SteueroberflÃÂ¤che ist ÃÂ¼ber `/_mcphub_tunnels/` unter der authentifizierten MCPHub-Ingress-URL erreichbar. Sie zeigt OpenAI, Cloudflare, Tailscale Serve und Tailscale Funnel getrennt an.
 
-- **OpenAI**: eigener Ã¼berwachter Tunnel-Prozess mit `/healthz` und `/readyz`; Start/Stop/Reload und Backoff.
-- **Cloudflare**: `cloudflared` wird eigenstÃ¤ndig verwaltet; HTTP-`/ready` am ausschlieÃlich lokalen Metrics-Port sowie die MCP-Proxy-Route werden geprÃ¼ft. FÃ¼r lÃ¤ngere Fehler erfolgt ein verzÃ¶gerter Neustart. Tunnel- und Client-Tokens werden niemals in API-Statusmeldungen oder Prozessargumenten angezeigt.
-- **Tailscale Serve/Funnel**: Zugang freigeben/sperren Ã¼ber einen in Nginx erzwungenen lokalen Status-Gate, getrennt fÃ¼r beide Modi. Gesperrte ZugÃ¤nge werden unmittelbar blockiert, auch wenn der Tailscale-Listener weiterhin lÃ¤uft. Ein abgesicherter, dokumentierter Kontrollkanal zum **externen** Tailscale Community App Daemon existiert nicht. Die OberflÃ¤che gibt den tatsÃ¤chlichen Status des Tailnet-/Funnel-Listeners deshalb ausdrÃ¼cklich als *nicht verifizierbar* an. Sie behauptet weder, durch den Zugangsschalter die CLI-Freigabe zu entfernen, noch, den Ã¶ffentlichen Zugang vollstÃ¤ndig auszuschalten. Bei Freigabe zeigt ein lokaler 401-Probe, dass das Origin Token-Authentication erzwingt; das beweist keine Ã¶ffentliche Erreichbarkeit.
+- **OpenAI**: eigener ÃÂ¼berwachter Tunnel-Prozess mit `/healthz` und `/readyz`; Start/Stop/Reload und Backoff.
+- **Cloudflare**: `cloudflared` wird eigenstÃÂ¤ndig verwaltet; HTTP-`/ready` am ausschlieÃÂlich lokalen Metrics-Port sowie die MCP-Proxy-Route werden geprÃÂ¼ft. FÃÂ¼r lÃÂ¤ngere Fehler erfolgt ein verzÃÂ¶gerter Neustart. Tunnel- und Client-Tokens werden niemals in API-Statusmeldungen oder Prozessargumenten angezeigt.
+- **Tailscale Serve/Funnel**: Zugang freigeben/sperren ÃÂ¼ber einen in Nginx erzwungenen lokalen Status-Gate, getrennt fÃÂ¼r beide Modi. Gesperrte ZugÃÂ¤nge werden unmittelbar blockiert, auch wenn der Tailscale-Listener weiterhin lÃÂ¤uft. Ein abgesicherter, dokumentierter Kontrollkanal zum **externen** Tailscale Community App Daemon existiert nicht. Die OberflÃÂ¤che gibt den tatsÃÂ¤chlichen Status des Tailnet-/Funnel-Listeners deshalb ausdrÃÂ¼cklich als *nicht verifizierbar* an. Sie behauptet weder, durch den Zugangsschalter die CLI-Freigabe zu entfernen, noch, den ÃÂ¶ffentlichen Zugang vollstÃÂ¤ndig auszuschalten. Bei Freigabe zeigt ein lokaler 401-Probe, dass das Origin Token-Authentication erzwingt; das beweist keine ÃÂ¶ffentliche Erreichbarkeit.
 
-Die gesamte VerwaltungsoberflÃ¤che ist wie der bisherige OpenAI-Manager nur vom festen Home Assistant Supervisor-Ingress-Gateway erreichbar; der lokale Dienst bindet an `127.0.0.1:8093`. Kein Steuerendpunkt wird auf den Serve-/Funnel-Ursprungsports oder Ã¼ber OpenAI/Cloudflare exponiert.
+Die gesamte VerwaltungsoberflÃÂ¤che ist wie der bisherige OpenAI-Manager nur vom festen Home Assistant Supervisor-Ingress-Gateway erreichbar; der lokale Dienst bindet an `127.0.0.1:8093`. Kein Steuerendpunkt wird auf den Serve-/Funnel-Ursprungsports oder ÃÂ¼ber OpenAI/Cloudflare exponiert.
 
 ### Sicherheitsgrenzen
 
-Die Tailscale-Ursprungsports `8094`/`8095` kÃ¶nnen bei Home Assistant Host-Portfreigaben im LAN erreichbar sein. Die dortige HTTP-Verbindung ist dann nicht automatisch TLS-gesichert. Ein zusÃ¤tzlicher Bearer-Token beseitigt dieses Risiko nicht. **Keine Freigabe auf unsicheren Netzen oder vor einem echten HAOS-Integrationstest**. Tailscale-Serve-/Funnel-Listener im Fremd-Add-on mÃ¼ssen separat eingerichtet und ihre Berechtigungen und Erreichbarkeit auÃerhalb von MCPHub geprÃ¼ft werden.
+Die Tailscale-Ursprungsports `8094`/`8095` kÃÂ¶nnen bei Home Assistant Host-Portfreigaben im LAN erreichbar sein. Die dortige HTTP-Verbindung ist dann nicht automatisch TLS-gesichert. Ein zusÃÂ¤tzlicher Bearer-Token beseitigt dieses Risiko nicht. **Keine Freigabe auf unsicheren Netzen oder vor einem echten HAOS-Integrationstest**. Tailscale-Serve-/Funnel-Listener im Fremd-Add-on mÃÂ¼ssen separat eingerichtet und ihre Berechtigungen und Erreichbarkeit auÃÂerhalb von MCPHub geprÃÂ¼ft werden.
 
 ## Dashboard and local proxy architecture
 
@@ -360,9 +360,9 @@ MCPHub is patched to bind to `127.0.0.1:3000` inside the App container.
 
 Nginx provides local adapters:
 
-- `8099` â Home Assistant Ingress, reachable only from the Supervisor Ingress gateway
-- `127.0.0.1:8098` â Cloudflare origin, reachable only from processes inside the App
-- `8094` and `8095` â Tailscale Serve/Funnel origins, publishable only by enabling App network mappings
+- `8099` Ã¢ÂÂ Home Assistant Ingress, reachable only from the Supervisor Ingress gateway
+- `127.0.0.1:8098` Ã¢ÂÂ Cloudflare origin, reachable only from processes inside the App
+- `8094` and `8095` Ã¢ÂÂ Tailscale Serve/Funnel origins, publishable only by enabling App network mappings
 
 MCPHub dashboard authentication is not globally disabled. Instead, authenticated Home
 Assistant Ingress requests carry the Home Assistant user identity plus a private
@@ -530,19 +530,15 @@ Verify that:
 
 ## Development changelog and stable promotion
 
-The development store builds the MCPHub App from `dev-mcphub` and gives it an
-independently increasing `-dev.N` version. These development revisions do not
-create new source `CHANGELOG.md` headings: their changes must be documented
-under the current App wrapper version in `MCPHub/CHANGELOG.md`.
+The Dev store builds MCPHub from `dev-mcphub` with a separate `-dev.N` version. Its generated changelog tracks relevant Git commits per iteration and retains the human-written release notes. **It does not list individual changed files.** Changes to MCPHub-specific CI and release tooling also produce Dev revisions, while Trilium-only changes do not.
 
-When merging user-visible App changes into `dev-mcphub`, update the current
-changelog entry with the actual new features, fixes, security changes, and any
-migration caveats. The upstream-update script records the upstream image bump;
-it cannot describe unrelated App wrapper changes made between upstream releases.
+When changing user-visible MCPHub features, update the curated `MCPHub/CHANGELOG.md` with the feature, fix, security implications and migration caveats. The automated audit complements but does not replace those release notes.
 
-Before promoting `dev-mcphub` to `main`, compare the candidate with the
-**currently released** MCPHub App on `main` and review all intervening
-changelog entries. Ensure the next stable release notes cover the full change
-set, including previously shipped development-only features, while retaining
-existing release history. Passing CI and a correct changelog version header
-alone do not establish that the notes are complete.
+Before promotion, generate the Stable audit from actual Git commits:
+
+```sh
+python3 .github/scripts/generate-mcphub-changelog.py stable
+```
+
+The `Validate MCPHub` workflow rejects PRs into `main` if the audited Stable notes are absent or outdated. The promotion workflow prepares a separate `release/mcphub-candidate` branch and PR **for manual merge only**; it does not release automatically. Since `workflow_run` workflows execute from the default branch, the improved promotion process takes effect once its workflow is present on `main`. For its first Stable promotion, generate and review the audit manually.
+

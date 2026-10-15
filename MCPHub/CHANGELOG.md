@@ -18,6 +18,7 @@
 ### Fixed
 
 - Improved tunnel recovery and isolated optional tunnel failures from the MCPHub dashboard.
+- Generated Dev and Stable changelogs from Git commits without per-file change inventories.
 - Hardened proxy authentication, certificate validation and remote-access isolation.
 - Preserved GitHub credentials and compatibility with existing flat settings.
 

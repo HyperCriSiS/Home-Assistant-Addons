@@ -115,6 +115,10 @@ jobs:
 
   promote-mcphub:
     name: Maintain MCPHub release pull request
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
     if: >-
       ${{
         github.event_name == 'workflow_dispatch' ||
@@ -178,28 +182,55 @@ jobs:
           )"
           echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
 
-      - name: Create MCPHub release pull request
+      - name: Check out the validated MCPHub release source
+        if: steps.gates.outputs.changed != '0'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: dev-mcphub
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Generate complete stable changelog and publish release candidate
+        if: steps.gates.outputs.changed != '0'
+        run: |
+          git fetch origin main dev-mcphub
+          python3 .github/scripts/generate-mcphub-changelog.py stable
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C release/mcphub-candidate
+          git add MCPHub/CHANGELOG.md
+          git commit -m "docs(mcphub): aggregate all changes since last stable"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads origin release/mcphub-candidate >/dev/null 2>&1; then
+            git fetch origin +refs/heads/release/mcphub-candidate:refs/remotes/origin/release/mcphub-candidate
+            git push --force-with-lease "${remote}" HEAD:refs/heads/release/mcphub-candidate
+          else
+            git push "${remote}" HEAD:refs/heads/release/mcphub-candidate
+          fi
+
+      - name: Open or keep manual MCPHub stable release PR
         if: steps.gates.outputs.changed != '0'
         run: |
           existing="$(
             gh pr list \
               --repo "${GITHUB_REPOSITORY}" \
               --base main \
-              --head dev-mcphub \
+              --head release/mcphub-candidate \
               --state open \
               --json number \
               --jq '.[0].number // empty'
           )"
           if [[ -n "${existing}" ]]; then
-            echo "MCPHub release PR #${existing} already exists"
+            echo "MCPHub stable release PR #${existing} updated; manual merge only."
             exit 0
           fi
 
           if ! gh pr create \
             --repo "${GITHUB_REPOSITORY}" \
             --base main \
-            --head dev-mcphub \
-            --title "release(mcphub): promote validated candidate" \
-            --body "Promotes only the validated MCPHub development branch to main."; then
-            echo "GitHub Actions could not create the release PR; manual promotion remains available." >&2
+            --head release/mcphub-candidate \
+            --title "release(mcphub): validated candidate with complete changelog" \
+            --body "Promotes the reviewed MCPHub candidate with a complete Stable changelog. Manual merge only."; then
+            echo "Unable to open stable release PR; manual promotion remains available." >&2
           fi

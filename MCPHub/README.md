@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.svg" alt="MCPHub" width="320">
+<img src="https://raw.githubusercontent.com/HyperCriSiS/Home-Assistant-Apps/dev-mcphub/MCPHub/logo.svg" alt="MCPHub" width="320">
 
 # MCPHub
 
@@ -85,9 +85,9 @@ through `home_assistant_mcp_server_name` in the App options. The Home Assistant
 
 Two authentication modes are available:
 
-- **supervisor** — zero-token setup. The App uses the Supervisor-provided Core
+- **supervisor** â zero-token setup. The App uses the Supervisor-provided Core
   API token and the internal Home Assistant API proxy.
-- **restricted_user** — the default and recommended mode when MCP requests
+- **restricted_user** â the default and recommended mode when MCP requests
   should run as a dedicated non-admin Home Assistant user. Sign in as that user,
   create a Long-Lived Access Token from the user's profile, and enter the token
   in the App configuration.
@@ -128,15 +128,15 @@ The connection is outbound-only from the App:
 
 ```text
 ChatGPT
-   │
-   ▼
+   â
+   â¼
 OpenAI Secure MCP Tunnel
-   ▲
-   │ outbound HTTPS
-   │
+   â²
+   â outbound HTTPS
+   â
 Home Assistant
-└── MCPHub
-    └── 127.0.0.1:3000
+âââ MCPHub
+    âââ 127.0.0.1:3000
 ```
 
 No router port forwarding, public reverse proxy, public MCPHub URL, or Cloudflare Tunnel is required for this setup.
@@ -215,7 +215,7 @@ MCPHub groups or client routes that referred to its previous name.
 
 For detailed configuration, security notes, persistence paths, backups, and troubleshooting, see:
 
-**[Full MCPHub App documentation →](DOCS.md)**
+**[Full MCPHub App documentation â](DOCS.md)**
 
 ## Versioning
 
