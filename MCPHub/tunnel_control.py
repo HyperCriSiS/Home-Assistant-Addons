@@ -175,10 +175,13 @@ class Cloudflare:
                 self.fail(self.error, now)
 
     def status(self, now):
+        # A previously ready connector is never reported healthy if its checks stopped.
+        fresh = bool(self.checked) and now - self.checked <= 20
+        visible_state = 'stale' if self.desired and self.state == 'ready' and not fresh else self.state
         return {
-            'state': self.state, 'configured': self.configured, 'requested': self.desired,
+            'state': visible_state, 'configured': self.configured, 'requested': self.desired,
             'process_alive': self.proc is not None and self.proc.poll() is None,
-            'transport_ready': self.state == 'ready', 'last_error': self.error,
+            'transport_ready': visible_state == 'ready', 'last_error': self.error,
             'route': self.route, 'health_age_seconds': round(now - self.checked) if self.checked else None,
             'retry_in_seconds': max(0, round(self.retry_at - now)) if self.state == 'retrying' else 0,
             'control_type': 'process'
@@ -259,6 +262,10 @@ class Controls:
     def snapshot(self):
         with self.lock:
             status = self.openai()
+            age = status.get('health_age_seconds')
+            if status.get('state') == 'ready' and (age is None or age > 20):
+                status['state'] = 'stale'
+                status['last_error'] = 'OpenAI health result is stale'
             status['transport_ready'] = status.get('state') == 'ready' if status.get('state') != 'unavailable' else None
             status['control_type'] = 'process'
             return {

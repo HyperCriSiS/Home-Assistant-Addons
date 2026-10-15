@@ -228,6 +228,7 @@ class TunnelManager:
                 'failed_attempts': self.failure_count,
                 'retry_in_seconds': max(0, round(self.next_attempt - now)) if self.state == 'retrying' else 0,
                 'health_checked': bool(self.last_checked),
+                'health_age_seconds': round(now - self.last_checked) if self.last_checked else None,
             }
 
     def shutdown(self) -> None:
