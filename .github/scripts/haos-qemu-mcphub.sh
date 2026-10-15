@@ -112,7 +112,7 @@ wait_for_app() {
 }
 wait_for_health() {
   for _ in $(seq 1 80); do
-    if remote "docker exec addon_$APP curl --fail --silent --max-time 2 http://127.0.0.1:3000/health >/dev/null" 2>/dev/null; then return 0; fi
+    if remote "docker exec app_$APP curl --fail --silent --max-time 2 http://127.0.0.1:3000/health >/dev/null" 2>/dev/null; then return 0; fi
     sleep 3
   done
   return 1
@@ -124,9 +124,9 @@ wait_for_app && wait_for_health || {
 }
 
 echo "Checking Nginx and disabled remote origins inside Supervisor-managed app"
-remote "docker exec addon_$APP nginx -t"
+remote "docker exec app_$APP nginx -t"
 for port in 8094 8095; do
-  result="$(remote "docker exec addon_$APP curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:$port/mcp")"
+  result="$(remote "docker exec app_$APP curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:$port/mcp")"
   [[ "$result" == 404 ]] || { echo "Origin $port: expected 404, got $result" >&2; exit 1; }
 done
 
