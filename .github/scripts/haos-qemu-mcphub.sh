@@ -73,6 +73,33 @@ tar -C MCPHub -cf - . | remote "tar -xf - -C $app_dir"
 commit="$(git rev-parse HEAD)"
 printf '%s\n' "$commit" | remote "cat > $app_dir/.haos-source-revision"
 
+# Validate the actual manifest with the running Supervisor, not just YAML lint.
+# A known-good control from the last green HAOS VM test is installed next to
+# the current PR source to distinguish candidate schema failures from VM issues.
+BASELINE_SHA="1de97ef8e9bc8c68dd216e8d9aeabe52fa5e50e5"
+control_slug="mcphub_ci_control"
+control_dir="/mnt/data/supervisor/apps/local/$control_slug"
+remote "mkdir -p $control_dir"
+tar -C MCPHub -cf - . | remote "tar -xf - -C $control_dir"
+git show "$BASELINE_SHA:MCPHub/config.yaml" \
+  | sed 's/^slug: mcphub$/slug: mcphub_ci_control/' \
+  | remote "cat > $control_dir/config.yaml"
+
+check_schema() {
+  local slug="$1"
+  echo "Supervisor schema validation: $slug"
+  remote "docker exec hassio_supervisor python3 -c 'from pathlib import Path; import yaml; from supervisor.apps.validate import SCHEMA_APP_CONFIG; p=Path(\"/data/apps/local/$slug/config.yaml\"); SCHEMA_APP_CONFIG(yaml.safe_load(p.read_text())); print(\"VALID_SUPERVISOR_APP_CONFIG:\", p)'"
+}
+check_schema "$control_slug" || {
+  echo "Even the known-good control failed Supervisor schema validation." >&2
+  exit 1
+}
+candidate_schema_ok=true
+if ! check_schema mcphub_ci; then
+  echo "Candidate MCPHub configuration failed the live Supervisor schema." >&2
+  candidate_schema_ok=false
+fi
+
 echo "Waiting for Supervisor store reload API"
 reloaded=false
 for _ in $(seq 1 120); do
@@ -80,6 +107,29 @@ for _ in $(seq 1 120); do
   sleep 5
 done
 [[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
+
+echo "Checking A/B registration of known-good control and candidate"
+control_found=false
+for attempt in $(seq 1 18); do
+  if (( (attempt - 1) % 4 == 0 )); then remote 'ha store reload' || true; fi
+  if remote 'ha apps info local_mcphub_ci_control >/dev/null 2>&1'; then
+    control_found=true
+    break
+  fi
+  sleep 5
+done
+if [[ "$control_found" != true ]]; then
+  echo "KNOWN-GOOD CONTROL WAS NOT DISCOVERED: this is a HAOS harness/store registration issue, not proof of a Tailscale regression." >&2
+  remote 'ha store info' || true
+  remote 'docker logs --tail 120 hassio_supervisor' || true
+  exit 1
+fi
+echo "Known-good control is registered with real Supervisor."
+if [[ "$candidate_schema_ok" != true ]]; then
+  echo "Candidate failed schema while control passed; fix the MCPHub manifest." >&2
+  exit 1
+fi
+
 
 found=false
 for attempt in $(seq 1 24); do
