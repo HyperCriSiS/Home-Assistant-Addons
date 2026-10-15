@@ -470,19 +470,36 @@ Verify that:
 
 ## Development changelog and stable promotion
 
-The development store builds the MCPHub App from `dev-mcphub` and gives it an
-independently increasing `-dev.N` version. These development revisions do not
-create new source `CHANGELOG.md` headings: their changes must be documented
-under the current App wrapper version in `MCPHub/CHANGELOG.md`.
+The development store builds MCPHub from `dev-mcphub` and assigns an
+independently increasing `-dev.N` version. Its generated changelog starts with
+the exact `-dev.N` version and lists all relevant commits and changed files
+since the current Stable release on `main`. Every Dev revision has its own
+entry, stored in `.dev-store-mcphub-changes.json` and retained on future builds.
+The first entry establishes a tracking baseline; earlier changes still appear
+in the full Stable comparison. The curated source `MCPHub/CHANGELOG.md` is
+preserved beneath these entries. MCPHub-specific CI and automation changes
+also create MCPHub Dev revisions, but Trilium-only changes do not.
 
 When merging user-visible App changes into `dev-mcphub`, update the current
 changelog entry with the actual new features, fixes, security changes, and any
 migration caveats. The upstream-update script records the upstream image bump;
 it cannot describe unrelated App wrapper changes made between upstream releases.
 
-Before promoting `dev-mcphub` to `main`, compare the candidate with the
-**currently released** MCPHub App on `main` and review all intervening
-changelog entries. Ensure the next stable release notes cover the full change
-set, including previously shipped development-only features, while retaining
-existing release history. Passing CI and a correct changelog version header
-alone do not establish that the notes are complete.
+Before promoting MCPHub to `main`, the Stable candidate must include the full
+Git history and all changed files since the current `main` release, in addition
+to its human-written feature and fix notes. Generate the audit section with:
+
+```sh
+python3 .github/scripts/generate-mcphub-changelog.py stable
+```
+
+The `Validate MCPHub` workflow rejects promotion PRs into `main` when the
+complete section is missing or outdated. The updated promotion workflow uses
+a separate `release/mcphub-candidate` branch with full notes, preparing a PR
+**for manual merge only**. It never merges or releases automatically.
+GitHub executes `workflow_run` workflows from the default branch; therefore
+this improved promotion workflow starts operating after it first reaches `main`.
+For the **first** Stable promotion after this change, prepare the candidate
+manually using the command above and review the result before merging.
+Do not merge a direct PR from `dev-mcphub` without the required audit section.
+Keep the existing release history intact.
