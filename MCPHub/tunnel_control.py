@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Ingress-only multi-tunnel control: OpenAI, Cloudflare, Tailscale access gates."""
 import json
+import http.client
+import socket
 import logging
 import os
 import re
@@ -39,6 +41,27 @@ def check(url, expected=200):
         return error.code == expected
     except (URLError, TimeoutError, OSError):
         return False
+
+class UnixHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, socket_path):
+        super().__init__('localhost', timeout=2)
+        self.socket_path = socket_path
+
+    def connect(self):
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
+        self.sock.connect(self.socket_path)
+
+
+def check_unix(socket_path, route, expected=401):
+    connection = UnixHTTPConnection(socket_path)
+    try:
+        connection.request('GET', route, headers={'Cache-Control': 'no-store'})
+        return connection.getresponse().status == expected
+    except (OSError, http.client.HTTPException):
+        return False
+    finally:
+        connection.close()
 
 def save_secret(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -232,8 +255,8 @@ class Tailscale:
         except (ValueError, OSError):
             configured, path = False, '/mcp'
         enabled = configured and self.gates[mode]
-        port = 8094 if mode == 'serve' else 8095
-        healthy = check('http://127.0.0.1:%s%s' % (port, path), expected=401) if enabled else False
+        socket_path = '/share/mcphub/tailscale-' + mode + '.sock'
+        healthy = check_unix(socket_path, path, expected=401) if enabled else False
         return {
             'state': ('origin_ready' if healthy else 'unverified') if enabled else 'stopped',
             'configured': configured, 'requested': enabled,
@@ -299,16 +322,16 @@ PAGE = '''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name=
 :root{font-family:system-ui,sans-serif;color-scheme:light dark}body{max-width:850px;margin:2rem auto;padding:0 1rem}
 section{border:1px solid #9997;border-radius:8px;padding:1rem;margin:1rem 0}button{font:inherit;padding:.5rem;margin:.2rem}
 p{line-height:1.5}small{opacity:.8}
-</style></head><body><h1>MCPHub Tunnelverwaltung</h1><p>Vier unabhängige Zugänge.</p>
+</style></head><body><h1>MCPHub Tunnelverwaltung</h1><p>Vier unabhÃ¤ngige ZugÃ¤nge.</p>
 <div id="items"></div><p><small>Tailscale: Start/Stop steuert nur den MCP-Zugang, nicht den externen Tailscale-Daemon.
-Ohne eine sichere Add-on-Steuerschnittstelle ist dessen tatsächlicher Listener-Status unbekannt.</small></p>
+Ohne eine sichere Add-on-Steuerschnittstelle ist dessen tatsÃ¤chlicher Listener-Status unbekannt.</small></p>
 <script src="app.js" defer></script></body></html>'''
 SCRIPT = '''const tunnels=[['openai','OpenAI Secure Tunnel'],['cloudflare','Cloudflare Tunnel'],['serve','Tailscale Serve'],['funnel','Tailscale Funnel']];
 for(const [id,name] of tunnels){const box=document.createElement('section');box.id='i-'+id;let h=document.createElement('h2');h.textContent=name;box.append(h);
 let st=document.createElement('p');st.className='status';box.append(st);let info=document.createElement('p');info.className='detail';box.append(info);
-for(const action of ['start','stop','reload']){let b=document.createElement('button');b.textContent=(id==='serve'||id==='funnel')?({start:'MCP-Zugang freigeben',stop:'MCP-Zugang sperren',reload:'Prüfen'}[action]):({start:'Start',stop:'Stop',reload:'Reload'}[action]);
+for(const action of ['start','stop','reload']){let b=document.createElement('button');b.textContent=(id==='serve'||id==='funnel')?({start:'MCP-Zugang freigeben',stop:'MCP-Zugang sperren',reload:'PrÃ¼fen'}[action]):({start:'Start',stop:'Stop',reload:'Reload'}[action]);
 b.onclick=async()=>{b.disabled=true;try{let r=await fetch('api/control/'+id+'/'+action,{method:'POST',headers:{'Content-Type':'application/json','X-MCPHub-Tunnel-Control':'1'},body:'{}'});if(!r.ok)info.textContent='Steuerung abgewiesen: '+r.status;await refresh();}catch(e){info.textContent='Steuerung nicht erreichbar';}finally{b.disabled=false;}};box.append(b);}document.getElementById('items').append(box);}
-async function refresh(){try{let r=await fetch('api/status',{cache:'no-store'});if(!r.ok)throw Error();let all=await r.json();for(const [id] of tunnels){let item=document.getElementById('i-'+id),d=all[id]||{};const transport=d.transport_ready===true?'bereit':d.transport_ready===false?'nicht bereit':'nicht überprüfbar';const age=typeof d.health_age_seconds==='number'?' · Check vor '+d.health_age_seconds+'s':'';item.querySelector('.status').textContent='Status: '+(d.state||'unbekannt')+' · Tunnel: '+transport+age;item.querySelector('.detail').textContent=d.last_error||d.note||'';}}catch(e){for(const [id] of tunnels)document.querySelector('#i-'+id+' .status').textContent='Status nicht erreichbar';}}refresh();setInterval(refresh,5000);'''
+async function refresh(){try{let r=await fetch('api/status',{cache:'no-store'});if(!r.ok)throw Error();let all=await r.json();for(const [id] of tunnels){let item=document.getElementById('i-'+id),d=all[id]||{};const transport=d.transport_ready===true?'bereit':d.transport_ready===false?'nicht bereit':'nicht Ã¼berprÃ¼fbar';const age=typeof d.health_age_seconds==='number'?' Â· Check vor '+d.health_age_seconds+'s':'';item.querySelector('.status').textContent='Status: '+(d.state||'unbekannt')+' Â· Tunnel: '+transport+age;item.querySelector('.detail').textContent=d.last_error||d.note||'';}}catch(e){for(const [id] of tunnels)document.querySelector('#i-'+id+' .status').textContent='Status nicht erreichbar';}}refresh();setInterval(refresh,5000);'''
 
 def handler_for(manager):
     class Handler(BaseHTTPRequestHandler):

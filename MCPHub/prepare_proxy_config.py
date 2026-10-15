@@ -286,13 +286,14 @@ def tailscale_origin_server_block(
 ) -> str:
     """A locked-down, path-limited origin for the external Tailscale App.
 
-    Even Serve must authenticate: host-published ports can be LAN-reachable.
+    Both origins use root-protected Unix sockets, never host-published TCP ports.
     """
     if port not in (8094, 8095):
         raise ValueError("Unexpected Tailscale MCP origin port")
+    socket_path = "/share/mcphub/tailscale-serve.sock" if port == 8094 else "/share/mcphub/tailscale-funnel.sock"
 
     deny = f"""server {{
-    listen {port};
+    listen unix:{socket_path};
     access_log off;
     location / {{ return 404; }}
 }}"""
@@ -307,7 +308,7 @@ def tailscale_origin_server_block(
 
     path_pattern = re.escape(mcp_path)
     return f"""server {{
-    listen {port};
+    listen unix:{socket_path};
     access_log /dev/stdout;
     error_log /dev/stderr warn;
     client_max_body_size 16m;

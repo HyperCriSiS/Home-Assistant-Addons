@@ -22,16 +22,11 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
-# Ports remain unmapped by default; publish host ports only when needed.
-ports:
-  8094/tcp: null
-  8095/tcp: null
-ports_description:
-  8094/tcp: "Tailscale Serve protected MCP origin"
-  8095/tcp: "Tailscale Funnel protected MCP origin"
 map:
   - type: ssl
     read_only: true
+  - type: share
+    read_only: false
 options:
   openai:
     tunnel_enabled: false
