@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exhaustive MCPHub development and stable changelog from Git history.
+"""MCPHub development and stable changelog from Git commit history.
 
 The source changelog remains human-curated; development iteration details are
 only generated in the combined dev-store. No source branch is modified by dev.
@@ -23,6 +23,8 @@ RELATED = (
     ".github/workflows/sync-dev-store.yml",
     ".github/workflows/promote.yml",
     ".github/scripts/haos-e2e-mcphub.sh",
+    ".github/scripts/haos-qemu-mcphub.sh",
+    ".github/workflows/haos-qemu-mcphub.yml",
     ".github/scripts/integration-test-mcphub.sh",
     ".github/scripts/update-mcphub-upstream.py",
     ".github/scripts/generate-mcphub-changelog.py",
@@ -52,11 +54,6 @@ def commits(previous: str, current: str) -> list[dict[str, str]]:
     return entries
 
 
-def files_changed(previous: str, current: str) -> list[str]:
-    result = git("diff", "--no-renames", "--name-status", previous, current, "--", *RELATED)
-    return [line for line in result.splitlines() if line.strip()]
-
-
 def escape_md(value: str) -> str:
     return value.replace("\\", "\\\\").replace("`", "\\`").replace("[", "\\[").replace("]", "\\]")
 
@@ -69,18 +66,6 @@ def commit_notes(entries: list[dict[str, str]], repository: str) -> str:
         sha, subject = entry["sha"], escape_md(entry["subject"])
         lines.append(f"- [\u0060{sha[:7]}\u0060](https://github.com/{repository}/commit/{sha}) {subject}")
     return "\n".join(lines) + "\n"
-
-
-def file_notes(changes: list[str]) -> str:
-    if not changes:
-        return "- No MCPHub-related file changes in this range.\n"
-    notes = []
-    for line in changes:
-        status, _, filename = line.partition("\t")
-        if not filename:
-            raise ValueError(f"Unexpected Git name-status line: {line!r}")
-        notes.append(f"- {status}: \u0060{escape_md(filename)}\u0060")
-    return "\n".join(notes) + "\n"
 
 
 def version_from_yaml(content: str) -> str:
@@ -98,9 +83,8 @@ def audit(base: str, head: str, repository: str, title: str) -> str:
     return (
         f"### {title}\n\n"
         f"Source: \u0060{base}\u0060 to \u0060{head}\u0060; all MCPHub-related commits "
-        "and changed files are listed below. Human-written release notes follow.\n\n"
-        "#### Commits\n\n" + commit_notes(commits(base, head), repository) +
-        "\n#### Changed files\n\n" + file_notes(files_changed(base, head)) + "\n"
+        "are listed below. Human-written release notes follow.\n\n"
+        "#### Commits\n\n" + commit_notes(commits(base, head), repository) + "\n"
     )
 
 
@@ -127,7 +111,6 @@ def dev(repository: str) -> None:
             "source_sha": source_sha,
             "baseline": not bool(prior_sha),
             "commits": commits(prior_sha, source_sha) if prior_sha else [],
-            "files": files_changed(prior_sha, source_sha) if prior_sha else [],
         })
     HISTORY.write_text(json.dumps(previous, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -154,7 +137,7 @@ def dev(repository: str) -> None:
                  "Earlier development changes are itemized in the cumulative comparison above.\n\n")
     else:
         head += "#### Commits\n\n" + commit_notes(latest["commits"], repository)
-        head += "\n#### Changed files\n\n" + file_notes(latest["files"]) + "\n"
+
     for old in previous[1:]:
         head += f"## {old['version']}\n\n"
         if old["baseline"]:
@@ -162,7 +145,7 @@ def dev(repository: str) -> None:
         else:
             head += "### Changes in this iteration\n\n"
             head += "#### Commits\n\n" + commit_notes(old["commits"], repository)
-            head += "\n#### Changed files\n\n" + file_notes(old["files"]) + "\n"
+
     CHANGELOG.write_text(head + source[len(prefix):], encoding="utf-8")
 
 

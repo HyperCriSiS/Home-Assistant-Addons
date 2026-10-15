@@ -79,13 +79,15 @@ class ChangelogGenerationTests(unittest.TestCase):
             "## v2026.10.12-1-dev.42",
             "feat(mcphub): first dev feature",
             "fix(mcphub): next individual fix",
-            "MCPHub/README.md",
             "Curated fix notes.",
             "Existing stable notes.",
         ):
             self.assertIn(expected, latest)
         history = json.loads((self.root / ".dev-store-mcphub-changes.json").read_text())
         self.assertEqual([entry["revision"] for entry in history], [43, 42])
+        self.assertNotIn("#### Changed files", latest)
+        self.assertNotIn("MCPHub/README.md", latest)
+        self.assertNotIn("files", history[0])
         self.generate("dev")
         self.assertEqual(latest, (self.root / "MCPHub/CHANGELOG.md").read_text())
 
@@ -96,6 +98,7 @@ class ChangelogGenerationTests(unittest.TestCase):
         expected = (self.root / "MCPHub/CHANGELOG.md").read_text()
         self.assertIn("Complete changes since stable v2026.10.07-4", expected)
         self.assertIn("feat(mcphub): first dev feature", expected)
+        self.assertNotIn("#### Changed files", expected)
         self.assertIn("Curated fix notes.", expected)
         self.generate("stable", "--check")
         self.generate("stable")

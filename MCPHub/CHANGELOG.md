@@ -19,7 +19,7 @@
 
 ### Fixed
 
-- Generated a separate development changelog for each revision with the relevant Git commits and changed files, retaining previous Dev entries and human-written notes.
+- Generated a separate development changelog from Git commits and retained previous Dev entries and human-written notes.
 - Prepared comprehensive Stable notes from every MCPHub change since the previous `main` release and added a pre-merge completeness check.
 
 - Verify Home Assistant MCP HTTPS certificates and hostnames, retaining certificate-free LAN HTTP and supporting trusted private CA files.
