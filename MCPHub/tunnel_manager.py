@@ -246,6 +246,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;border:1px solid #7
 </style></head><body><h1>OpenAI Secure Tunnel</h1><p>Manage the tunnel without restarting MCPHub.</p>
 <p><strong id="state">Checking…</strong></p><p id="detail" aria-live="polite"></p>
 <div><button data-action="start">Start</button><button data-action="stop">Stop</button><button data-action="reload">Reload</button></div>
+<p><a href="../_mcphub_tunnels/">Alle Tunnel zentral verwalten</a></p>
 <p>Health monitoring checks the local tunnel process and readiness. Temporary network failures are left to the client;
 prolonged failures trigger a delayed restart. Changes to MCPHub bearer-key scopes may still require an App restart.</p>
 <script src="app.js" defer></script></body></html>'''
