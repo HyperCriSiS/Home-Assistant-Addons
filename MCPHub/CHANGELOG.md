@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added a Home Assistant Ingress-only multi-tunnel control page with separately supervised OpenAI and Cloudflare connectivity, connector readiness and local MCP origin checks, and safe per-mode Tailscale access gates with explicitly unverified external listener status.
+
 - Added independent, route-scoped Tailscale Serve and Funnel MCP origins with separate bearer keys, default-unpublished host ports, and compatibility with the existing Tailscale Community App.
 - Documented the separate Tailscale CLI setup and explicit host-port mappings without exposing the Home Assistant dashboard.
 

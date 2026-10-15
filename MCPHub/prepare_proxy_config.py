@@ -294,6 +294,13 @@ def tailscale_origin_server_block(
     deny = f"""server {{
     listen {port};
     access_log off;
+    location = /__mcphub_tailscale_gate {{
+        internal;
+        proxy_pass http://127.0.0.1:8093/api/gate/{'serve' if port == 8094 else 'funnel'};
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Authorization "";
+    }}
     location / {{ return 404; }}
 }}"""
     if not enabled:
@@ -316,6 +323,7 @@ def tailscale_origin_server_block(
         if ($http_authorization != "Bearer {client_token}") {{
             return 401;
         }}
+        auth_request /__mcphub_tailscale_gate;
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Authorization "Bearer {internal_token}";

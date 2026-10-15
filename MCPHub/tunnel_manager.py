@@ -41,7 +41,7 @@ def options() -> dict:
     if not isinstance(data, dict):
         raise ValueError('Home Assistant options must be a JSON object')
     result = dict(data)
-    for group in ('openai', 'cloudflare', 'home_assistant', 'github', 'logging'):
+    for group in ('openai', 'cloudflare', 'tailscale', 'home_assistant', 'github', 'logging'):
         section = data.get(group)
         if isinstance(section, dict):
             result.update(section)
