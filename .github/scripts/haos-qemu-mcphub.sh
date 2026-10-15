@@ -100,15 +100,38 @@ if ! check_schema mcphub_ci; then
   candidate_schema_ok=false
 fi
 
-echo "Refreshing Supervisor app store once after staging both manifests"
-# The 'ha apps reload' command is not supported by current CLI versions.
-# Repeated 'ha store reload' calls can overlap slow remote repository updates.
-remote 'ha store reload'
+echo "Waiting for Supervisor updater gate before app-store refresh"
+# The first HAOS boot can block StoreManager.reload until Supervisor is updated.
+# Retry only on errors, never issue overlapping refreshes after a success.
+reload_ok=false
+supervisor_update_requested=false
+for attempt in $(seq 1 100); do
+  if output="$(remote 'ha store reload' 2>&1)"; then
+    reload_ok=true
+    echo "Supervisor app store refreshed successfully"
+    break
+  fi
+  if [[ "$output" == *"supervisor needs to be updated first"* ]]; then
+    if [[ "$supervisor_update_requested" == false && "$attempt" -ge 3 ]]; then
+      echo "Requesting Supervisor update on disposable HAOS test VM"
+      remote 'ha supervisor update' || true
+      supervisor_update_requested=true
+    fi
+  else
+    echo "Store refresh not ready (attempt $attempt): $output"
+  fi
+  sleep 10
+done
+if [[ "$reload_ok" != true ]]; then
+  echo "Supervisor never allowed a store refresh" >&2
+  remote 'ha supervisor info' || true
+  exit 1
+fi
 
 echo "Waiting for known-good control and candidate to appear in Supervisor"
 control_found=false
 found=false
-for attempt in $(seq 1 120); do
+for _ in $(seq 1 120); do
   if remote 'ha apps info local_mcphub_ci_control >/dev/null 2>&1'; then
     control_found=true
   fi
