@@ -89,6 +89,9 @@ done
 if [[ "$found" != true ]]; then
   remote 'ls -l /mnt/data/supervisor/apps/local/ /mnt/data/supervisor/apps/local/mcphub_ci/' || true
   remote 'ha apps list' || true
+  echo 'Supervisor diagnostic logs for missing MCPHub app:'
+  remote 'ha supervisor logs' || true
+  remote 'docker logs --tail 160 hassio_supervisor' || true
   echo "Supervisor did not discover MCPHub app" >&2
   exit 1
 fi
