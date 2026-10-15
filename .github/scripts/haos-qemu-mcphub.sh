@@ -100,10 +100,10 @@ if ! check_schema mcphub_ci; then
   candidate_schema_ok=false
 fi
 
-echo "Waiting for Supervisor store reload API"
+echo "Waiting for direct Supervisor app refresh API"
 reloaded=false
 for _ in $(seq 1 120); do
-  if remote 'ha store reload >/dev/null 2>&1' 2>/dev/null; then reloaded=true; break; fi
+  if remote 'ha apps reload >/dev/null 2>&1' 2>/dev/null; then reloaded=true; break; fi
   sleep 5
 done
 [[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
@@ -111,7 +111,7 @@ done
 echo "Checking A/B registration of known-good control and candidate"
 control_found=false
 for attempt in $(seq 1 18); do
-  if (( (attempt - 1) % 4 == 0 )); then remote 'ha store reload' || true; fi
+  if (( (attempt - 1) % 4 == 0 )); then remote 'ha apps reload' || true; fi
   if remote 'ha apps info local_mcphub_ci_control >/dev/null 2>&1'; then
     control_found=true
     break
@@ -120,7 +120,7 @@ for attempt in $(seq 1 18); do
 done
 if [[ "$control_found" != true ]]; then
   echo "KNOWN-GOOD CONTROL WAS NOT DISCOVERED: this is a HAOS harness/store registration issue, not proof of a Tailscale regression." >&2
-  remote 'ha store info' || true
+  remote 'ha apps list' || true
   remote 'docker logs --tail 120 hassio_supervisor' || true
   exit 1
 fi
@@ -137,7 +137,7 @@ for attempt in $(seq 1 24); do
   # Re-request discovery periodically instead of treating one successful CLI call
   # as proof that Supervisor has already indexed our staged local app.
   if (( (attempt - 1) % 6 == 0 )); then
-    remote "ha store reload" || true
+    remote "ha apps reload" || true
   fi
   if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
   sleep 5
@@ -152,7 +152,7 @@ if [[ "$found" != true ]]; then
   done
   [[ "$supervisor_ready" == true ]] || { echo "Supervisor did not restart" >&2; exit 1; }
   for attempt in $(seq 1 42); do
-    if (( (attempt - 1) % 6 == 0 )); then remote 'ha store reload' || true; fi
+    if (( (attempt - 1) % 6 == 0 )); then remote 'ha apps reload' || true; fi
     if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
     sleep 5
   done
