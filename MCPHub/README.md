@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.svg" alt="MCPHub" width="320">
+<img src="https://raw.githubusercontent.com/HyperCriSiS/Home-Assistant-Apps/dev-mcphub/MCPHub/logo.svg" alt="MCPHub" width="320">
 
 # MCPHub
 

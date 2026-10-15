@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.10.12-1-dev.94
+## v2026.10.12-1-dev.95
 
 Development build. This section is generated from the actual Git history; individual iteration changes are preserved below.
 
@@ -12,6 +12,7 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits and cha
 
 #### Commits
 
+- [`cee3b59`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/cee3b59fc719bfd9f187e634ffe8374790214c2a) fix(mcphub): use absolute logo URL in Home Assistant README (#53)
 - [`039b329`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/039b329405e979a0d5984a33c9c87089854a01f0) fix(mcphub): preserve every Dev changelog iteration and complete Stable notes (#52)
 - [`d97b020`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/d97b020eca874bc2c79c86ed8f96cc58b222da2e) fix(mcphub): verify HTTPS and make audit checks effective (#51)
 - [`8fb079e`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/8fb079e68baa72747114ee831d62bcc4d1c15a4e) docs(mcphub): complete dev changelog before stable promotion (#50)
@@ -70,7 +71,17 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits and cha
 
 ### This iteration
 
-- Baseline at the start of automatic per-iteration tracking. Earlier development changes are itemized in the cumulative comparison above.
+#### Commits
+
+- [`cee3b59`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/cee3b59fc719bfd9f187e634ffe8374790214c2a) fix(mcphub): use absolute logo URL in Home Assistant README (#53)
+
+#### Changed files
+
+- M: `MCPHub/README.md`
+
+## v2026.10.12-1-dev.94
+
+- Tracking baseline; see the cumulative history in the latest development entry.
 
 ## v2026.10.12-1
 
