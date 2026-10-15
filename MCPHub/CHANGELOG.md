@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.10.12-1-dev.95
+## v2026.10.12-1-dev.96
 
 Development build. This section is generated from the actual Git history; individual iteration changes are preserved below.
 
@@ -8,10 +8,11 @@ Development build. This section is generated from the actual Git history; indivi
 
 ### MCPHub changes awaiting stable release
 
-Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits and changed files are listed below. Human-written release notes follow.
+Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are listed below. Human-written release notes follow.
 
 #### Commits
 
+- [`4a5300f`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/4a5300f996b843cc9a81b5316bd06a50bbd9dab6) fix(mcphub): remove changed-file inventories from generated changelogs
 - [`cee3b59`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/cee3b59fc719bfd9f187e634ffe8374790214c2a) fix(mcphub): use absolute logo URL in Home Assistant README (#53)
 - [`039b329`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/039b329405e979a0d5984a33c9c87089854a01f0) fix(mcphub): preserve every Dev changelog iteration and complete Stable notes (#52)
 - [`d97b020`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/d97b020eca874bc2c79c86ed8f96cc58b222da2e) fix(mcphub): verify HTTPS and make audit checks effective (#51)
@@ -35,50 +36,18 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits and cha
 - [`ba1d758`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/ba1d758e4776248f7b5833f423e743ca06681123) Clean up MCPHub release changelog
 - [`e3723d0`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/e3723d06995d234de829a43dcf391e2dbf910ae5) Merge remote-tracking branch 'origin/main' into dev-mcphub
 
-#### Changed files
-
-- A: `.github/scripts/generate-mcphub-changelog.py`
-- M: `.github/scripts/haos-e2e-mcphub.sh`
-- M: `.github/scripts/integration-test-mcphub.sh`
-- M: `.github/scripts/update-mcphub-upstream.py`
-- M: `.github/workflows/haos-mcphub.yml`
-- M: `.github/workflows/promote.yml`
-- M: `.github/workflows/sync-dev-store.yml`
-- M: `.github/workflows/validate-mcphub.yml`
-- A: `MCPHub/.haos-source-revision`
-- M: `MCPHub/CHANGELOG.md`
-- M: `MCPHub/DOCS.md`
-- M: `MCPHub/Dockerfile`
-- M: `MCPHub/NOTICE.md`
-- M: `MCPHub/README.md`
-- M: `MCPHub/build.yaml`
-- M: `MCPHub/config.yaml`
-- M: `MCPHub/ingress.conf`
-- M: `MCPHub/logo.svg`
-- M: `MCPHub/patch_home_assistant_auth.py`
-- M: `MCPHub/prepare_config.py`
-- M: `MCPHub/prepare_proxy_config.py`
-- M: `MCPHub/run.sh`
-- A: `MCPHub/tests/test_changelog_generation.py`
-- A: `MCPHub/tests/test_grouped_configuration.py`
-- A: `MCPHub/tests/test_managed_home_assistant_mcp.py`
-- A: `MCPHub/tests/test_security_audit.py`
-- A: `MCPHub/tests/test_tunnel_manager.py`
-- A: `MCPHub/tests/test_upstream_version_description.py`
-- M: `MCPHub/translations/de.yaml`
-- M: `MCPHub/translations/en.yaml`
-- A: `MCPHub/tunnel_manager.py`
-
 ### This iteration
 
 #### Commits
 
+- [`4a5300f`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/4a5300f996b843cc9a81b5316bd06a50bbd9dab6) fix(mcphub): remove changed-file inventories from generated changelogs
+## v2026.10.12-1-dev.95
+
+### Changes in this iteration
+
+#### Commits
+
 - [`cee3b59`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/cee3b59fc719bfd9f187e634ffe8374790214c2a) fix(mcphub): use absolute logo URL in Home Assistant README (#53)
-
-#### Changed files
-
-- M: `MCPHub/README.md`
-
 ## v2026.10.12-1-dev.94
 
 - Tracking baseline; see the cumulative history in the latest development entry.
@@ -102,7 +71,7 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits and cha
 
 ### Fixed
 
-- Generated a separate development changelog for each revision with the relevant Git commits and changed files, retaining previous Dev entries and human-written notes.
+- Generated a separate development changelog from Git commits and retained previous Dev entries and human-written notes.
 - Prepared comprehensive Stable notes from every MCPHub change since the previous `main` release and added a pre-merge completeness check.
 
 - Verify Home Assistant MCP HTTPS certificates and hostnames, retaining certificate-free LAN HTTP and supporting trusted private CA files.

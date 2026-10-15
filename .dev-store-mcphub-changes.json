@@ -1,5 +1,17 @@
 [
   {
+    "revision": 96,
+    "version": "v2026.10.12-1-dev.96",
+    "source_sha": "4a5300f996b843cc9a81b5316bd06a50bbd9dab6",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "4a5300f996b843cc9a81b5316bd06a50bbd9dab6",
+        "subject": "fix(mcphub): remove changed-file inventories from generated changelogs"
+      }
+    ]
+  },
+  {
     "revision": 95,
     "version": "v2026.10.12-1-dev.95",
     "source_sha": "cee3b59fc719bfd9f187e634ffe8374790214c2a",
