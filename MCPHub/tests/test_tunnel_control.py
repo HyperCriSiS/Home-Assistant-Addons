@@ -53,6 +53,8 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertFalse(control.allowed('serve'))
         self.assertTrue(control.allowed('funnel'))
         self.assertFalse(self.mod.Tailscale().allowed('serve'))
+        control.command('serve', 'reload')
+        self.assertFalse(control.allowed('serve'), 'Reload must not reopen a closed gate')
         self.assertEqual(self.mod.GATE_FILE.stat().st_mode & 0o777, 0o600)
         control.command('serve', 'start')
         self.assertTrue(self.mod.Tailscale().allowed('serve'))

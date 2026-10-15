@@ -215,10 +215,13 @@ class Tailscale:
     def command(self, mode, action):
         if action not in ('start', 'stop', 'reload'):
             raise ValueError('Invalid action')
-        if action != 'stop' and not self.configured(mode, options()):
+        if action == 'reload':
+            # Status-only reload must never re-open an explicitly closed gate.
+            return
+        if action == 'start' and not self.configured(mode, options()):
             raise ValueError('Tailscale origin not configured')
-        # This gates MCP access; the external Tailscale listener is not controlled here.
-        self.gates[mode] = action != 'stop'
+        # Only explicit Start enables access; Stop always fails closed.
+        self.gates[mode] = action == 'start'
         save_secret(GATE_FILE, json.dumps(self.gates, sort_keys=True))
 
     def status(self, mode):
