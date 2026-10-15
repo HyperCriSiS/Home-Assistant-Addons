@@ -48,6 +48,28 @@ configuration:
         description: >-
           32-256 character client key that remote MCP clients must send in the
           Authorization header.
+  tailscale:
+    name: "Tailscale Serve / Funnel"
+    description: "Requires the separate Home Assistant Community Tailscale App."
+    fields:
+      tailscale_serve_enabled:
+        name: "Enable Tailscale Serve MCP origin"
+        description: "Private tailnet MCP endpoint; also manually publish Network port 8094."
+      tailscale_serve_mcp_path:
+        name: "Tailscale Serve MCP route"
+        description: "Exact allowed MCP route, e.g. /mcp/development."
+      tailscale_serve_access_token:
+        name: "Tailscale Serve client token"
+        description: "Required separate 32-256 character bearer token."
+      tailscale_funnel_enabled:
+        name: "Enable Tailscale Funnel MCP origin"
+        description: "Public MCP endpoint; also manually publish Network port 8095."
+      tailscale_funnel_mcp_path:
+        name: "Tailscale Funnel MCP route"
+        description: "Exact allowed MCP route, e.g. /mcp/development."
+      tailscale_funnel_access_token:
+        name: "Tailscale Funnel client token"
+        description: "Required separate random bearer token; do not reuse Serve key."
   home_assistant:
     name: "Home Assistant MCP"
     description: "Settings for Home Assistant MCP"

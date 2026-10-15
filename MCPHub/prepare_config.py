@@ -24,10 +24,14 @@ HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
 GITHUB_TOKEN_FILE = SECRET_DIR / "github_token"
+TAILSCALE_SERVE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_tailscale_serve_token"
+TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_tailscale_funnel_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
+TAILSCALE_SERVE_KEY_NAME = "Home Assistant Tailscale Serve"
+TAILSCALE_FUNNEL_KEY_NAME = "Home Assistant Tailscale Funnel"
 GITHUB_CLI_SERVER_NAME = "ha-github-cli"
 HOME_ASSISTANT_MCP_DEFAULT_NAME = "ha-home-assistant"
 HOME_ASSISTANT_MCP_DESCRIPTION = (
@@ -55,7 +59,7 @@ def ensure_secret(path: Path, factory) -> str:
 def flatten_grouped_options(data: dict) -> dict:
     """Read legacy flat and grouped options."""
     result = dict(data)
-    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+    for group in ("openai", "cloudflare", "tailscale", "home_assistant", "github", "logging"):
         section = data.get(group)
         if isinstance(section, dict):
             result.update(section)
@@ -196,6 +200,15 @@ def main() -> None:
         lambda: "mcf_" + secrets.token_urlsafe(48),
     )
 
+    tailscale_serve_internal_token = ensure_secret(
+        TAILSCALE_SERVE_INTERNAL_TOKEN_FILE,
+        lambda: "mts_" + secrets.token_urlsafe(48),
+    )
+    tailscale_funnel_internal_token = ensure_secret(
+        TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE,
+        lambda: "mtf_" + secrets.token_urlsafe(48),
+    )
+
     OPENAI_AUTH_FILE.write_text(f"Bearer {openai_token}", encoding="utf-8")
     os.chmod(OPENAI_AUTH_FILE, 0o600)
 
@@ -226,6 +239,10 @@ def main() -> None:
         ("OpenAI", "tunnel_enabled", "tunnel_mcp_path", OPENAI_KEY_NAME, openai_token),
         ("Cloudflare", "cloudflare_tunnel_enabled", "cloudflare_mcp_path",
          CLOUDFLARE_KEY_NAME, cloudflare_internal_token),
+        ("Tailscale Serve", "tailscale_serve_enabled", "tailscale_serve_mcp_path",
+         TAILSCALE_SERVE_KEY_NAME, tailscale_serve_internal_token),
+        ("Tailscale Funnel", "tailscale_funnel_enabled", "tailscale_funnel_mcp_path",
+         TAILSCALE_FUNNEL_KEY_NAME, tailscale_funnel_internal_token),
     ):
         bearer_keys[:] = [item for item in bearer_keys if item.get("name") != key_name]
         if not bool(options.get(enabled_flag, False)):

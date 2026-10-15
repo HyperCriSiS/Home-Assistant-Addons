@@ -38,6 +38,28 @@ configuration:
       cloudflare_access_token:
         name: "Cloudflare Client-Key"
         description: "Zusätzlicher Schlüssel für Remote-MCP-Clients."
+  tailscale:
+    name: "Tailscale Serve / Funnel"
+    description: "Erfordert die separate Tailscale Community App für Home Assistant."
+    fields:
+      tailscale_serve_enabled:
+        name: "Tailscale Serve MCP-Ursprung aktivieren"
+        description: "Private MCP-Route im Tailnet; Netzwerkport 8094 separat freigeben."
+      tailscale_serve_mcp_path:
+        name: "Tailscale Serve MCP-Route"
+        description: "Erlaubte MCP-Route, z. B. /mcp/development."
+      tailscale_serve_access_token:
+        name: "Tailscale Serve Client-Token"
+        description: "Eigener Bearer-Token mit 32-256 Zeichen erforderlich."
+      tailscale_funnel_enabled:
+        name: "Tailscale Funnel MCP-Ursprung aktivieren"
+        description: "Öffentliche MCP-Route; Netzwerkport 8095 separat freigeben."
+      tailscale_funnel_mcp_path:
+        name: "Tailscale Funnel MCP-Route"
+        description: "Erlaubte MCP-Route, z. B. /mcp/development."
+      tailscale_funnel_access_token:
+        name: "Tailscale Funnel Client-Token"
+        description: "Separater zufälliger Bearer-Token; Serve-Token nicht wiederverwenden."
   home_assistant:
     name: "Home Assistant MCP"
     description: "Einstellungen für Home Assistant MCP"

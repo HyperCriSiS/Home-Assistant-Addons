@@ -18,6 +18,8 @@ OUTPUT_FILE = Path("/etc/nginx/conf.d/mcphub.conf")
 
 HA_INGRESS_PROXY_SECRET_FILE = Path("/data/secrets/mcphub_ha_ingress_proxy_secret")
 CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
+TAILSCALE_SERVE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_tailscale_serve_token")
+TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_tailscale_funnel_token")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 HA_MCP_PATH_PATTERN = re.compile(r"^/api/mcp(?:/[A-Za-z0-9._~-]+)?$")
@@ -31,7 +33,7 @@ CUSTOM_CA_PATTERN = re.compile(r"^/ssl/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.pem
 def flatten_grouped_options(data: dict) -> dict:
     """Read legacy flat and grouped options."""
     result = dict(data)
-    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+    for group in ("openai", "cloudflare", "tailscale", "home_assistant", "github", "logging"):
         section = data.get(group)
         if isinstance(section, dict):
             result.update(section)
@@ -274,12 +276,93 @@ def cloudflare_server_block(
 }}"""
 
 
+def tailscale_origin_server_block(
+    *,
+    port: int,
+    enabled: bool,
+    mcp_path: str,
+    client_token: str,
+    internal_token: str,
+) -> str:
+    """A locked-down, path-limited origin for the external Tailscale App.
+
+    Even Serve must authenticate: host-published ports can be LAN-reachable.
+    """
+    if port not in (8094, 8095):
+        raise ValueError("Unexpected Tailscale MCP origin port")
+
+    deny = f"""server {{
+    listen {port};
+    access_log off;
+    location / {{ return 404; }}
+}}"""
+    if not enabled:
+        return deny
+    if not MCP_PATH_PATTERN.fullmatch(mcp_path):
+        print("[WARN] Invalid Tailscale MCP path; origin disabled", file=sys.stderr)
+        return deny
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", client_token):
+        print("[WARN] Invalid Tailscale client key; origin disabled", file=sys.stderr)
+        return deny
+
+    path_pattern = re.escape(mcp_path)
+    return f"""server {{
+    listen {port};
+    access_log /dev/stdout;
+    error_log /dev/stderr warn;
+    client_max_body_size 16m;
+
+    location ~ ^{path_pattern}$ {{
+        if ($http_authorization != "Bearer {client_token}") {{
+            return 401;
+        }}
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Authorization "Bearer {internal_token}";
+        proxy_set_header X-MCPHub-HA-Proxy-Secret "";
+        proxy_set_header X-Remote-User-Id "";
+        proxy_set_header X-Remote-User-Name "";
+        proxy_set_header X-Remote-User-Display-Name "";
+        proxy_set_header X-Remote-User-Email "";
+        proxy_set_header X-Remote-User-Groups "";
+        proxy_set_header Proxy-Authorization "";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }}
+    location / {{ return 404; }}
+}}"""
+
+
 def main() -> None:
     options = load_options()
     template = TEMPLATE_FILE.read_text(encoding="utf-8")
 
     ha_ingress_proxy_secret = read_secret(HA_INGRESS_PROXY_SECRET_FILE)
     cloudflare_internal_token = read_secret(CLOUDFLARE_INTERNAL_TOKEN_FILE)
+
+    tailscale_serve_internal_token = read_secret(TAILSCALE_SERVE_INTERNAL_TOKEN_FILE)
+    tailscale_funnel_internal_token = read_secret(TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE)
+
+    tailscale_serve_block = tailscale_origin_server_block(
+        port=8094,
+        enabled=bool(options.get("tailscale_serve_enabled", False)),
+        mcp_path=str(options.get("tailscale_serve_mcp_path", "/mcp")),
+        client_token=str(options.get("tailscale_serve_access_token", "")),
+        internal_token=tailscale_serve_internal_token,
+    )
+    tailscale_funnel_block = tailscale_origin_server_block(
+        port=8095,
+        enabled=bool(options.get("tailscale_funnel_enabled", False)),
+        mcp_path=str(options.get("tailscale_funnel_mcp_path", "/mcp")),
+        client_token=str(options.get("tailscale_funnel_access_token", "")),
+        internal_token=tailscale_funnel_internal_token,
+    )
 
     home_assistant_block = home_assistant_mcp_server_block(options)
     cloudflare_block = cloudflare_server_block(
@@ -302,6 +385,8 @@ def main() -> None:
             "__CLOUDFLARE_SERVER_BLOCK__",
             cloudflare_block,
         )
+        .replace("__TAILSCALE_SERVE_SERVER_BLOCK__", tailscale_serve_block)
+        .replace("__TAILSCALE_FUNNEL_SERVER_BLOCK__", tailscale_funnel_block)
     )
 
     OUTPUT_FILE.write_text(rendered, encoding="utf-8")
