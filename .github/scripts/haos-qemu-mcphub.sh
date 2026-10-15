@@ -138,6 +138,8 @@ port_bindings="$(remote "docker inspect -f '{{json .HostConfig.PortBindings}}' a
   exit 1
 }
 # Simulate the host-network Tailscale app with /share mounted read-only.
+# Remote Docker command expansion intentionally happens in the HAOS guest.
+# shellcheck disable=SC2016
 remote 'docker run --rm --network host --volume /mnt/data/supervisor/share:/share:ro --entrypoint curl "$(docker inspect -f "{{.Image}}" app_local_mcphub)" --silent --unix-socket /share/mcphub/tailscale-serve.sock --output /dev/null --write-out "%{http_code}" http://localhost/mcp' | grep -qx 404
 
 remote "ha apps restart $APP"
