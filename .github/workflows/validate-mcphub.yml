@@ -41,6 +41,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Install validation tools
         run: |
@@ -73,9 +74,18 @@ jobs:
           python3 -m py_compile "MCPHub/prepare_proxy_config.py"
           python3 -m py_compile "MCPHub/patch_home_assistant_auth.py"
           python3 -m py_compile ".github/scripts/update-mcphub-upstream.py"
+          python3 -m py_compile ".github/scripts/generate-mcphub-changelog.py"
 
       - name: Test managed Home Assistant MCP server lifecycle
         run: python3 -m unittest discover -s MCPHub/tests -p 'test_*.py' -v
+
+      - name: Require complete MCPHub release notes for main
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          git fetch origin main dev-mcphub
+          if ! git diff --quiet origin/main HEAD -- MCPHub; then
+            python3 .github/scripts/generate-mcphub-changelog.py stable --check
+          fi
 
       - name: Lint MCPHub Dockerfile
         run: |
