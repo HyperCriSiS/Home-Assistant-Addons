@@ -82,7 +82,7 @@ done
 [[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
 
 found=false
-for attempt in $(seq 1 90); do
+for attempt in $(seq 1 24); do
   # A fresh HAOS boot can finish starting Core after the first store reload.
   # Re-request discovery periodically instead of treating one successful CLI call
   # as proof that Supervisor has already indexed our staged local app.
@@ -92,6 +92,22 @@ for attempt in $(seq 1 90); do
   if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
   sleep 5
 done
+if [[ "$found" != true ]]; then
+  echo "Local app not yet indexed; restarting the disposable HAOS Supervisor once after staging."
+  remote 'docker restart hassio_supervisor >/dev/null'
+  supervisor_ready=false
+  for attempt in $(seq 1 120); do
+    if remote 'ha supervisor info >/dev/null 2>&1'; then supervisor_ready=true; break; fi
+    sleep 5
+  done
+  [[ "$supervisor_ready" == true ]] || { echo "Supervisor did not restart" >&2; exit 1; }
+  for attempt in $(seq 1 42); do
+    if (( (attempt - 1) % 6 == 0 )); then remote 'ha store reload' || true; fi
+    if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
+    sleep 5
+  done
+fi
+
 if [[ "$found" != true ]]; then
   remote 'ls -l /mnt/data/supervisor/apps/local/ /mnt/data/supervisor/apps/local/mcphub_ci/' || true
   remote 'ha apps list' || true
