@@ -1,0 +1,57 @@
+---
+name: HAOS MCPHub VM integration
+
+on:
+  pull_request:
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/haos-qemu-mcphub.sh"
+      - ".github/workflows/haos-qemu-mcphub.yml"
+  push:
+    branches:
+      - dev-mcphub
+    paths:
+      - "MCPHub/**"
+      - ".github/scripts/haos-qemu-mcphub.sh"
+      - ".github/workflows/haos-qemu-mcphub.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: haos-qemu-mcphub-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  haos-vm:
+    name: Boot HAOS 18.3, install MCPHub and verify Supervisor integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+
+    steps:
+      - name: Check out exact candidate commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install QEMU and FAT image utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            qemu-system-x86 ovmf dosfstools mtools openssh-client xz-utils
+
+      - name: Boot real HAOS and test MCPHub via Supervisor
+        env:
+          HAOS_VERSION: "18.3"
+        run: bash .github/scripts/haos-qemu-mcphub.sh
+
+      - name: Upload HAOS diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: haos-mcphub-diagnostics
+          path: |
+            haos-test-logs/
+            haos-test-logs-add-on.log
+          if-no-files-found: warn
