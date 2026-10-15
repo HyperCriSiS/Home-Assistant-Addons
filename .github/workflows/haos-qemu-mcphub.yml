@@ -10,7 +10,6 @@ on:
   push:
     branches:
       - dev-mcphub
-      - "feature/mcphub-tailscale-serve-funnel"
     paths:
       - "MCPHub/**"
       - ".github/scripts/haos-qemu-mcphub.sh"
