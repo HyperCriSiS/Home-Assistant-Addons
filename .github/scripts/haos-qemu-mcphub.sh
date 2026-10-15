@@ -73,10 +73,10 @@ tar -C MCPHub -cf - . | remote "tar -xf - -C $app_dir"
 commit="$(git rev-parse HEAD)"
 printf '%s\n' "$commit" | remote "cat > $app_dir/.haos-source-revision"
 
-echo "Waiting for Supervisor apps API"
+echo "Waiting for Supervisor store reload API"
 reloaded=false
 for _ in $(seq 1 120); do
-  if remote 'ha apps reload >/dev/null 2>&1' 2>/dev/null; then reloaded=true; break; fi
+  if remote 'ha store reload >/dev/null 2>&1' 2>/dev/null; then reloaded=true; break; fi
   sleep 5
 done
 [[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
@@ -87,7 +87,7 @@ for attempt in $(seq 1 90); do
   # Re-request discovery periodically instead of treating one successful CLI call
   # as proof that Supervisor has already indexed our staged local app.
   if (( (attempt - 1) % 6 == 0 )); then
-    remote "ha apps reload" || true
+    remote "ha store reload" || true
   fi
   if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
   sleep 5
