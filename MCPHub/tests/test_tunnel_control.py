@@ -88,6 +88,19 @@ class TunnelControllerTests(unittest.TestCase):
             self.assertNotIn('sensitive-token', json.dumps(ctrl.status(ctrl.started + 45)))
             ctrl.command('stop')
 
+    def test_stale_connector_status_does_not_report_health(self):
+        self.set_options(cloudflare={'cloudflare_tunnel_enabled': False})
+        ctrl = self.mod.Cloudflare()
+        proc = MagicMock()
+        proc.poll.return_value = None
+        ctrl.proc = proc
+        ctrl.state = 'ready'
+        ctrl.desired = True
+        ctrl.checked = 3.0
+        result = ctrl.status(30.0)
+        self.assertEqual(result['state'], 'stale')
+        self.assertFalse(result['transport_ready'])
+
     def test_nginx_enforces_route_and_dynamic_access_gate(self):
         proxy = load('test_mcphub_proxy_gate', 'prepare_proxy_config.py')
         for port, mode in ((8094, 'serve'), (8095, 'funnel')):
