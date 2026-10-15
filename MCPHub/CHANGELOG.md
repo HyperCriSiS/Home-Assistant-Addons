@@ -4,43 +4,26 @@
 
 ### Added
 
-- Added a Home Assistant Ingress-only multi-tunnel control page with separately supervised OpenAI and Cloudflare connectivity, connector readiness and local MCP origin checks, and safe per-mode Tailscale access gates with explicitly unverified external listener status.
-
-- Added independent, route-scoped Tailscale Serve and Funnel MCP origins with separate bearer keys, default-unpublished host ports, and compatibility with the existing Tailscale Community App.
-- Documented the separate Tailscale CLI setup and explicit host-port mappings without exposing the Home Assistant dashboard.
-
-- Grouped Home Assistant App settings into OpenAI, Cloudflare, Home Assistant MCP, GitHub CLI, and logging sections, with updated English and German translations.
-- Linked directly to OpenAI Runtime API key and Tunnel ID setup from the configuration guidance.
-- Added a supervisor for the OpenAI Secure MCP Tunnel with liveness and readiness checks, automatic restart after prolonged failures, and backoff between retries.
-- Added an Ingress-only OpenAI tunnel control page with connection status and Start, Stop, and Reload actions, without restarting MCPHub.
-- Added configurable names for the managed Home Assistant MCP server, including safe rename and name-collision handling.
+- Central tunnel management for OpenAI, Cloudflare, Tailscale Serve and Funnel, including independent status checks and access controls.
+- Optional Tailscale Serve/Funnel MCP access with dedicated tokens and restricted routes; disabled by default.
+- Configurable names for the managed Home Assistant MCP server.
 
 ### Changed
 
-- Updated MCPHub from 1.1.1 to 1.1.3.
-- Showed the bundled MCPHub upstream version in the Home Assistant App description.
-- Allowed reachable LAN IPv4/IPv6 addresses, custom ports, and HTTPS hostnames with SNI for the managed Home Assistant MCP bridge.
-- Updated the MCPHub SVG wordmark and README logo positioning for consistent centering across browsers.
+- Updated MCPHub to 1.1.3.
+- Organized settings into logical groups and improved configuration guidance.
+- Expanded Home Assistant MCP connectivity to custom LAN addresses, ports and verified HTTPS connections.
+- Improved the MCPHub logo presentation.
 
 ### Fixed
 
-- Verify Home Assistant MCP HTTPS certificates and hostnames, retaining certificate-free LAN HTTP and supporting trusted private CA files.
-- Isolate invalid or disabled OpenAI and Cloudflare tunnel settings so MCPHub and Ingress remain available.
-- Execute URL security assertions in CI and rebuild and verify the exact tested HAOS image revision.
-
-- Prevented optional OpenAI and Cloudflare tunnel failures, and an invalid OpenAI Tunnel ID, from shutting down MCPHub and Home Assistant Ingress.
-- Preserved an existing GitHub CLI token when its option is empty or the managed integration is disabled.
-- Kept runtime option readers compatible with both legacy flat and new grouped settings.
-
-### Security
-
-- Restricted optional Tailscale origins to exact MCP paths, independent authentication and header scrubbing; unset or invalid settings deny access.
-
-- Restricted OpenAI tunnel controls to the local Ingress adapter; tunnel credentials are not exposed by its status endpoint.
+- Improved tunnel recovery and isolated optional tunnel failures from the MCPHub dashboard.
+- Hardened proxy authentication, certificate validation and remote-access isolation.
+- Preserved GitHub credentials and compatibility with existing flat settings.
 
 ### Upgrade notes
 
-- Home Assistant may not migrate saved App options when the option structure changes to groups. Check the OpenAI, Cloudflare, Home Assistant, and GitHub settings after upgrading; re-enter missing values before enabling affected integrations.
+- Home Assistant may not migrate existing settings when switching to grouped options. Review and, if necessary, re-enter saved OpenAI, Cloudflare, Home Assistant and GitHub settings.
 
 ## v2026.10.12
 
