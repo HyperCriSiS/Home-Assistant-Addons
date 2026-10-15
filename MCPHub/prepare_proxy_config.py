@@ -349,6 +349,11 @@ def tailscale_origin_server_block(
 
 
 def main() -> None:
+    # nginx -t also binds Unix listeners; ensure the shared directory exists
+    # even when configuration is prepared outside the normal run.sh startup.
+    socket_directory = Path('/share/mcphub')
+    socket_directory.mkdir(parents=True, exist_ok=True)
+    socket_directory.chmod(0o700)
     options = load_options()
     template = TEMPLATE_FILE.read_text(encoding="utf-8")
 
