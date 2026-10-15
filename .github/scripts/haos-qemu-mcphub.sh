@@ -128,28 +128,46 @@ if [[ "$reload_ok" != true ]]; then
   exit 1
 fi
 
-echo "Waiting for known-good control and candidate to appear in Supervisor"
+echo "Waiting for known-good control and candidate in the Supervisor STORE"
+# /addons/{slug}/info is an installed-app endpoint; store registration should
+# be verified with /store/addons before the candidate is installed.
+store_local_slugs() {
+  remote 'ha --raw-json store apps' | python3 -c '
+import json, sys
+payload = json.load(sys.stdin)
+payload = payload.get("data", payload)
+if isinstance(payload, dict):
+    items = payload.get("addons", payload.get("apps", []))
+elif isinstance(payload, list):
+    items = payload
+else:
+    items = []
+print(" ".join(str(x.get("slug", "")) for x in items if isinstance(x, dict) and str(x.get("slug", "")).startswith("local_")))
+'
+}
 control_found=false
 found=false
-for _ in $(seq 1 120); do
-  if remote 'ha apps info local_mcphub_ci_control >/dev/null 2>&1'; then
-    control_found=true
+for attempt in $(seq 1 90); do
+  slugs="$(store_local_slugs 2>/dev/null || true)"
+  if [[ " $slugs " == *" local_mcphub_ci_control "* ]]; then control_found=true; fi
+  if [[ " $slugs " == *" $APP "* ]]; then found=true; fi
+  if [[ "$control_found" == true && "$found" == true ]]; then
+    echo "Supervisor local store discovered: $slugs"
+    break
   fi
-  if remote "ha apps info $APP >/dev/null 2>&1"; then
-    found=true
+  if (( attempt % 10 == 0 )); then
+    echo "Store discovery attempt $attempt: local slugs '$slugs'"
   fi
-  [[ "$control_found" == true && "$found" == true ]] && break
   sleep 5
 done
-
 if [[ "$control_found" != true || "$found" != true ]]; then
-  echo "Local app discovery incomplete (known-good=$control_found candidate=$found)." >&2
-  remote 'docker exec hassio_supervisor python3 -c "from supervisor.config import CoreConfig; c=CoreConfig(); p=c.path_apps_local; print(\"SUPERVISOR_LOCAL_APPS_PATH\",p); print(\"APP_CONFIG_PATHS\",list(p.glob(\"**/config.yaml\")))"' || true
+  echo "Local store discovery incomplete (known-good=$control_found candidate=$found)." >&2
+  echo "Discovered store slugs: $(store_local_slugs || true)"
+  remote 'ha store apps' || true
   remote 'ha supervisor logs' || true
   remote 'docker logs --since 10m hassio_supervisor 2>&1 | grep -Ei "mcphub|local|schema|invalid|error|warning|reload|store"' || true
   exit 1
 fi
-
 echo "Both manifest variants discovered by Supervisor"
 [[ "$candidate_schema_ok" == true ]] || {
   echo "Candidate configuration was rejected by the live Supervisor schema." >&2
@@ -161,7 +179,7 @@ installed="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(str(d.ge
 if [[ "$installed" == true ]]; then
   remote "ha apps rebuild $APP"
 else
-  remote "ha apps install $APP"
+  remote "ha store apps install $APP"
 fi
 remote "ha apps start $APP" || remote "ha apps restart $APP"
 
