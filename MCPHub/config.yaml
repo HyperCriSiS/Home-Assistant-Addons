@@ -22,6 +22,8 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
+# Explicitly no published TCP ports: Tailscale origins are Unix sockets.
+ports: {}
 map:
   - type: ssl
     read_only: true
