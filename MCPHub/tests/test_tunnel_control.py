@@ -108,6 +108,7 @@ class TunnelControllerTests(unittest.TestCase):
                 port=port, enabled=True, mcp_path='/mcp/development',
                 client_token='s' * 48, internal_token='internal')
             self.assertIn('auth_request /__mcphub_tailscale_gate;', result)
+            self.assertIn(f'listen unix:/share/mcphub/tailscale-{mode}.sock;', result)
             self.assertIn('internal;', result)
             self.assertIn('api/gate/' + mode, result)
             self.assertIn('return 401;', result)

@@ -32,11 +32,15 @@ class ProxyTests(unittest.TestCase):
                 result = self.origin(port, active, route, key)
                 self.assertNotIn("proxy_pass", result)
                 self.assertIn("return 404", result)
+                mode = "serve" if port == 8094 else "funnel"
+                self.assertIn(f"listen unix:/share/mcphub/tailscale-{mode}.sock;", result)
 
     def test_exact_route_and_private_authorization(self):
         for port in (8094, 8095):
             result = self.origin(port, True)
             self.assertIn("location ~ ^/mcp/development$", result)
+            self.assertNotIn("listen 8094", result)
+            self.assertNotIn("listen 8095", result)
             self.assertIn("return 401;", result)
             self.assertIn('proxy_set_header Authorization "Bearer internal";', result)
             self.assertIn('proxy_set_header X-MCPHub-HA-Proxy-Secret "";', result)

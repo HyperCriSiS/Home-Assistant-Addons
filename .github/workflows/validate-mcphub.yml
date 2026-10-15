@@ -143,8 +143,8 @@ jobs:
           assert config["options"]["cloudflare"]["cloudflare_mcp_path"] == "/mcp"
           assert config["options"]["tailscale"]["tailscale_serve_enabled"] is False
           assert config["options"]["tailscale"]["tailscale_funnel_enabled"] is False
-          assert config["ports"]["8094/tcp"] is None
-          assert config["ports"]["8095/tcp"] is None
+          assert "ports" not in config or ("8094/tcp" not in config["ports"] and "8095/tcp" not in config["ports"])
+          assert {entry["type"] for entry in config["map"]} >= {"ssl", "share"}
           assert list(config["options"]["logging"])[-1] == "tunnel_log_level"
           assert list(config["schema"]["logging"])[-1] == "tunnel_log_level"
 

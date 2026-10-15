@@ -125,12 +125,20 @@ if ! wait_for_app || ! wait_for_health; then
   exit 1
 fi
 
-echo "Checking Nginx and disabled remote origins inside Supervisor-managed app"
+echo "Checking Nginx, isolated Unix sockets and absence of host-published origin ports"
 remote "docker exec app_$APP nginx -t"
-for port in 8094 8095; do
-  result="$(remote "docker exec app_$APP curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:$port/mcp")"
-  [[ "$result" == 404 ]] || { echo "Origin $port: expected 404, got $result" >&2; exit 1; }
+for mode in serve funnel; do
+  remote "docker exec app_$APP test -S /share/mcphub/tailscale-$mode.sock"
+  result="$(remote "docker exec app_$APP curl --silent --unix-socket /share/mcphub/tailscale-$mode.sock --output /dev/null --write-out '%{http_code}' http://localhost/mcp")"
+  [[ "$result" == 404 ]] || { echo "Tailscale $mode origin: expected 404, got $result" >&2; exit 1; }
 done
+port_bindings="$(remote "docker inspect -f '{{json .HostConfig.PortBindings}}' app_$APP")"
+[[ "$port_bindings" != *8094* && "$port_bindings" != *8095* ]] || {
+  echo "Unwanted public Tailscale origin port: $port_bindings" >&2
+  exit 1
+}
+# Simulate the host-network Tailscale app with /share mounted read-only.
+remote 'docker run --rm --network host --volume /mnt/data/supervisor/share:/share:ro --entrypoint curl "$(docker inspect -f "{{.Image}}" app_local_mcphub)" --silent --unix-socket /share/mcphub/tailscale-serve.sock --output /dev/null --write-out "%{http_code}" http://localhost/mcp' | grep -qx 404
 
 remote "ha apps restart $APP"
 if ! wait_for_app || ! wait_for_health; then
