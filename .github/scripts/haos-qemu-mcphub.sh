@@ -86,9 +86,19 @@ git show "$BASELINE_SHA:MCPHub/config.yaml" \
   | remote "cat > $control_dir/config.yaml"
 
 check_schema() {
-  local slug="$1"
+  local slug="$1" output attempt
   echo "Supervisor schema validation: $slug"
-  remote "docker exec hassio_supervisor python3 -c 'from pathlib import Path; import yaml; from supervisor.apps.validate import SCHEMA_APP_CONFIG; p=Path(\"/data/apps/local/$slug/config.yaml\"); SCHEMA_APP_CONFIG(yaml.safe_load(p.read_text())); print(\"VALID_SUPERVISOR_APP_CONFIG:\", p)'"
+  for attempt in $(seq 1 24); do
+    # Fresh HAOS boots may temporarily restart the supervisor container after
+    # "ha supervisor info" first responds. Capture failure output before retrying.
+    if output="$(remote "docker exec hassio_supervisor python3 -c 'from pathlib import Path; import yaml; from supervisor.apps.validate import SCHEMA_APP_CONFIG; p=Path(\"/data/apps/local/$slug/config.yaml\"); SCHEMA_APP_CONFIG(yaml.safe_load(p.read_text())); print(\"VALID_SUPERVISOR_APP_CONFIG:\", p)'" 2>&1)"; then
+      printf '%s\n' "$output"
+      return 0
+    fi
+    printf 'Supervisor schema probe %s attempt %s failed: %s\n' "$slug" "$attempt" "$output" >&2
+    sleep 5
+  done
+  return 1
 }
 check_schema "$control_slug" || {
   echo "Even the known-good control failed Supervisor schema validation." >&2
