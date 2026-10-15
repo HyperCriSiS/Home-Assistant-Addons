@@ -82,7 +82,13 @@ done
 [[ "$reloaded" == true ]] || { echo "Supervisor apps API not available" >&2; exit 1; }
 
 found=false
-for _ in $(seq 1 60); do
+for attempt in $(seq 1 90); do
+  # A fresh HAOS boot can finish starting Core after the first store reload.
+  # Re-request discovery periodically instead of treating one successful CLI call
+  # as proof that Supervisor has already indexed our staged local app.
+  if (( (attempt - 1) % 6 == 0 )); then
+    remote "ha apps reload" || true
+  fi
   if remote "ha apps info $APP >/dev/null 2>&1"; then found=true; break; fi
   sleep 5
 done
