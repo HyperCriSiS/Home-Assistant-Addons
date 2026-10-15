@@ -6,7 +6,6 @@ readonly MCPHUB_DATA_DIR="/data/mcphub"
 readonly SECRET_DIR="/data/secrets"
 readonly JWT_SECRET_FILE="${SECRET_DIR}/mcphub_jwt_secret"
 readonly HA_INGRESS_PROXY_SECRET_FILE="${SECRET_DIR}/mcphub_ha_ingress_proxy_secret"
-readonly CLOUDFLARE_TUNNEL_TOKEN_FILE="${SECRET_DIR}/cloudflare_tunnel_token"
 
 mcphub_pid=""
 nginx_pid=""
@@ -49,11 +48,6 @@ else:
 PY
 }
 
-valid_mcp_path() {
-    local path="$1"
-    [[ "${path}" =~ ^/mcp(/[A-Za-z0-9._\$-]+){0,2}$ ]]
-}
-
 shutdown_processes() {
     local status="${1:-0}"
 
@@ -78,13 +72,6 @@ trap 'shutdown_processes 143' TERM
 trap 'shutdown_processes 130' INT
 
 
-cloudflare_tunnel_enabled="$(option cloudflare_tunnel_enabled)"
-cloudflare_tunnel_enabled="${cloudflare_tunnel_enabled:-false}"
-cloudflare_tunnel_token="$(option cloudflare_tunnel_token)"
-cloudflare_mcp_path="$(option cloudflare_mcp_path)"
-cloudflare_mcp_path="${cloudflare_mcp_path:-/mcp}"
-cloudflare_access_token="$(option cloudflare_access_token)"
-
 home_assistant_mcp_enabled="$(option home_assistant_mcp_enabled)"
 home_assistant_mcp_enabled="${home_assistant_mcp_enabled:-false}"
 home_assistant_mcp_auth_mode="$(option home_assistant_mcp_auth_mode)"
@@ -93,16 +80,6 @@ home_assistant_mcp_auth_mode="${home_assistant_mcp_auth_mode:-restricted_user}"
 mkdir -p     "${MCPHUB_DATA_DIR}"     "${SECRET_DIR}"     /data/home     /data/cache/npm     /data/cache/uv
 
 chmod 0700 "${SECRET_DIR}"
-
-if [[ "${cloudflare_tunnel_enabled}" == "true" ]] && ! valid_mcp_path "${cloudflare_mcp_path}"; then
-    log_warn "Invalid Cloudflare MCP path; tunnel stays disabled while MCPHub starts."
-    cloudflare_tunnel_enabled="false"
-fi
-
-if [[ "${cloudflare_tunnel_enabled}" == "true" ]]     && [[ ! "${cloudflare_access_token}" =~ ^[A-Za-z0-9_-]{32,256}$ ]]; then
-    log_warn "Invalid Cloudflare client token; tunnel stays disabled while MCPHub starts."
-    cloudflare_tunnel_enabled="false"
-fi
 
 /usr/local/bin/prepare_mcphub_config.py
 /usr/local/bin/prepare_proxy_config.py
