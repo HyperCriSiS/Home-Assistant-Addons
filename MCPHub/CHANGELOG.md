@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added independent, route-scoped Tailscale Serve and Funnel MCP origins with separate bearer keys, default-unpublished host ports, and compatibility with the existing Tailscale Community App.
+- Documented the separate Tailscale CLI setup and explicit host-port mappings without exposing the Home Assistant dashboard.
+
 - Grouped Home Assistant App settings into OpenAI, Cloudflare, Home Assistant MCP, GitHub CLI, and logging sections, with updated English and German translations.
 - Linked directly to OpenAI Runtime API key and Tunnel ID setup from the configuration guidance.
 - Added a supervisor for the OpenAI Secure MCP Tunnel with liveness and readiness checks, automatic restart after prolonged failures, and backoff between retries.
@@ -28,6 +31,8 @@
 - Kept runtime option readers compatible with both legacy flat and new grouped settings.
 
 ### Security
+
+- Restricted optional Tailscale origins to exact MCP paths, independent authentication and header scrubbing; unset or invalid settings deny access.
 
 - Restricted OpenAI tunnel controls to the local Ingress adapter; tunnel credentials are not exposed by its status endpoint.
 

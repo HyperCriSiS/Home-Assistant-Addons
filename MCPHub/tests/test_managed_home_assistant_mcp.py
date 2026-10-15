@@ -33,6 +33,8 @@ class ManagedHomeAssistantMCPTests(unittest.TestCase):
             ("HA_INGRESS_PROXY_SECRET_FILE", "mcphub_ha_ingress_proxy_secret"),
             ("LEGACY_INGRESS_TOKEN_FILE", "mcphub_ingress_token"),
             ("CLOUDFLARE_INTERNAL_TOKEN_FILE", "mcphub_cloudflare_token"),
+            ("TAILSCALE_SERVE_INTERNAL_TOKEN_FILE", "mcphub_tailscale_serve_token"),
+            ("TAILSCALE_FUNNEL_INTERNAL_TOKEN_FILE", "mcphub_tailscale_funnel_token"),
             ("GITHUB_TOKEN_FILE", "github_token"),
         ):
             setattr(MODULE, constant, MODULE.SECRET_DIR / filename)
