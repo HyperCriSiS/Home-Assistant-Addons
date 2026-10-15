@@ -7,6 +7,7 @@ on:
       - "MCPHub/**"
       - ".github/scripts/integration-test-mcphub.sh"
       - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/haos-qemu-mcphub.sh"
       - ".github/scripts/update-mcphub-upstream.py"
       - ".github/workflows/**"
       - ".yamllint"
@@ -18,6 +19,7 @@ on:
       - "MCPHub/**"
       - ".github/scripts/integration-test-mcphub.sh"
       - ".github/scripts/haos-e2e-mcphub.sh"
+      - ".github/scripts/haos-qemu-mcphub.sh"
       - ".github/scripts/update-mcphub-upstream.py"
       - ".github/workflows/**"
       - ".yamllint"
@@ -66,6 +68,7 @@ jobs:
           shellcheck "MCPHub/github_cli_mcp.sh"
           shellcheck ".github/scripts/integration-test-mcphub.sh"
           shellcheck ".github/scripts/haos-e2e-mcphub.sh"
+          shellcheck ".github/scripts/haos-qemu-mcphub.sh"
 
       - name: Compile MCPHub Python helpers
         run: |
