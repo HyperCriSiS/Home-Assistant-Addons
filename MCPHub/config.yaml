@@ -22,6 +22,11 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
+# Off by default. Enable and choose the host port in the Home Assistant Network tab.
+ports:
+  3001/tcp: null
+ports_description:
+  3001/tcp: "MCPHub im lokalen Netzwerk (eigene Anmeldung erforderlich)"
 map:
   - type: ssl
     read_only: true
