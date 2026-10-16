@@ -55,7 +55,7 @@ class NetworkTest(unittest.TestCase):
         with self.assertRaises(ValueError):mod.lan_server_block('/admin',secret,'internal')
         with tempfile.TemporaryDirectory() as td:
             output=Path(td)/'nginx.conf'
-            output.write_text('events {}\nhttp {\n'+(ROOT/'ingress.conf').read_text().replace('__HA_INGRESS_PROXY_SECRET__','safe-secret')
+            output.write_text('pid ' + str(Path(td)/'nginx.pid') + ';\nevents {}\nhttp {\n'+(ROOT/'ingress.conf').read_text().replace('__HA_INGRESS_PROXY_SECRET__','safe-secret')
                     .replace('__CLOUDFLARE_SERVER_BLOCK__',cf).replace('__LAN_SERVER_BLOCK__',lan)+'\n}\n')
             if Path('/usr/sbin/nginx').exists():
                 r=subprocess.run(['/usr/sbin/nginx','-t','-c',str(output)],capture_output=True,text=True)
