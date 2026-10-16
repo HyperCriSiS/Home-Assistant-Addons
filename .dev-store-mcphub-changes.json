@@ -1,5 +1,17 @@
 [
   {
+    "revision": 102,
+    "version": "v2026.10.16-dev.102",
+    "source_sha": "8c9a457fee4aeb52064a69e3fd6d95634878d3f1",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "8c9a457fee4aeb52064a69e3fd6d95634878d3f1",
+        "subject": "style(mcphub): enlarge header logo and restore left inset"
+      }
+    ]
+  },
+  {
     "revision": 101,
     "version": "v2026.10.16-dev.101",
     "source_sha": "8c52dc64cab9c5f6e85063685dc29ef08d87b575",

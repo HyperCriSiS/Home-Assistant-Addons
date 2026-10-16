@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.10.16-dev.101
+## v2026.10.16-dev.102
 
 Development build. This section is generated from the actual Git history; individual iteration changes are preserved below.
 
@@ -12,6 +12,7 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 
 #### Commits
 
+- [`8c9a457`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/8c9a457fee4aeb52064a69e3fd6d95634878d3f1) style(mcphub): enlarge header logo and restore left inset
 - [`8c52dc6`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/8c52dc64cab9c5f6e85063685dc29ef08d87b575) style(mcphub): align header logo and simplify README heading
 - [`d5f0c82`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/d5f0c824d64b44f405fa4bec5b81e33f231a7aa9) chore(mcphub): update upstream to 1.1.5 (#60)
 - [`181c2eb`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/181c2ebe39feaa3c7e2482c3577364be58e8fc9f) test(mcphub): make upstream-version checks release-independent
@@ -42,6 +43,13 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 - [`e3723d0`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/e3723d06995d234de829a43dcf391e2dbf910ae5) Merge remote-tracking branch 'origin/main' into dev-mcphub
 
 ### This iteration
+
+#### Commits
+
+- [`8c9a457`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/8c9a457fee4aeb52064a69e3fd6d95634878d3f1) style(mcphub): enlarge header logo and restore left inset
+## v2026.10.16-dev.101
+
+### Changes in this iteration
 
 #### Commits
 
