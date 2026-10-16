@@ -1,6 +1,6 @@
 ---
 name: "MCPHub"
-version: "v2026.10.07-4"
+version: "v2026.10.17-1"
 slug: mcphub
 description: "Central MCP server management with optional OpenAI and Cloudflare remote access"
 url: "https://github.com/HyperCriSiS/Home-Assistant-Apps/tree/main/MCPHub"
@@ -17,6 +17,10 @@ ingress_stream: true
 panel_icon: mdi:hub
 panel_title: MCPHub
 panel_admin: true
+ports:
+  3001/tcp: null
+ports_description:
+  3001/tcp: "LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen. Keinen Port eintragen um den LAN Zugriff zu deaktivieren."
 backup: cold
 options:
   tunnel_enabled: false
@@ -26,7 +30,7 @@ options:
   cloudflare_tunnel_enabled: false
   cloudflare_tunnel_token: ""
   cloudflare_mcp_path: "/mcp"
-  cloudflare_access_token: ""
+  lan_mcp_path: "/mcp"
   github_cli_mcp_enabled: false
   github_token: ""
   tunnel_log_level: "info"
@@ -38,7 +42,7 @@ schema:
   cloudflare_tunnel_enabled: bool
   cloudflare_tunnel_token: password
   cloudflare_mcp_path: str
-  cloudflare_access_token: password
+  lan_mcp_path: str
   github_cli_mcp_enabled: bool
   github_token: password
   tunnel_log_level: "list(debug|info|warn)"
