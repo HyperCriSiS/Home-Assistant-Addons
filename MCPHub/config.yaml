@@ -1,6 +1,6 @@
 ---
 name: "MCPHub (Dev)"
-version: "v2026.10.12-1-dev.96"
+version: "v2026.10.12-1-dev.97"
 slug: mcphub
 description: >-
   MCPHub 1.1.3 - central MCP server management with optional Home Assistant,
@@ -22,6 +22,11 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
+# Off by default. Enable and choose the host port in the Home Assistant Network tab.
+ports:
+  3001/tcp: null
+ports_description:
+  3001/tcp: "MCPHub im lokalen Netzwerk (eigene Anmeldung erforderlich)"
 map:
   - type: ssl
     read_only: true

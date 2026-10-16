@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.10.12-1-dev.96
+## v2026.10.12-1-dev.97
 
 Development build. This section is generated from the actual Git history; individual iteration changes are preserved below.
 
@@ -12,6 +12,7 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 
 #### Commits
 
+- [`65e9166`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/65e9166050d01d8889b87a37902dc15212812220) feat(mcphub): enable optional native LAN access
 - [`4a5300f`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/4a5300f996b843cc9a81b5316bd06a50bbd9dab6) fix(mcphub): remove changed-file inventories from generated changelogs
 - [`cee3b59`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/cee3b59fc719bfd9f187e634ffe8374790214c2a) fix(mcphub): use absolute logo URL in Home Assistant README (#53)
 - [`039b329`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/039b329405e979a0d5984a33c9c87089854a01f0) fix(mcphub): preserve every Dev changelog iteration and complete Stable notes (#52)
@@ -37,6 +38,13 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 - [`e3723d0`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/e3723d06995d234de829a43dcf391e2dbf910ae5) Merge remote-tracking branch 'origin/main' into dev-mcphub
 
 ### This iteration
+
+#### Commits
+
+- [`65e9166`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/65e9166050d01d8889b87a37902dc15212812220) feat(mcphub): enable optional native LAN access
+## v2026.10.12-1-dev.96
+
+### Changes in this iteration
 
 #### Commits
 
