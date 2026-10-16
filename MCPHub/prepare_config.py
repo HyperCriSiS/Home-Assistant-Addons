@@ -22,11 +22,14 @@ OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
 HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
+LAN_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_lan_token"
+CLIENT_KEY_FILE = SECRET_DIR / "mcphub_client_key"
 GITHUB_TOKEN_FILE = SECRET_DIR / "github_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
+LAN_KEY_NAME = "Home Assistant LAN MCP"
 GITHUB_CLI_SERVER_NAME = "ha-github-cli"
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
@@ -155,6 +158,11 @@ def main() -> None:
         lambda: "mcf_" + secrets.token_urlsafe(48),
     )
 
+    ensure_secret(LAN_INTERNAL_TOKEN_FILE, lambda: "mln_" + secrets.token_urlsafe(48))
+    # An old manually configured key is imported once when upgrading.
+    legacy_key = str(options.get("cloudflare_access_token", ""))
+    ensure_secret(CLIENT_KEY_FILE, lambda: legacy_key if re.fullmatch(r"[A-Za-z0-9_-]{32,256}", legacy_key) else secrets.token_urlsafe(48))
+
     # OpenAI tunnel-client accepts a complete static Authorization value by file.
     OPENAI_AUTH_FILE.write_text(f"Bearer {openai_token}", encoding="utf-8")
     os.chmod(OPENAI_AUTH_FILE, 0o600)
@@ -206,6 +214,17 @@ def main() -> None:
         access_type=cloudflare_scope[0],
         allowed_groups=cloudflare_scope[1],
         allowed_servers=cloudflare_scope[2],
+    )
+
+    lan_path = str(options.get("lan_mcp_path", "/mcp"))
+    lan_scope = scope_for_path(lan_path)
+    upsert_system_key(
+        bearer_keys,
+        name=LAN_KEY_NAME,
+        token=LAN_INTERNAL_TOKEN_FILE.read_text(encoding="utf-8").strip(),
+        access_type=lan_scope[0],
+        allowed_groups=lan_scope[1],
+        allowed_servers=lan_scope[2],
     )
 
     mcp_servers = settings["mcpServers"]
