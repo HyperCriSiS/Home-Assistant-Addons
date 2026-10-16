@@ -64,6 +64,50 @@ class AutomationGateTests(unittest.TestCase):
             with self.subTest(overrides=overrides):
                 self.assertIsNone(MODULE.validate_run(event(**overrides), REPO))
 
+    def test_trusted_merge_dispatch(self):
+        payload = {
+            "ref": "refs/heads/main",
+            "repository": {"full_name": REPO},
+            "inputs": {"upstream_version": "1.2.3", "head_sha": SHA},
+        }
+        self.assertEqual(
+            MODULE.validate_dispatch_request(payload, REPO), ("1.2.3", SHA)
+        )
+        self.assertIsNone(
+            MODULE.validate_dispatch_request({**payload, "ref": "refs/heads/dev-mcphub"}, REPO)
+        )
+        for bad in ("../../1.2.3", "1.2.3-extra", ""):
+            with self.assertRaises(ValueError):
+                MODULE.validate_dispatch_request(
+                    {**payload, "inputs": {**payload["inputs"], "upstream_version": bad}},
+                    REPO,
+                )
+
+    def test_dispatch_ci_must_match_sha_and_bot(self):
+        from unittest.mock import patch
+        branch = "automation/mcphub-1.2.3"
+        valid = {
+            "head_sha": SHA, "head_branch": branch,
+            "event": "workflow_dispatch",
+            "actor": {"login": "github-actions[bot]"},
+            "head_repository": {"full_name": REPO},
+            "status": "completed", "conclusion": "success",
+            "created_at": "2026-10-16T18:00:00Z",
+        }
+        with patch.object(MODULE, "get_json", return_value={"workflow_runs": [valid]}):
+            MODULE.wait_for_validated_dispatch(REPO, branch, SHA)
+        failed = {**valid, "conclusion": "failure"}
+        with patch.object(MODULE, "get_json", return_value={"workflow_runs": [failed]}):
+            with self.assertRaisesRegex(ValueError, "validation failed"):
+                MODULE.wait_for_validated_dispatch(REPO, branch, SHA)
+        with patch.object(MODULE, "get_json", return_value={"workflow_runs": [{**valid, "head_sha": "b" * 40}]}):
+            with patch.object(MODULE.time, "sleep") as sleep:
+                with patch.object(MODULE, "range", return_value=range(1), create=True):
+                    # One poll only: a different commit must never count as green.
+                    with self.assertRaises(TimeoutError):
+                        MODULE.wait_for_validated_dispatch(REPO, branch, SHA)
+                sleep.assert_not_called()
+
     def test_candidate_identity(self):
         MODULE.validate_candidate(candidate(), REPO, "1.2.3", SHA)
         for changes in (
