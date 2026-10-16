@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch MCPHub 1.1.3 for trusted Home Assistant Ingress sessions.
+"""Patch MCPHub 1.1.4 for trusted Home Assistant Ingress sessions.
 
 The Supervisor injects X-Remote-User-* headers for authenticated Ingress sessions.
 A second private proxy secret prevents those headers from being trusted outside the
@@ -26,7 +26,7 @@ SERVER_CONTROLLER_FILE = Path("/app/dist/controllers/serverController.js")
 def replace_once(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
     if count != 1:
-        raise SystemExit(f"Unexpected MCPHub 1.1.3 structure for {label}: found {count}")
+        raise SystemExit(f"Unexpected MCPHub 1.1.4 structure for {label}: found {count}")
     return text.replace(old, new, 1)
 
 

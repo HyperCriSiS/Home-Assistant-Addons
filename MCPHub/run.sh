@@ -126,7 +126,7 @@ export XDG_CACHE_HOME="/data/cache"
 export NPM_CONFIG_CACHE="/data/cache/npm"
 export UV_CACHE_DIR="/data/cache/uv"
 
-log_info "Starting MCPHub 1.1.3 on internal loopback port 3000."
+log_info "Starting MCPHub 1.1.4 on internal loopback port 3000."
 if [[ -r /etc/mcphub-source-revision ]]; then
     log_info "Build source revision: $(cat /etc/mcphub-source-revision)"
 fi
