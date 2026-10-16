@@ -43,7 +43,7 @@ def validate_run(event: dict, repository: str) -> tuple[str, str] | None:
     run = event.get("workflow_run", {})
     if (
         run.get("conclusion") != "success"
-        or run.get("event") != "pull_request"
+        or run.get("event") not in {"pull_request", "workflow_dispatch"}
         or run.get("head_repository", {}).get("full_name") != repository
         or run.get("actor", {}).get("login") != "github-actions[bot]"
     ):
