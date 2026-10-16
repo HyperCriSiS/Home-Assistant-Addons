@@ -1,5 +1,17 @@
 [
   {
+    "revision": 99,
+    "version": "v2026.10.12-1-dev.99",
+    "source_sha": "181c2ebe39feaa3c7e2482c3577364be58e8fc9f",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "181c2ebe39feaa3c7e2482c3577364be58e8fc9f",
+        "subject": "test(mcphub): make upstream-version checks release-independent"
+      }
+    ]
+  },
+  {
     "revision": 98,
     "version": "v2026.10.12-1-dev.98",
     "source_sha": "aaac13a8b83ba375c25ec58fcbcce5ccbfae09ab",

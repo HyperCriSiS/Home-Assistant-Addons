@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.10.12-1-dev.98
+## v2026.10.12-1-dev.99
 
 Development build. This section is generated from the actual Git history; individual iteration changes are preserved below.
 
@@ -12,6 +12,7 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 
 #### Commits
 
+- [`181c2eb`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/181c2ebe39feaa3c7e2482c3577364be58e8fc9f) test(mcphub): make upstream-version checks release-independent
 - [`aaac13a`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/aaac13a8b83ba375c25ec58fcbcce5ccbfae09ab) fix(mcphub): simplify configuration descriptions and link Cloudflare
 - [`65e9166`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/65e9166050d01d8889b87a37902dc15212812220) feat(mcphub): enable optional native LAN access
 - [`4a5300f`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/4a5300f996b843cc9a81b5316bd06a50bbd9dab6) fix(mcphub): remove changed-file inventories from generated changelogs
@@ -39,6 +40,13 @@ Source: `origin/main` to `origin/dev-mcphub`; all MCPHub-related commits are lis
 - [`e3723d0`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/e3723d06995d234de829a43dcf391e2dbf910ae5) Merge remote-tracking branch 'origin/main' into dev-mcphub
 
 ### This iteration
+
+#### Commits
+
+- [`181c2eb`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/181c2ebe39feaa3c7e2482c3577364be58e8fc9f) test(mcphub): make upstream-version checks release-independent
+## v2026.10.12-1-dev.98
+
+### Changes in this iteration
 
 #### Commits
 
