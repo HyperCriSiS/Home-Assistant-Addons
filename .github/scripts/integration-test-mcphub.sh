@@ -89,7 +89,20 @@ lan_binding="$(docker port "${CONTAINER}" 3001/tcp)"
   exit 1
 }
 lan_port="${lan_binding##*:}"
-curl --fail --silent --show-error --max-time 5   "http://127.0.0.1:${lan_port}/health" >/dev/null
+# MCPHub's core /health becomes available before nginx finishes startup.
+lan_ready=false
+for _ in $(seq 1 25); do
+  if curl --fail --silent --max-time 2 "http://127.0.0.1:${lan_port}/health" >/dev/null 2>&1; then
+    lan_ready=true
+    break
+  fi
+  sleep 1
+done
+[[ "${lan_ready}" == "true" ]] || {
+  docker logs "${CONTAINER}" || true
+  echo "LAN proxy was not reachable after nginx startup" >&2
+  exit 1
+}
 
 # A LAN client MUST NOT be able to impersonate a Home Assistant Ingress admin.
 if curl --fail --silent --max-time 5   --header "X-MCPHub-HA-Proxy-Secret: fake-secret"   --header "X-Remote-User-Id: injected"   --header "X-Remote-User-Name: injected-admin"   --header "X-Remote-User-Display-Name: Injected Admin"   "http://127.0.0.1:${lan_port}/api/servers" >/dev/null 2>&1; then
