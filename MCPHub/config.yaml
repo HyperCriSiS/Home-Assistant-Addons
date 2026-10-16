@@ -20,7 +20,9 @@ panel_admin: true
 ports:
   3001/tcp: null
 ports_description:
-  3001/tcp: "LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen. Keinen Port eintragen um den LAN Zugriff zu deaktivieren."
+  3001/tcp: >-
+    LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen.
+    Keinen Port eintragen um den LAN Zugriff zu deaktivieren.
 backup: cold
 options:
   tunnel_enabled: false
