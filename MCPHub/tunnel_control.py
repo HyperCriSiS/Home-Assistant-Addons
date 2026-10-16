@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import signal
 import subprocess
 import threading
@@ -17,6 +18,7 @@ from urllib.request import Request, urlopen
 
 OPTIONS = Path('/data/options.json')
 CF_SECRET = Path('/data/secrets/cloudflare_tunnel_token')
+CF_CLIENT_KEY = Path('/data/secrets/mcphub_cloudflare_client_key')
 PORT = ('127.0.0.1', 8093)
 PATH = re.compile(r'^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$')
 CLIENT_KEY = re.compile(r'^[A-Za-z0-9_-]{32,256}$')
@@ -92,7 +94,7 @@ class Cloudflare:
             self.configured = bool(opts.get('cloudflare_tunnel_enabled'))
             self.route = str(opts.get('cloudflare_mcp_path') or '/mcp')
             token = str(opts.get('cloudflare_tunnel_token') or '').strip()
-            key = str(opts.get('cloudflare_access_token') or '').strip()
+            key = CF_CLIENT_KEY.read_text(encoding='utf-8').strip() if CF_CLIENT_KEY.is_file() else ''
             if not self.configured or not token or not PATH.fullmatch(self.route) or not CLIENT_KEY.fullmatch(key):
                 raise ValueError('Cloudflare tunnel configuration is incomplete or disabled')
             save_secret(CF_SECRET, token)
@@ -239,6 +241,43 @@ class Controls:
                 return self.cloudflare.status(time.monotonic())
             raise ValueError('Unknown tunnel')
 
+    def client_key(self):
+        with self.lock:
+            key = CF_CLIENT_KEY.read_text(encoding='utf-8').strip()
+            if not CLIENT_KEY.fullmatch(key):
+                raise ValueError('The local Cloudflare client key is missing or invalid')
+            return {'key': key}
+
+    def rotate_client_key(self):
+        """Atomically swap key and reload Nginx; restore old key on any failure."""
+        with self.lock:
+            old = CF_CLIENT_KEY.read_text(encoding='utf-8').strip()
+            if not CLIENT_KEY.fullmatch(old):
+                raise ValueError('The current Cloudflare client key is invalid')
+            new = secrets.token_urlsafe(48)
+            save_secret(CF_CLIENT_KEY, new)
+            try:
+                subprocess.run(['/usr/local/bin/prepare_proxy_config.py'],
+                               check=True, timeout=15, capture_output=True)
+                subprocess.run(['nginx', '-t'], check=True, timeout=10, capture_output=True)
+                subprocess.run(['nginx', '-s', 'reload'],
+                               check=True, timeout=10, capture_output=True)
+            except (OSError, subprocess.SubprocessError) as error:
+                save_secret(CF_CLIENT_KEY, old)
+                # Always attempt restoring the previous proxy config and revocation state.
+                try:
+                    subprocess.run(['/usr/local/bin/prepare_proxy_config.py'],
+                                   check=True, timeout=15, capture_output=True)
+                    subprocess.run(['nginx', '-s', 'reload'],
+                                   check=True, timeout=10, capture_output=True)
+                except (OSError, subprocess.SubprocessError):
+                    # Inability to restore is critical: shut down the remote tunnel.
+                    self.cloudflare.command('stop')
+                    LOG.error('Cloudflare key rollback failed; connector stopped')
+                raise RuntimeError('Cloudflare client key rotation failed') from error
+            LOG.info('Cloudflare client key rotated')
+            return {'rotated': True}
+
     def tick(self):
         with self.lock:
             self.cloudflare.tick(time.monotonic())
@@ -254,17 +293,25 @@ section{border:1px solid #9997;border-radius:8px;padding:1rem;margin:1rem 0}
 button{font:inherit;padding:.5rem;margin:.2rem;cursor:pointer}
 button:disabled{opacity:.6;cursor:wait}small{opacity:.8}
 </style></head><body>
-<nav aria-label="MCPHub-Verwaltung"><a href="#tunnel">Tunnel</a><a href="#lan">LAN-Zugriff</a></nav>
+<nav aria-label="MCPHub-Verwaltung"><a href="#tunnel">Tunnel</a><a href="#client-key">Client Key</a><a href="#lan">LAN-Zugriff</a></nav>
 <main><h1 id="tunnel">Tunnelverwaltung</h1>
 <p>OpenAI und Cloudflare unabhängig starten, stoppen und überwachen – ohne MCPHub neu zu starten.</p>
 <div id="items"></div>
+<section id="client-key"><h2>Cloudflare Client Key</h2>
+<p>Wird automatisch und sicher in MCPHub erzeugt. Er ist <strong>kein</strong> Cloudflare Access Token;
+keine Zahlungsdaten oder Zero Trust erforderlich. Trage ihn in Claude als HTTP-Header
+<code>Authorization: Bearer DEIN_KEY</code> ein.</p>
+<button id="copy-key" type="button">Client Key kopieren</button>
+<button id="rotate-key" type="button">Client Key erneuern</button>
+<p id="key-message" role="status" aria-live="polite"></p></section>
 <p><small>Health prüft die lokalen Tunnelprozesse, deren Readiness und bei Cloudflare den MCP-Ursprung.
 Die Erreichbarkeit aus dem öffentlichen Internet wird hier nicht geprüft.</small></p>
 <section id="lan"><h2>LAN-Zugriff</h2>
 <p>MCPHub unterstützt direkten Zugriff im lokalen Netzwerk. Die Portfreigabe erfolgt unten in
 <strong>Home Assistant → Apps → MCPHub → Netzwerk</strong>.</p>
-<p><small>„Deaktivierte Ports einblenden“, links z. B. 3000 eintragen; ist der Port belegt,
-einen anderen freien Port wählen. 3001/tcp rechts ist der interne Port.
+<p><small><strong>LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen.
+Keinen Port eintragen um den LAN Zugriff zu deaktivieren.</strong>
+Dazu „Deaktivierte Ports einblenden“ nutzen. 3001/tcp ist der interne Port.
 Für LAN gilt die MCPHub-Anmeldung.</small></p></section>
 </main><script src="app.js" defer></script></body></html>'''
 
@@ -308,6 +355,37 @@ async function refresh(){
     for(const [id] of tunnels)document.querySelector('#t-'+id+' .status').textContent='Status nicht erreichbar';
   }
 }
+function keyMessage(text){document.getElementById('key-message').textContent=text;}
+function keyError(error){keyMessage('Vorgang fehlgeschlagen: '+error.message);}
+async function keyRequest(path,method){
+  const response=await fetch('api/client-key'+path,{method:method||'GET',cache:'no-store',
+    headers:{'X-MCPHub-Tunnel-Control':'1',...(method?{'Content-Type':'application/json'}:{})},
+    ...(method?{body:'{}'}:{})});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  return response.json();
+}
+document.getElementById('copy-key').onclick=async()=>{
+  const button=document.getElementById('copy-key');button.disabled=true;
+  try{
+    const data=await keyRequest('');
+    if(navigator.clipboard?.writeText){
+      try{await navigator.clipboard.writeText(data.key);keyMessage('Client Key kopiert.');return;}
+      catch(error){}
+    }
+    let field=document.getElementById('key-fallback');
+    if(!field){field=document.createElement('textarea');field.id='key-fallback';
+      field.readOnly=true;field.rows=3;field.style.width='100%';button.after(field);}
+    field.value=data.key;field.select();keyMessage('Markierten Key mit Strg+C kopieren.');
+  }catch(error){keyError(error);}finally{button.disabled=false;}
+};
+document.getElementById('rotate-key').onclick=async()=>{
+  if(!confirm('Neuen Client Key erstellen? Der bisherige Key funktioniert danach nicht mehr.'))return;
+  const button=document.getElementById('rotate-key');button.disabled=true;
+  try{await keyRequest('/rotate','POST');
+    const field=document.getElementById('key-fallback');if(field)field.remove();
+    keyMessage('Key erneuert. Den neuen Key kopieren und in Claude ersetzen.');
+  }catch(error){keyError(error);}finally{button.disabled=false;}
+};
 refresh();setInterval(refresh,5000);'''
 
 
@@ -337,10 +415,32 @@ def handler_for(manager):
                 self.send(200, SCRIPT.encode(), 'text/javascript; charset=utf-8')
             elif self.path == '/api/status':
                 self.send(200, json.dumps(manager.snapshot()).encode())
+            elif self.path == '/api/client-key':
+                if self.headers.get('X-MCPHub-Tunnel-Control') != '1':
+                    self.send(403, b'Forbidden', 'text/plain')
+                    return
+                try:
+                    self.send(200, json.dumps(manager.client_key()).encode())
+                except (OSError, ValueError):
+                    self.send(503, b'Key unavailable', 'text/plain')
             else:
                 self.send(404, b'Not found', 'text/plain')
 
         def do_POST(self):
+            if self.path == '/api/client-key/rotate':
+                if (self.headers.get('X-MCPHub-Tunnel-Control') != '1'
+                    or self.headers.get('Content-Type', '').split(';')[0] != 'application/json'
+                    or self.headers.get('Content-Length') != '2'):
+                    self.send(403, b'Forbidden', 'text/plain')
+                    return
+                if self.rfile.read(2) != b'{}':
+                    self.send(400, b'Bad request', 'text/plain')
+                    return
+                try:
+                    self.send(200, json.dumps(manager.rotate_client_key()).encode())
+                except (OSError, ValueError, RuntimeError):
+                    self.send(503, b'Key rotation failed', 'text/plain')
+                return
             parts = self.path.split('/')
             if (len(parts) != 5 or parts[:3] != ['', 'api', 'control']
                     or parts[3] not in ('openai', 'cloudflare')
