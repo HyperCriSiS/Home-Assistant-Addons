@@ -1,5 +1,21 @@
 [
   {
+    "revision": 101,
+    "version": "v2026.10.16-dev.101",
+    "source_sha": "8c52dc64cab9c5f6e85063685dc29ef08d87b575",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "8c52dc64cab9c5f6e85063685dc29ef08d87b575",
+        "subject": "style(mcphub): align header logo and simplify README heading"
+      },
+      {
+        "sha": "d5f0c824d64b44f405fa4bec5b81e33f231a7aa9",
+        "subject": "chore(mcphub): update upstream to 1.1.5 (#60)"
+      }
+    ]
+  },
+  {
     "revision": 99,
     "version": "v2026.10.12-1-dev.99",
     "source_sha": "181c2ebe39feaa3c7e2482c3577364be58e8fc9f",
