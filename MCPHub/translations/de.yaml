@@ -29,7 +29,9 @@ configuration:
         description: "Stellt eine gewählte MCPHub-Route über Cloudflare bereit."
       cloudflare_tunnel_token:
         name: "Cloudflare Tunnel-Token"
-        description: "Connector-Token im Cloudflare Dashboard unter Networking → Tunnels; Cloudflare Access ist nicht nötig."
+        description: >-
+          Connector-Token im Cloudflare Dashboard unter Networking → Tunnels.
+          Cloudflare Access ist nicht nötig.
       cloudflare_mcp_path:
         name: "Cloudflare MCP-Route"
         description: "Die über Cloudflare bereitgestellte MCPHub-Route."
