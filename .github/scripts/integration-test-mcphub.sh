@@ -163,6 +163,55 @@ if docker run --rm \
   exit 1
 fi
 
+# Ingress-only management is reachable through the Supervisor source and
+# never through LAN/Cloudflare, with secrets kept out of logs.
+control_json="$(ingress_curl --fail --silent --show-error \
+  "http://${CONTAINER}:8099/_addon/api/status")"
+python3 - "${control_json}" <<'PYCTRL'
+import json, sys
+state = json.loads(sys.argv[1])
+assert state['tunnels']['cloudflare']['enabled'] is False
+assert state['tunnels']['openai']['enabled'] is False
+PYCTRL
+
+client_before="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_client_key)"
+[[ "${#client_before}" -ge 32 ]]
+key_json="$(ingress_curl --fail --silent --show-error \
+  "http://${CONTAINER}:8099/_addon/api/client-key")"
+python3 - "${key_json}" "${client_before}" <<'PYKEY'
+import json, sys
+assert json.loads(sys.argv[1])['key'] == sys.argv[2]
+PYKEY
+
+# Unauthorized LAN traffic receives 401; non-MCP paths remain 404.
+lan_unauth="$(docker exec "${CONTAINER}" curl --silent --output /dev/null \
+  --write-out '%{http_code}' http://127.0.0.1:3001/mcp)"
+[[ "${lan_unauth}" == '401' ]]
+lan_dashboard="$(docker exec "${CONTAINER}" curl --silent --output /dev/null \
+  --write-out '%{http_code}' http://127.0.0.1:3001/)"
+[[ "${lan_dashboard}" == '404' ]]
+
+new_key_json="$(ingress_curl --fail --silent --show-error \
+  --header 'Content-Type: application/json' \
+  --header 'X-MCPHub-Control: 1' \
+  --request POST --data '{}' \
+  "http://${CONTAINER}:8099/_addon/api/rotate")"
+python3 - "${new_key_json}" <<'PYROTATE'
+import json, sys
+assert json.loads(sys.argv[1])['ok'] is True
+PYROTATE
+client_after="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_client_key)"
+[[ "${client_before}" != "${client_after}" ]]
+sleep 1
+old_code="$(docker exec "${CONTAINER}" curl --silent --output /dev/null \
+  --write-out '%{http_code}' --header "Authorization: Bearer ${client_before}" \
+  http://127.0.0.1:3001/mcp)"
+[[ "${old_code}" == '401' ]]
+new_code="$(docker exec "${CONTAINER}" curl --silent --output /dev/null \
+  --write-out '%{http_code}' --header "Authorization: Bearer ${client_after}" \
+  http://127.0.0.1:3001/mcp)"
+[[ "${new_code}" != '401' && "${new_code}" != '404' ]]
+
 token_before="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tunnel_token)"
 [[ -n "${token_before}" ]]
 
@@ -170,6 +219,7 @@ docker rm -f "${CONTAINER}" >/dev/null
 start_addon
 wait_ready
 
+[[ "$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_client_key)" == "${client_after}" ]]
 token_after="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tunnel_token)"
 [[ "${token_before}" == "${token_after}" ]] || {
   echo "Persistent internal bearer token changed after restart" >&2
