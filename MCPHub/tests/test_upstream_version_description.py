@@ -48,7 +48,7 @@ class DescriptionUpdateTests(unittest.TestCase):
 
         match = re.fullmatch(r"v(\d{4}\.\d{2}\.\d{2})(?:-\d+)?", config["version"])
         self.assertIsNotNone(match, "Unexpected wrapper version in test fixture")
-        self.test_date = date.fromisoformat(match.group(1)) + timedelta(days=1)
+        self.test_date = date.fromisoformat(match.group(1).replace(".", "-")) + timedelta(days=1)
         self.target_wrapper = f"v{self.test_date:%Y.%m.%d}"
 
     def run_updater(self):
