@@ -59,8 +59,11 @@ class ChangelogGenerationTests(unittest.TestCase):
         self.generate("dev")
         first = (self.root / "MCPHub/CHANGELOG.md").read_text()
         self.assertIn("## v2026.10.12-1-dev.42", first)
-        self.assertIn("feat(mcphub): first dev feature", first)
-        self.assertIn("Curated fix notes.", first)
+        self.assertIn("## v2026.10.12-1-dev.42", first)
+        self.assertIn("Initial development snapshot", first)
+        self.assertNotIn("feat(mcphub): first dev feature", first)
+        self.assertNotIn("Curated fix notes.", first)
+        self.assertNotIn("Complete changes since stable", first)
         self.generate("dev")
         self.assertEqual(first, (self.root / "MCPHub/CHANGELOG.md").read_text())
         self.commit("compose initial dev-store")
@@ -74,15 +77,13 @@ class ChangelogGenerationTests(unittest.TestCase):
         self.state(43)
         self.generate("dev")
         latest = (self.root / "MCPHub/CHANGELOG.md").read_text()
-        for expected in (
-            "## v2026.10.12-1-dev.43",
-            "## v2026.10.12-1-dev.42",
-            "feat(mcphub): first dev feature",
-            "fix(mcphub): next individual fix",
-            "Curated fix notes.",
-            "Existing stable notes.",
-        ):
-            self.assertIn(expected, latest)
+        self.assertIn("## v2026.10.12-1-dev.43", latest)
+        self.assertIn("fix(mcphub): next individual fix", latest)
+        self.assertNotIn("## v2026.10.12-1-dev.42", latest)
+        self.assertNotIn("feat(mcphub): first dev feature", latest)
+        self.assertNotIn("Curated fix notes.", latest)
+        self.assertNotIn("Existing stable notes.", latest)
+        self.assertNotIn("Complete changes since stable", latest)
         history = json.loads((self.root / ".dev-store-mcphub-changes.json").read_text())
         self.assertEqual([entry["revision"] for entry in history], [43, 42])
         self.assertNotIn("#### Changed files", latest)

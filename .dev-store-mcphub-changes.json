@@ -1,5 +1,17 @@
 [
   {
+    "revision": 103,
+    "version": "v2026.10.16-dev.103",
+    "source_sha": "70303e55689e42a5470fcb8911b34e56d6e62847",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "70303e55689e42a5470fcb8911b34e56d6e62847",
+        "subject": "fix(mcphub): show only current Dev commits and explain LAN port field"
+      }
+    ]
+  },
+  {
     "revision": 102,
     "version": "v2026.10.16-dev.102",
     "source_sha": "8c9a457fee4aeb52064a69e3fd6d95634878d3f1",

@@ -1,6 +1,6 @@
 ---
 name: "MCPHub (Dev)"
-version: "v2026.10.16-dev.102"
+version: "v2026.10.16-dev.103"
 slug: mcphub
 description: >-
   MCPHub 1.1.5 - central MCP server management with optional Home Assistant,
@@ -26,7 +26,7 @@ backup: cold
 ports:
   3001/tcp: null
 ports_description:
-  3001/tcp: "MCPHub im lokalen Netzwerk (eigene Anmeldung erforderlich)"
+  3001/tcp: "LAN: links Port 3000 eintragen; leer = aus. 3001/tcp rechts ist intern. MCPHub-Anmeldung erforderlich."
 map:
   - type: ssl
     read_only: true
