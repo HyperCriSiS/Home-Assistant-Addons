@@ -122,7 +122,9 @@ MCP APIs other than the built-in Assist API.
 
 The Home Assistant Ingress-only page at `/_mcphub_tunnels/` provides
 **Start**, **Stop**, **Reload** and local readiness monitoring for OpenAI and
-Cloudflare without restarting MCPHub. The **LAN-Zugriff** navigation points
+Cloudflare without restarting MCPHub. The same protected page lets administrators copy
+or rotate the Cloudflare Client Key without Cloudflare Access. The same protected page allows copying or
+rotating the automatically generated Cloudflare Client Key without Cloudflare Access. The **LAN-Zugriff** navigation points
 to the App's **Network** port settings.
 
 Local process health does not guarantee internet-side connectivity.
@@ -163,7 +165,7 @@ See [DOCS.md](DOCS.md) for the complete OpenAI tunnel configuration.
 
 Cloudflare Tunnel exposes one explicitly selected MCPHub route through a normal HTTPS hostname. This is useful for Claude, Cursor, VS Code, and other clients that support remote Streamable HTTP MCP.
 
-The App runs a loopback-only Cloudflare origin on `127.0.0.1:8098`. That adapter exposes exactly the configured `cloudflare_mcp_path`; all other paths return 404. Remote clients must also provide the configured client key.
+The App runs a loopback-only Cloudflare origin on `127.0.0.1:8098`. That adapter exposes exactly the configured `cloudflare_mcp_path`; all other paths return 404. Remote clients must also provide the automatically generated client key, available at the Ingress-only tunnel control page.
 
 For the smallest tool surface, create a focused MCPHub group and expose only that group:
 
@@ -218,7 +220,7 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
 | `cloudflare_tunnel_token` | empty | Connector token for a remotely managed Cloudflare Tunnel |
 | `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
-| `cloudflare_access_token` | empty | Client key required from remote MCP clients |
+| Cloudflare Client Key | generated automatically | Copy/rotate through the protected Ingress-only Tunnel Control page; no separate Cloudflare Access service |
 
 MCP server configuration itself is managed from the MCPHub Web UI. Changing
 `home_assistant_mcp_server_name` removes the old managed entry; update any
