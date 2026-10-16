@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.10.17-1
+
+- Automatische, migrationsbewusste Client-Key-Generierung mit Ingress-only Copy/Rotate und sofortiger Nginx-Key-Rotation.
+- Live-Tunnel-Steuerung für Cloudflare und OpenAI mit Status, On/Off und Neustart in einer geschützten Home-Assistant-Oberfläche.
+- Separater Bearer-geschützter LAN-MCP-Endpunkt über optionalen Host-Port; Standardeinstellung deaktiviert.
+- Verständliche LAN-Port-Beschreibung und neue Dokumentation zu Authentifizierung und Migration.
+- Cloudflared 2026.10.1 und OpenAI Tunnel Client v0.0.16; MCPHub Upstream 1.1.5 geprüft, Paketupdate wegen der eng gekoppelten Auth-Patches separat testen.
+
 ## v2026.10.07-4
 
 ### Changed
