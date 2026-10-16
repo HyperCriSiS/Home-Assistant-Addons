@@ -1,7 +1,3 @@
-<div align="center">
-
-<img src="https://raw.githubusercontent.com/HyperCriSiS/Home-Assistant-Apps/dev-mcphub/MCPHub/logo.svg" alt="MCPHub" width="320">
-
 # MCPHub
 
 **Manage multiple MCP servers from one central dashboard inside Home Assistant.**
@@ -11,8 +7,6 @@
 ![Architecture aarch64](https://img.shields.io/badge/aarch64-supported-success)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-App-41BDF5?logo=homeassistant&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-
-</div>
 
 MCPHub runs [MCPHub](https://github.com/samanhappy/mcphub) as a Home Assistant App and provides a central control plane for Model Context Protocol servers.
 
