@@ -1,7 +1,7 @@
 # Changelog
 
-## v2026.10.16-dev.103
+## v2026.10.16-dev.104
 
 ### Commits in this Dev build
 
-- [`70303e5`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/70303e55689e42a5470fcb8911b34e56d6e62847) fix(mcphub): show only current Dev commits and explain LAN port field
+- [`b62182a`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/b62182a63f6a41b57474b8745f12aab8e271a659) feat(mcphub): manage OpenAI and Cloudflare tunnel health and lifecycle

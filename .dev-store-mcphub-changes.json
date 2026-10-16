@@ -1,5 +1,17 @@
 [
   {
+    "revision": 104,
+    "version": "v2026.10.16-dev.104",
+    "source_sha": "b62182a63f6a41b57474b8745f12aab8e271a659",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "b62182a63f6a41b57474b8745f12aab8e271a659",
+        "subject": "feat(mcphub): manage OpenAI and Cloudflare tunnel health and lifecycle"
+      }
+    ]
+  },
+  {
     "revision": 103,
     "version": "v2026.10.16-dev.103",
     "source_sha": "70303e55689e42a5470fcb8911b34e56d6e62847",

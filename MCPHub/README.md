@@ -118,6 +118,15 @@ App network; mDNS-only names such as `*.local` may not resolve inside every
 container environment. Home Assistant may require an administrator token for
 MCP APIs other than the built-in Assist API.
 
+## Tunnel health and controls
+
+The Home Assistant Ingress-only page at `/_mcphub_tunnels/` provides
+**Start**, **Stop**, **Reload** and local readiness monitoring for OpenAI and
+Cloudflare without restarting MCPHub. The **LAN-Zugriff** navigation points
+to the App's **Network** port settings.
+
+Local process health does not guarantee internet-side connectivity.
+
 ## Remote access
 
 MCPHub supports two independent remote-access paths. Both are optional and can be enabled at the same time.
