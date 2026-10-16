@@ -114,39 +114,16 @@ def dev(repository: str) -> None:
         })
     HISTORY.write_text(json.dumps(previous, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # Read only the curated source, never a generated dev-store changelog.
-    source = subprocess.check_output(
-        ["git", "show", "origin/dev-mcphub:MCPHub/CHANGELOG.md"], text=True
-    )
-    prefix = "# Changelog\n\n"
-    if not source.startswith(prefix):
-        raise ValueError("Unexpected source changelog header")
-    stable = stable_version()
+    # Only show commits belonging to the current dev-store revision.
+    # The JSON history is retained for calculating iteration boundaries, but
+    # neither earlier builds nor the stable-release audit belong in this view.
     latest = previous[0]
-    head = (
-        f"# Changelog\n\n## {version}\n\n"
-        "Development build. This section is generated from the actual Git history; "
-        "individual iteration changes are preserved below.\n\n"
-        f"### Complete changes since stable {stable}\n\n"
-        + audit("origin/main", "origin/dev-mcphub", repository,
-                "MCPHub changes awaiting stable release")
-        + "### This iteration\n\n"
-    )
+    head = f"# Changelog\n\n## {version}\n\n### Commits in this Dev build\n\n"
     if latest["baseline"]:
-        head += ("- Baseline at the start of automatic per-iteration tracking. "
-                 "Earlier development changes are itemized in the cumulative comparison above.\n\n")
+        head += "- Initial development snapshot (no previous Dev build recorded).\n"
     else:
-        head += "#### Commits\n\n" + commit_notes(latest["commits"], repository)
-
-    for old in previous[1:]:
-        head += f"## {old['version']}\n\n"
-        if old["baseline"]:
-            head += "- Tracking baseline; see the cumulative history in the latest development entry.\n\n"
-        else:
-            head += "### Changes in this iteration\n\n"
-            head += "#### Commits\n\n" + commit_notes(old["commits"], repository)
-
-    CHANGELOG.write_text(head + source[len(prefix):], encoding="utf-8")
+        head += commit_notes(latest["commits"], repository)
+    CHANGELOG.write_text(head, encoding="utf-8")
 
 
 def stable(repository: str, check: bool = False) -> None:

@@ -70,6 +70,14 @@ The development App is shown as **MCPHub (Dev)** under
 - Home Assistant cold-backup support
 - `amd64` and `aarch64` support
 
+## Direct access from your home network
+
+Direct access is **off by default**. In Home Assistant, open **MCPHub → Network** and enter the host port **3000** into the **left-hand field**. The displayed `3001/tcp` on the right is the app's internal proxy port; you do not need to change it.
+
+Then open `http://<HA-IP>:3000` for MCPHub's own login, or use `http://<HA-IP>:3000/mcp` with a MCPHub Bearer key in an MCP client. Leave the field empty to disable LAN access. Direct access uses **MCPHub authentication**, not Home Assistant Ingress login.
+
+See [LAN access instructions](LAN_ACCESS.md) for details and security notes.
+
 ## Home Assistant MCP Server
 
 The App can optionally add Home Assistant's own MCP Server to MCPHub as the
