@@ -102,10 +102,9 @@ class AutomationGateTests(unittest.TestCase):
                 MODULE.wait_for_validated_dispatch(REPO, branch, SHA)
         with patch.object(MODULE, "get_json", return_value={"workflow_runs": [{**valid, "head_sha": "b" * 40}]}):
             with patch.object(MODULE.time, "sleep") as sleep:
-                with patch.object(MODULE, "range", return_value=range(1), create=True):
-                    # One poll only: a different commit must never count as green.
-                    with self.assertRaises(TimeoutError):
-                        MODULE.wait_for_validated_dispatch(REPO, branch, SHA)
+                # One poll only: a different commit must never count as green.
+                with self.assertRaises(TimeoutError):
+                    MODULE.wait_for_validated_dispatch(REPO, branch, SHA, attempts=1)
                 sleep.assert_not_called()
 
     def test_candidate_identity(self):

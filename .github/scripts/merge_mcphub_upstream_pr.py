@@ -80,7 +80,9 @@ def validate_dispatch_request(event: dict, repository: str) -> tuple[str, str] |
     return version, sha
 
 
-def wait_for_validated_dispatch(repository: str, branch: str, sha: str) -> None:
+def wait_for_validated_dispatch(
+    repository: str, branch: str, sha: str, *, attempts: int = 160
+) -> None:
     """Verify the *same commit* passed full read-only CI before any merge."""
     url = (
         f"repos/{repository}/actions/workflows/validate-mcphub.yml/runs?"
@@ -88,7 +90,7 @@ def wait_for_validated_dispatch(repository: str, branch: str, sha: str) -> None:
     )
     # The build workflow's own timeout is 35 minutes. Never infer success from
     # a PR check, a different commit or a workflow started by another actor.
-    for attempt in range(160):
+    for attempt in range(attempts):
         response = get_json(url)
         if not isinstance(response, dict) or not isinstance(response.get("workflow_runs"), list):
             raise ValueError("Unexpected validation workflow-run response")
@@ -109,7 +111,7 @@ def wait_for_validated_dispatch(repository: str, branch: str, sha: str) -> None:
                     )
                 print(f"Verified green read-only CI for {branch} at {sha}")
                 return
-        if attempt < 159:
+        if attempt < attempts - 1:
             time.sleep(15)
     raise TimeoutError(f"Full validation never succeeded for {branch} at {sha}")
 
