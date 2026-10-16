@@ -26,7 +26,7 @@ backup: cold
 ports:
   3001/tcp: null
 ports_description:
-  3001/tcp: "LAN-Zugriff: links z. B. 3000 eingeben, leer = aus. 3001/tcp ist der interne Port. MCPHub-Anmeldung erforderlich."
+  3001/tcp: "LAN: links Port 3000 eintragen; leer = aus. 3001/tcp rechts ist intern. MCPHub-Anmeldung erforderlich."
 map:
   - type: ssl
     read_only: true
