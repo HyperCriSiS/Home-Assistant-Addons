@@ -6,12 +6,11 @@ readonly MCPHUB_DATA_DIR="/data/mcphub"
 readonly SECRET_DIR="/data/secrets"
 readonly JWT_SECRET_FILE="${SECRET_DIR}/mcphub_jwt_secret"
 readonly HA_INGRESS_PROXY_SECRET_FILE="${SECRET_DIR}/mcphub_ha_ingress_proxy_secret"
-readonly CLOUDFLARE_TUNNEL_TOKEN_FILE="${SECRET_DIR}/cloudflare_tunnel_token"
 
 mcphub_pid=""
 nginx_pid=""
 tunnel_manager_pid=""
-cloudflare_tunnel_pid=""
+tunnel_control_pid=""
 
 log_info() {
     printf '[INFO] %s\n' "$*"
@@ -59,13 +58,13 @@ shutdown_processes() {
 
     trap - TERM INT EXIT
 
-    for pid in         "${cloudflare_tunnel_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
+    for pid in         "${tunnel_control_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
         if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
             kill -TERM "${pid}" 2>/dev/null || true
         fi
     done
 
-    for pid in         "${cloudflare_tunnel_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
+    for pid in         "${tunnel_control_pid}"         "${tunnel_manager_pid}"         "${nginx_pid}"         "${mcphub_pid}"; do
         if [[ -n "${pid}" ]]; then
             wait "${pid}" 2>/dev/null || true
         fi
@@ -80,7 +79,6 @@ trap 'shutdown_processes 130' INT
 
 cloudflare_tunnel_enabled="$(option cloudflare_tunnel_enabled)"
 cloudflare_tunnel_enabled="${cloudflare_tunnel_enabled:-false}"
-cloudflare_tunnel_token="$(option cloudflare_tunnel_token)"
 cloudflare_mcp_path="$(option cloudflare_mcp_path)"
 cloudflare_mcp_path="${cloudflare_mcp_path:-/mcp}"
 cloudflare_access_token="$(option cloudflare_access_token)"
@@ -170,22 +168,9 @@ log_info "Starting isolated OpenAI Tunnel health and control manager."
 /usr/local/bin/tunnel_manager.py &
 tunnel_manager_pid="$!"
 
-if [[ "${cloudflare_tunnel_enabled}" == "true" ]]; then
-    if [[ -z "${cloudflare_tunnel_token}" ]]; then
-        log_warn "Cloudflare Tunnel is enabled, but the tunnel token is missing."
-        log_warn "MCPHub will continue without Cloudflare remote access."
-    else
-        umask 077
-        printf '%s' "${cloudflare_tunnel_token}" > "${CLOUDFLARE_TUNNEL_TOKEN_FILE}"
-        chmod 0600 "${CLOUDFLARE_TUNNEL_TOKEN_FILE}"
-        unset cloudflare_tunnel_token
-        unset cloudflare_access_token
-
-        log_info "Starting Cloudflare Tunnel for the restricted local MCP origin on 127.0.0.1:8098."
-        /usr/local/bin/cloudflared tunnel             --no-autoupdate             run             --token-file "${CLOUDFLARE_TUNNEL_TOKEN_FILE}" &
-        cloudflare_tunnel_pid="$!"
-    fi
-fi
+log_info "Starting isolated Cloudflare Tunnel controller and health dashboard."
+/usr/local/bin/tunnel_control.py &
+tunnel_control_pid="$!"
 
 # Optional remote tunnels must never take MCPHub or its Ingress adapter down.
 # Monitor their lifecycle independently; only core process failures stop the App.
@@ -205,10 +190,11 @@ while true; do
         /usr/local/bin/tunnel_manager.py &
         tunnel_manager_pid="$!"
     fi
-    if [[ -n "${cloudflare_tunnel_pid}" ]] && ! kill -0 "${cloudflare_tunnel_pid}" 2>/dev/null; then
-        wait "${cloudflare_tunnel_pid}" || true
-        log_warn "Cloudflare Tunnel exited; MCPHub remains available."
-        cloudflare_tunnel_pid=""
+    if [[ -n "${tunnel_control_pid}" ]] && ! kill -0 "${tunnel_control_pid}" 2>/dev/null; then
+        wait "${tunnel_control_pid}" 2>/dev/null || true
+        log_warn "Cloudflare Tunnel controller exited; restarting independently."
+        /usr/local/bin/tunnel_control.py &
+        tunnel_control_pid="$!"
     fi
     sleep 2 &
     wait "$!" || true
