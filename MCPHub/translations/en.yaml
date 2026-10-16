@@ -41,11 +41,6 @@ configuration:
         description: >-
           Exact MCPHub route exposed through Cloudflare, for example
           /mcp/development.
-      cloudflare_access_token:
-        name: "Cloudflare MCP client token"
-        description: >-
-          32-256 character client key that remote MCP clients must send in the
-          Authorization header.
   home_assistant:
     name: "Home Assistant MCP"
     description: "Settings for Home Assistant MCP"
