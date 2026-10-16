@@ -220,7 +220,7 @@ async function post(path,payload){return request(path,{method:'POST',headers:{'C
 for(const name of ['cloudflare','openai']){
 document.getElementById(name+'-toggle').onclick=async()=>{try{const s=await request('status');await post('toggle',{service:name,enabled:!s.tunnels[name].enabled});msg('Tunnel-Einstellung übernommen.');await update()}catch(e){msg(e.message,true)}};
 document.getElementById(name+'-restart').onclick=async()=>{try{await post('restart',{service:name});msg('Neuverbinden gestartet.');await update()}catch(e){msg(e.message,true)}}}
-document.getElementById('copy').onclick=async()=>{try{const k=await request('client-key');await navigator.clipboard.writeText(k.key);msg('Client Key in die Zwischenablage kopiert.')}catch(e){msg(e.message,true)}};
+document.getElementById('copy').onclick=async()=>{try{const k=await request('client-key');if(navigator.clipboard?.writeText){try{await navigator.clipboard.writeText(k.key);msg('Client Key in die Zwischenablage kopiert.');return}catch(e){}}const old=document.getElementById('key-fallback');if(old)old.remove();const field=document.createElement('textarea');field.id='key-fallback';field.value=k.key;field.readOnly=true;field.rows=3;field.style.width='100%';document.getElementById('copy').after(field);field.select();msg('Schlüssel markieren und mit Strg+C kopieren.')}catch(e){msg(e.message,true)}};
 document.getElementById('rotate').onclick=async()=>{if(!confirm('Den Client Key jetzt erneuern? Alle verbundenen Clients benötigen anschließend den neuen Schlüssel.'))return;
 try{await post('rotate',{});msg('Neuer Schlüssel aktiv. Bitte mit „Client Key kopieren“ in Claude aktualisieren.')}catch(e){msg(e.message,true)}};
 update();setInterval(update,10000);
