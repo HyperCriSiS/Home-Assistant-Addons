@@ -141,7 +141,8 @@ class IndependentTunnelTests(unittest.TestCase):
         for name in (
             "JWT_SECRET_FILE", "OPENAI_TOKEN_FILE", "OPENAI_AUTH_FILE",
             "HA_INGRESS_PROXY_SECRET_FILE", "LEGACY_INGRESS_TOKEN_FILE",
-            "CLOUDFLARE_INTERNAL_TOKEN_FILE", "GITHUB_TOKEN_FILE",
+            "CLOUDFLARE_INTERNAL_TOKEN_FILE", "CLOUDFLARE_CLIENT_KEY_FILE",
+            "GITHUB_TOKEN_FILE",
         ):
             patcher = patch.object(self.prepare, name, root / "secrets" / name.lower())
             patcher.start()
@@ -189,6 +190,20 @@ class IndependentTunnelTests(unittest.TestCase):
         self.set_options(tunnel_enabled=False, tunnel_mcp_path="/mcp/")
         self.prepare.main()
         self.assertNotIn(self.prepare.OPENAI_KEY_NAME, self.key_names())
+
+    def test_cloudflare_client_key_generated_once_persisted_and_migrated(self):
+        self.set_options(cloudflare={"cloudflare_tunnel_enabled": True})
+        self.prepare.main()
+        path = self.prepare.CLOUDFLARE_CLIENT_KEY_FILE
+        key = path.read_text()
+        self.assertRegex(key, r"^[A-Za-z0-9_-]{64}$")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.prepare.main()
+        self.assertEqual(key, path.read_text())
+        path.unlink()
+        self.set_options(cloudflare={"cloudflare_access_token": "legacy_" + "a" * 55})
+        self.prepare.main()
+        self.assertEqual(path.read_text(), "legacy_" + "a" * 55)
 
     def test_invalid_cloudflare_key_never_opens_proxy(self):
         proxy = self.proxy.cloudflare_server_block(

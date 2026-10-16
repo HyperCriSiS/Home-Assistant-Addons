@@ -27,6 +27,9 @@ class TunnelControllerTests(unittest.TestCase):
         directory = Path(tmp.name)
         self.mod.OPTIONS = directory / "options.json"
         self.mod.CF_SECRET = directory / "secret" / "token"
+        self.mod.CF_CLIENT_KEY = directory / "secret" / "client_key"
+        self.mod.CF_CLIENT_KEY.parent.mkdir()
+        self.mod.CF_CLIENT_KEY.write_text("c" * 48, encoding="utf-8")
         self.set_options()
 
     def set_options(self, **options):
@@ -36,7 +39,6 @@ class TunnelControllerTests(unittest.TestCase):
         self.set_options(cloudflare={
             "cloudflare_tunnel_enabled": True,
             "cloudflare_tunnel_token": "sensitive-token",
-            "cloudflare_access_token": "c" * 48,
             "cloudflare_mcp_path": "/mcp/development",
         })
         cloudflare = self.mod.Cloudflare()
@@ -99,10 +101,37 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertIn("3000", self.mod.PAGE)
         self.assertNotIn("Tailscale", self.mod.PAGE + self.mod.SCRIPT)
 
+    def test_key_rotation_reloads_proxy_and_rejects_previous_token(self):
+        controller = self.mod.Controls()
+        original = self.mod.CF_CLIENT_KEY.read_text()
+        with patch.object(self.mod.subprocess, "run") as run:
+            response = controller.rotate_client_key()
+        changed = self.mod.CF_CLIENT_KEY.read_text()
+        self.assertEqual(response, {"rotated": True})
+        self.assertNotEqual(changed, original)
+        self.assertEqual(len(changed), 64)
+        self.assertEqual(self.mod.CF_CLIENT_KEY.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(controller.client_key()["key"], changed)
+        self.assertEqual(run.call_count, 3)
+        self.assertIn("nginx", str(run.call_args_list))
+        self.assertNotIn(changed, str(run.call_args_list))
+
+    def test_key_rotation_failure_restores_original_key(self):
+        controller = self.mod.Controls()
+        original = self.mod.CF_CLIENT_KEY.read_text()
+        from subprocess import CalledProcessError
+        with patch.object(self.mod.subprocess, "run", side_effect=[
+            None, CalledProcessError(1, "nginx -t"), None, None
+        ]), self.assertRaises(RuntimeError):
+            controller.rotate_client_key()
+        self.assertEqual(self.mod.CF_CLIENT_KEY.read_text(), original)
+
     def test_http_controls_deny_missing_headers_and_unknown_tunnels(self):
         manager = Mock()
         manager.snapshot.return_value = {"openai": {"state": "ready"}}
         manager.command.return_value = {"state": "stopped"}
+        manager.client_key.return_value = {"key": "test_sensitive_key"}
+        manager.rotate_client_key.return_value = {"rotated": True}
         server = ThreadingHTTPServer(("127.0.0.1", 0), self.mod.handler_for(manager))
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -132,6 +161,20 @@ class TunnelControllerTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(body)["state"], "stopped")
             manager.command.assert_called_once_with("cloudflare", "stop")
+            status, _ = request("GET", "/api/client-key")
+            self.assertEqual(status, 403)
+            status, body = request("GET", "/api/client-key", headers={
+                "X-MCPHub-Tunnel-Control": "1"})
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(body)["key"], "test_sensitive_key")
+            status, _ = request("POST", "/api/client-key/rotate", "{}",
+                                {"Content-Type": "application/json"})
+            self.assertEqual(status, 403)
+            status, body = request("POST", "/api/client-key/rotate", "{}",
+                                {"Content-Type": "application/json", "X-MCPHub-Tunnel-Control": "1"})
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(body)["rotated"])
+            manager.rotate_client_key.assert_called_once()
         finally:
             server.shutdown()
             server.server_close()

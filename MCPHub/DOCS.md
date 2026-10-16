@@ -228,6 +228,9 @@ contain no API keys, Tunnel IDs, or user tokens.
 
 ## Cloudflare Tunnel
 
+OpenAI and Cloudflare process controls, health, and Cloudflare client-key copy/rotation are
+available at `/_mcphub_tunnels/` within the authenticated Home Assistant Ingress page.
+
 Cloudflare Tunnel provides a normal public HTTPS endpoint for remote MCP clients while
 MCPHub itself remains private inside the Home Assistant App container.
 
@@ -245,9 +248,10 @@ forwarding is required.
    ```
 
 4. Copy the tunnel connector token from Cloudflare.
-5. Create a separate random client key with 32-256 characters using only letters,
-   numbers, underscores, or dashes.
-6. Configure the Home Assistant App options below and restart MCPHub.
+5. MCPHub automatically generates and persists a separate secure client key. Open the
+   authenticated Home Assistant MCPHub Ingress page and visit `/_mcphub_tunnels/`;
+   select **Client Key kopieren** to get it. Cloudflare Access is not required.
+6. Configure the Cloudflare Tunnel connector token in the Home Assistant App and restart MCPHub.
 7. Configure the remote MCP client with the public URL plus the selected route, for
    example:
 
@@ -287,13 +291,20 @@ For least privilege, prefer a focused group such as:
 
 `/mcp/development`
 
-### `cloudflare_access_token`
+### Automatically managed Cloudflare Client Key
 
-Required when Cloudflare Tunnel is enabled.
+MCPHub creates a random 384-bit client key on first launch and keeps it in
+`/data/secrets/mcphub_cloudflare_client_key` (mode `0600`) across updates/backups.
+No manual key generation, Cloudflare Access subscription, or payment details are needed.
 
-This is a separate client key chosen by you. Remote MCP clients must send it in the
-`Authorization` header. It is validated by the local proxy and is not registered as a
-dashboard credential in MCPHub.
+Visit the authenticated Home Assistant Ingress route `/_mcphub_tunnels/` to
+**copy** the key, or **rotate** it (immediately replacing the key used by Nginx).
+Existing valid `cloudflare_access_token` values from older installations are imported
+when the new key file is not yet present. Current installations no longer expose that
+option in the App configuration.
+
+Remote MCP clients still send `Authorization: Bearer <your-client-key>`.
+The key is local to MCPHub; it is not a Cloudflare dashboard credential.
 
 ## Dashboard and local proxy architecture
 
@@ -434,7 +445,7 @@ Verify that:
 
 - `cloudflare_tunnel_enabled` is enabled
 - the Cloudflare connector token is present
-- the client key matches the documented character requirements
+- MCPHub has created the Client Key (copy it from the authenticated tunnel page)
 - the public hostname service points to `http://127.0.0.1:8098`
 - the remote client URL includes the exact configured `cloudflare_mcp_path`
 
@@ -444,7 +455,7 @@ Verify that the client sends:
 
 `Authorization: Bearer <your-client-key>`
 
-and that the value exactly matches `cloudflare_access_token`.
+and that the value exactly matches the key copied from the MCPHub tunnel page.
 
 ### The remote client receives 404
 

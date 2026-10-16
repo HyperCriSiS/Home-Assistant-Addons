@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.10.17-1
+
+- Simplify LAN port configuration label; blank host port still disables direct LAN access.
+- Automatically generate and persist Cloudflare remote MCP client key, migrating existing keys.
+- Add copy and confirmed rotation to protected Ingress tunnel management; retain independent tunnel lifecycle and health.
+- Update cloudflared to 2026.10.1, OpenAI tunnel client to v0.0.16; keep MCPHub upstream 1.1.5.
+
+
 ## v2026.10.16
 
 ### Changed

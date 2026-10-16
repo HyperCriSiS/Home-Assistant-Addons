@@ -1,6 +1,6 @@
 ---
 name: "MCPHub"
-version: "v2026.10.16"
+version: "v2026.10.17-1"
 slug: mcphub
 description: >-
   MCPHub 1.1.5 - central MCP server management with optional Home Assistant,
@@ -26,7 +26,9 @@ backup: cold
 ports:
   3001/tcp: null
 ports_description:
-  3001/tcp: "LAN-Port links eintragen (z. B. 3000); bei Portkonflikt freien Port wählen. Leer = deaktiviert."
+  3001/tcp: >-
+    LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen.
+    Keinen Port eintragen um den LAN Zugriff zu deaktivieren.
 map:
   - type: ssl
     read_only: true
@@ -40,7 +42,6 @@ options:
     cloudflare_tunnel_enabled: false
     cloudflare_tunnel_token: ""
     cloudflare_mcp_path: "/mcp"
-    cloudflare_access_token: ""
   home_assistant:
     home_assistant_mcp_enabled: false
     home_assistant_mcp_server_name: "ha-home-assistant"
@@ -63,7 +64,6 @@ schema:
     cloudflare_tunnel_enabled: bool
     cloudflare_tunnel_token: password
     cloudflare_mcp_path: str
-    cloudflare_access_token: password
   home_assistant:
     home_assistant_mcp_enabled: bool
     home_assistant_mcp_server_name: str

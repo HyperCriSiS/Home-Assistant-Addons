@@ -23,6 +23,7 @@ OPENAI_AUTH_FILE = SECRET_DIR / "mcphub_tunnel_authorization"
 HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
+CLOUDFLARE_CLIENT_KEY_FILE = SECRET_DIR / "mcphub_cloudflare_client_key"
 GITHUB_TOKEN_FILE = SECRET_DIR / "github_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
@@ -44,10 +45,14 @@ def ensure_secret(path: Path, factory) -> str:
     if path.exists():
         value = path.read_text(encoding="utf-8").strip()
         if value:
+            os.chmod(path, 0o600)
             return value
 
     value = factory()
-    path.write_text(value, encoding="utf-8")
+    # Always write secrets with 0600 from creation; avoid world-readable windows.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(value)
     os.chmod(path, 0o600)
     return value
 
@@ -190,6 +195,16 @@ def main() -> None:
     ensure_secret(
         HA_INGRESS_PROXY_SECRET_FILE,
         lambda: "mha_" + secrets.token_urlsafe(48),
+    )
+    # Existing manually configured client keys must remain valid across an App upgrade.
+    # New installs get a locally generated 384-bit secret; no Cloudflare Access account.
+    legacy_client_key = str(options.get("cloudflare_access_token") or "").strip()
+    if legacy_client_key and not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", legacy_client_key):
+        print("[WARN] Invalid legacy Cloudflare client key; creating a new key", file=sys.stderr)
+        legacy_client_key = ""
+    ensure_secret(
+        CLOUDFLARE_CLIENT_KEY_FILE,
+        lambda: legacy_client_key or secrets.token_urlsafe(48),
     )
     cloudflare_internal_token = ensure_secret(
         CLOUDFLARE_INTERNAL_TOKEN_FILE,
