@@ -1,5 +1,5 @@
-ARG OPENAI_TUNNEL_VERSION=v0.0.15
-ARG CLOUDFLARED_VERSION=2026.9.3
+ARG OPENAI_TUNNEL_VERSION=v0.0.16
+ARG CLOUDFLARED_VERSION=2026.10.1
 ARG BUILD_FROM=samanhappy/mcphub:1.1.1
 
 FROM ghcr.io/openai/tunnel-client:${OPENAI_TUNNEL_VERSION} AS openai_tunnel
@@ -91,12 +91,14 @@ COPY ingress.conf /etc/nginx/mcphub.conf.template
 COPY prepare_config.py /usr/local/bin/prepare_mcphub_config.py
 COPY prepare_proxy_config.py /usr/local/bin/prepare_proxy_config.py
 COPY github_cli_mcp.sh /usr/local/bin/github_cli_mcp.sh
+COPY tunnel_control.py /usr/local/bin/tunnel_control.py
 COPY run.sh /run.sh
 
 RUN chmod 0755 \
     /run.sh \
     /usr/local/bin/prepare_mcphub_config.py \
     /usr/local/bin/prepare_proxy_config.py \
+    /usr/local/bin/tunnel_control.py \
     /usr/local/bin/github_cli_mcp.sh
 
 ENTRYPOINT ["/run.sh"]
