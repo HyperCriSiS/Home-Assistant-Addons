@@ -71,8 +71,12 @@ jobs:
         run: |
           python3 -m py_compile "MCPHub/prepare_config.py"
           python3 -m py_compile "MCPHub/prepare_proxy_config.py"
+          python3 -m py_compile "MCPHub/tunnel_control.py"
           python3 -m py_compile "MCPHub/patch_home_assistant_auth.py"
           python3 -m py_compile ".github/scripts/update-mcphub-upstream.py"
+
+      - name: Test MCPHub network controls
+        run: python3 .github/scripts/test_mcphub_network.py -v
 
       - name: Lint MCPHub Dockerfile
         run: |
@@ -145,8 +149,8 @@ jobs:
           docker manifest inspect \
             "docker.io/samanhappy/mcphub:${MCPHUB_UPSTREAM_VERSION}" \
             > /tmp/mcphub-manifest.json
-          docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.15" > /tmp/tunnel-manifest.json
-          docker manifest inspect "docker.io/cloudflare/cloudflared:2026.9.3" > /tmp/cloudflared-manifest.json
+          docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.16" > /tmp/tunnel-manifest.json
+          docker manifest inspect "docker.io/cloudflare/cloudflared:2026.10.1" > /tmp/cloudflared-manifest.json
 
           python3 - <<'PY'
           import json
