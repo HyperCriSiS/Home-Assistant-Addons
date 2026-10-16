@@ -29,13 +29,10 @@ configuration:
         description: "Stellt eine gewählte MCPHub-Route über Cloudflare bereit."
       cloudflare_tunnel_token:
         name: "Cloudflare Tunnel-Token"
-        description: "Connector-Token aus Cloudflare Zero Trust: https://one.dash.cloudflare.com/"
+        description: "Connector-Token im Cloudflare Dashboard unter Networking → Tunnels; Cloudflare Access ist nicht nötig."
       cloudflare_mcp_path:
         name: "Cloudflare MCP-Route"
         description: "Die über Cloudflare bereitgestellte MCPHub-Route."
-      cloudflare_access_token:
-        name: "Cloudflare Client-Key"
-        description: "Zusätzlicher Schlüssel für Remote-MCP-Clients."
   home_assistant:
     name: "Home Assistant MCP"
     description: "Einstellungen für Home Assistant MCP"
