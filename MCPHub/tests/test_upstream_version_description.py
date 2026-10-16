@@ -1,7 +1,9 @@
-"""Verify an upstream update also refreshes the Home Assistant App description."""
+"""Verify updater version and descriptions using the packaged version as baseline."""
 
+from datetime import date, timedelta
 import importlib.util
 import pathlib
+import re
 import sys
 import tempfile
 import unittest
@@ -38,12 +40,24 @@ class DescriptionUpdateTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((REPOSITORY / name).read_bytes())
 
+        config = yaml.safe_load((self.root / "MCPHub/config.yaml").read_text())
+        build = yaml.safe_load((self.root / "MCPHub/build.yaml").read_text())
+        self.current_upstream = build["build_from"]["amd64"].rsplit(":", 1)[1]
+        parts = [int(part) for part in self.current_upstream.split(".")]
+        self.target_upstream = f"{parts[0]}.{parts[1]}.{parts[2] + 1}"
+
+        match = re.fullmatch(r"v(\d{4}\.\d{2}\.\d{2})(?:-\d+)?", config["version"])
+        self.assertIsNotNone(match, "Unexpected wrapper version in test fixture")
+        self.test_date = date.fromisoformat(match.group(1).replace(".", "-")) + timedelta(days=1)
+        self.target_wrapper = f"v{self.test_date:%Y.%m.%d}"
+
     def run_updater(self):
         with patch.object(MODULE, "ROOT", self.root):
             with patch.object(
                 sys, "argv",
-                ["update-mcphub-upstream.py", "--version", "1.1.4",
-                 "--release-url", "https://example.invalid", "--date", "2026-10-13"],
+                ["update-mcphub-upstream.py", "--version", self.target_upstream,
+                 "--release-url", "https://example.invalid",
+                 "--date", self.test_date.isoformat()],
             ):
                 MODULE.main()
 
@@ -51,28 +65,28 @@ class DescriptionUpdateTests(unittest.TestCase):
         self.run_updater()
         config = yaml.safe_load((self.root / "MCPHub/config.yaml").read_text())
         build = yaml.safe_load((self.root / "MCPHub/build.yaml").read_text())
-        self.assertEqual(config["version"], "v2026.10.13")
+        self.assertEqual(config["version"], self.target_wrapper)
         self.assertEqual(
             config["description"],
-            "MCPHub 1.1.4 - central MCP server management with optional "
-            "Home Assistant, OpenAI and Cloudflare integrations",
+            f"MCPHub {self.target_upstream} - central MCP server management "
+            "with optional Home Assistant, OpenAI and Cloudflare integrations",
         )
         self.assertEqual(
-            set(build["build_from"].values()), {"samanhappy/mcphub:1.1.4"}
+            set(build["build_from"].values()),
+            {f"samanhappy/mcphub:{self.target_upstream}"},
         )
         self.assertTrue(
             (self.root / "MCPHub/CHANGELOG.md").read_text().startswith(
-                "# Changelog\n\n## v2026.10.13\n"
+                f"# Changelog\n\n## {self.target_wrapper}\n"
             )
         )
 
     def test_stale_description_is_rejected(self):
         config = self.root / "MCPHub/config.yaml"
-        config.write_text(
-            config.read_text().replace(
-                "MCPHub 1.1.3 - central", "MCPHub 0.0.0 - central"
-            )
-        )
+        original = config.read_text()
+        marker = f"MCPHub {self.current_upstream} - central"
+        self.assertIn(marker, original)
+        config.write_text(original.replace(marker, "MCPHub 0.0.0 - central"))
         with self.assertRaisesRegex(SystemExit, "MCPHub/config.yaml: expected"):
             self.run_updater()
 
