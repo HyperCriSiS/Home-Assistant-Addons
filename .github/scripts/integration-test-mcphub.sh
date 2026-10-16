@@ -32,6 +32,7 @@ start_addon() {
     --name "${CONTAINER}" \
     --network "${NETWORK}" \
     --ip 172.30.32.3 \
+    --publish "127.0.0.1::3001/tcp" \
     --volume "${VOLUME}:/data" \
     "${IMAGE}" >/dev/null
 }
@@ -79,6 +80,55 @@ ingress_curl_without_identity() {
 write_options
 start_addon
 wait_ready
+
+# Exercise the opt-in LAN proxy through a real Docker host-port mapping.
+# Home Assistant does not publish this port by default (config.yaml: null).
+lan_binding="$(docker port "${CONTAINER}" 3001/tcp)"
+[[ "${lan_binding}" == 127.0.0.1:* ]] || {
+  echo "LAN proxy was not mapped to host loopback" >&2
+  exit 1
+}
+lan_port="${lan_binding##*:}"
+# MCPHub's core /health becomes available before nginx finishes startup.
+lan_ready=false
+for _ in $(seq 1 25); do
+  if curl --fail --silent --max-time 2 "http://127.0.0.1:${lan_port}/health" >/dev/null 2>&1; then
+    lan_ready=true
+    break
+  fi
+  sleep 1
+done
+[[ "${lan_ready}" == "true" ]] || {
+  docker logs "${CONTAINER}" || true
+  echo "LAN proxy was not reachable after nginx startup" >&2
+  exit 1
+}
+
+# A LAN client MUST NOT be able to impersonate a Home Assistant Ingress admin.
+if curl --fail --silent --max-time 5   --header "X-MCPHub-HA-Proxy-Secret: fake-secret"   --header "X-Remote-User-Id: injected"   --header "X-Remote-User-Name: injected-admin"   --header "X-Remote-User-Display-Name: Injected Admin"   "http://127.0.0.1:${lan_port}/api/servers" >/dev/null 2>&1; then
+  echo "LAN proxy accepted forged Home Assistant credentials" >&2
+  exit 1
+fi
+
+# Also reject forged identities on MCPHub's current-user endpoint.
+lan_user="$(curl --silent --show-error --max-time 5   --header "X-MCPHub-HA-Proxy-Secret: fake-secret"   --header "X-Remote-User-Id: injected"   --header "X-Remote-User-Name: injected-admin"   "http://127.0.0.1:${lan_port}/api/better-auth/user")"
+python3 - "${lan_user}" <<'PYLAN'
+import json
+import sys
+try:
+    value = json.loads(sys.argv[1])
+except ValueError:
+    value = {}
+assert value.get("success") is not True, value
+assert value.get("user", {}).get("isAdmin") is not True, value
+PYLAN
+
+# MCP requests without a bearer key must remain protected by MCPHub.
+no_key_code="$(curl --silent --output /dev/null --write-out '%{http_code}'   --max-time 5 --request POST   --header 'Content-Type: application/json'   --header 'Accept: application/json, text/event-stream'   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"lan-ci","version":"1.0"}}}'   "http://127.0.0.1:${lan_port}/mcp")"
+[[ "${no_key_code}" == "401" || "${no_key_code}" == "403" ]] || {
+  echo "LAN MCP endpoint failed to reject missing bearer key (HTTP ${no_key_code})" >&2
+  exit 1
+}
 
 # The OpenAI tunnel supervisor must be reachable through Supervisor Ingress
 # without exposing a separate unauthenticated port or requiring a running tunnel.
