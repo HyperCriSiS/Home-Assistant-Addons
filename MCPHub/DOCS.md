@@ -112,35 +112,30 @@ MCPHub itself remains private inside the Home Assistant App container.
 The App uses `cloudflared` only for outbound tunnel connectivity. No router port
 forwarding is required.
 
-### Cloudflare setup
+### Einrichtung von Cloudflare und Client Key
 
-1. Create a remotely managed Cloudflare Tunnel in the Cloudflare dashboard.
-2. Add a public hostname such as `mcp.example.com`.
-3. Set the hostname service to:
+1. Erstelle einen remotely managed Tunnel unter Cloudflare Dashboard → Networking → Tunnels. **Cloudflare Zero Trust und Zahlungsdaten werden nicht benötigt.**
+2. Lege den öffentlichen Hostnamen (z. B. `mcp.example.com`) an und setze den Origin auf `http://127.0.0.1:8098`.
+3. Trage das **Tunnel Connector Token** unter Home Assistant → MCPHub → Konfiguration als `cloudflare_tunnel_token` ein und starte die App neu.
+4. Öffne die MCPHub Web UI in Home Assistant. Rechts unten führt **Netzwerk & Tunnel** zur Tunnel-Steuerung.
+5. Kopiere den **automatisch generierten Client Key** und hinterlege ihn im MCP-Client als Header `Authorization: Bearer <Client Key>`.
+6. Aktiviere den Cloudflare Tunnel über die integrierte Tunnel-Steuerung. Der konfigurierte MCP-Pfad ist beispielsweise `https://mcp.example.com/mcp/development`.
 
-   ```text
-   http://127.0.0.1:8098
-   ```
+Der Client Key wird **nicht** bei Cloudflare hinterlegt. Er schützt den MCP-Endpunkt direkt am lokalen Proxy; andere Pfade antworten mit HTTP 404. Ein erneuerter Key macht den alten sofort ungültig, sobald die Proxy-Konfiguration erfolgreich neu geladen ist.
 
-4. Copy the tunnel connector token from Cloudflare.
-5. Create a separate random client key with 32-256 characters using only letters,
-   numbers, underscores, or dashes.
-6. Configure the Home Assistant App options below and restart MCPHub.
-7. Configure the remote MCP client with the public URL plus the selected route, for
-   example:
+Bestehende manuelle Keys aus `cloudflare_access_token` werden beim Upgrade importiert, sofern die alte Option noch in der gespeicherten Home-Assistant-Konfiguration vorhanden ist. Ist sie bei der Migration nicht mehr verfügbar, wird ein neuer Schlüssel erstellt und die Clients müssen aktualisiert werden.
 
-   ```text
-   https://mcp.example.com/mcp/development
-   ```
+### Tunnel-Verwaltung in der Home-Assistant-Weboberfläche
 
-8. Configure the remote client to send:
+Im Bereich **Netzwerk & Tunnel** kannst Du beide Tunnel live aktivieren, deaktivieren und neu verbinden und siehst Prozessstatus und Startfehler. Die Zugangsdaten und Pfade werden weiter in der Home-Assistant-App-Konfiguration verwaltet; **Änderungen dort benötigen einen Neustart der App**. Die Ein-/Aus-Zustände aus der Weboberfläche werden dauerhaft unter `/data/tunnel_control.json` gespeichert und haben Vorrang vor den ursprünglichen Startwerten. Externe Konnektivität muss zusätzlich im jeweiligen Anbieter-Dashboard geprüft werden: ein laufender Prozess garantiert noch keine funktionierende Verbindung.
 
-   ```text
-   Authorization: Bearer <your-client-key>
-   ```
+Für die Verwaltung ist eine authentifizierte Home-Assistant-Adminsession erforderlich. Der Verwaltungsserver ist ausschließlich an `127.0.0.1:8097` gebunden und nur über den geschützten Ingress-Zugang erreichbar; er wird weder via Cloudflare noch im LAN veröffentlicht.
 
-The Cloudflare hostname may route all HTTP paths to port 8098. The local adapter still
-serves only the exact configured MCP route and returns 404 for every other path.
+### LAN-Zugriff
+
+Unter Home Assistant → MCPHub → **Netzwerk** den gewünschten **Host-Port** eintragen, beispielsweise `3000`, oder einen anderen freien Port wählen. **Keinen Port eintragen, um den LAN-Zugriff zu deaktivieren.** Intern wird Port `3001/tcp` der App weitergereicht, niemals der ungeschützte MCPHub-Port `3000`.
+
+Der LAN-Proxy erlaubt nur den eingestellten `lan_mcp_path` (Standard `/mcp`), verlangt denselben Client Key wie Cloudflare und blockiert das Web-Dashboard sowie sämtliche anderen API-Pfade. LAN-Verbindungen erfolgen über **HTTP, ohne TLS**; der Bearer Key ist auf einem kompromittierten LAN mitlesbar. Nur in vertrauenswürdigen Netzwerken verwenden, ansonsten HTTPS/Tunnel vorziehen. **Keine Router-Portfreigabe einrichten.**
 
 ### `cloudflare_tunnel_enabled`
 
@@ -165,13 +160,9 @@ For least privilege, prefer a focused group such as:
 
 `/mcp/development`
 
-### `cloudflare_access_token`
+### Automatisch verwalteter `mcphub_client_key`
 
-Required when Cloudflare Tunnel is enabled.
-
-This is a separate client key chosen by you. Remote MCP clients must send it in the
-`Authorization` header. It is validated by the local proxy and is not registered as a
-dashboard credential in MCPHub.
+Wird beim ersten Start kryptografisch sicher erstellt und dauerhaft in `/data/secrets/mcphub_client_key` gespeichert. Der Home-Assistant-Admin kann ihn in der Tunnel-Steuerung kopieren und erneuern. Keine manuelle Pflichtkonfiguration.
 
 ## Dashboard and local proxy architecture
 
@@ -297,8 +288,7 @@ failures normally appear before the wrapper reports that MCPHub exited.
 
 Check that MCPHub reached the ready state and that Nginx started afterward.
 
-The App intentionally does not publish a normal host port; use Home Assistant **Web UI**
-instead of browsing directly to port 3000 or 8099.
+The MCPHub dashboard is only available through Home Assistant **Web UI**. An optional LAN host port exposes solely the authenticated MCP endpoint, never the dashboard.
 
 ### Cloudflare Tunnel does not start
 
@@ -306,7 +296,7 @@ Verify that:
 
 - `cloudflare_tunnel_enabled` is enabled
 - the Cloudflare connector token is present
-- the client key matches the documented character requirements
+- the generated client key is available via **Netzwerk & Tunnel**
 - the public hostname service points to `http://127.0.0.1:8098`
 - the remote client URL includes the exact configured `cloudflare_mcp_path`
 
@@ -316,7 +306,7 @@ Verify that the client sends:
 
 `Authorization: Bearer <your-client-key>`
 
-and that the value exactly matches `cloudflare_access_token`.
+and that the value exactly matches the automatically generated Client Key copied from the Home Assistant interface.
 
 ### The remote client receives 404
 
