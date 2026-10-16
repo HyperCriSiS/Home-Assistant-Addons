@@ -14,6 +14,8 @@ OUTPUT_FILE = Path("/etc/nginx/conf.d/mcphub.conf")
 
 HA_INGRESS_PROXY_SECRET_FILE = Path("/data/secrets/mcphub_ha_ingress_proxy_secret")
 CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
+LAN_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_lan_token")
+CLIENT_KEY_FILE = Path("/data/secrets/mcphub_client_key")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 ACCESS_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
@@ -63,7 +65,7 @@ def cloudflare_server_block(
 
     if not ACCESS_TOKEN_PATTERN.fullmatch(client_token):
         raise ValueError(
-            "cloudflare_access_token must contain 32-256 letters, numbers, underscores, or dashes"
+            "Client key must contain 32-256 letters, numbers, underscores, or dashes"
         )
 
     # Escape '$' so Nginx treats Smart Routing paths literally, not as variables.
@@ -111,18 +113,55 @@ def cloudflare_server_block(
 }}"""
 
 
+def lan_server_block(mcp_path: str, client_token: str, internal_token: str) -> str:
+    """Authenticated LAN MCP only; never expose dashboard or API."""
+    if not MCP_PATH_PATTERN.fullmatch(mcp_path):
+        raise ValueError("lan_mcp_path must be /mcp or up to two safe path segments")
+    if not ACCESS_TOKEN_PATTERN.fullmatch(client_token):
+        raise ValueError("Client key is invalid")
+    pat = re.escape(mcp_path)
+    return f"""server {{
+    listen 0.0.0.0:3001;
+    access_log /dev/stdout;
+    error_log /dev/stderr warn;
+    client_max_body_size 16m;
+    location ~ ^{pat}$ {{
+        if ($http_authorization != "Bearer {client_token}") {{ return 401; }}
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Authorization "Bearer {internal_token}";
+        proxy_set_header X-MCPHub-HA-Proxy-Secret "";
+        proxy_set_header X-Remote-User-Id "";
+        proxy_set_header X-Remote-User-Name "";
+        proxy_set_header X-Remote-User-Display-Name "";
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+    }}
+    location / {{ return 404; }}
+}}"""
+
+
 def main() -> None:
     options = load_options()
     template = TEMPLATE_FILE.read_text(encoding="utf-8")
 
     ha_ingress_proxy_secret = read_secret(HA_INGRESS_PROXY_SECRET_FILE)
     cloudflare_internal_token = read_secret(CLOUDFLARE_INTERNAL_TOKEN_FILE)
+    lan_internal_token = read_secret(LAN_INTERNAL_TOKEN_FILE)
+    client_token = read_secret(CLIENT_KEY_FILE)
 
     cloudflare_block = cloudflare_server_block(
-        enabled=bool(options.get("cloudflare_tunnel_enabled", False)),
+        enabled=True,  # Route stays protected; tunnel process can toggle live.
         mcp_path=str(options.get("cloudflare_mcp_path", "/mcp")),
-        client_token=str(options.get("cloudflare_access_token", "")),
+        client_token=client_token,
         internal_token=cloudflare_internal_token,
+    )
+
+    lan_block = lan_server_block(
+        mcp_path=str(options.get("lan_mcp_path", "/mcp")),
+        client_token=client_token,
+        internal_token=lan_internal_token,
     )
 
     rendered = template.replace(
@@ -131,7 +170,7 @@ def main() -> None:
     ).replace(
         "__CLOUDFLARE_SERVER_BLOCK__",
         cloudflare_block,
-    )
+    ).replace("__LAN_SERVER_BLOCK__", lan_block)
 
     OUTPUT_FILE.write_text(rendered, encoding="utf-8")
     OUTPUT_FILE.chmod(0o600)
