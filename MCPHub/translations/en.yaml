@@ -14,13 +14,11 @@ configuration:
         description: >-
           Runtime key for OpenAI Secure MCP Tunnel. Create a Restricted key
           with Tunnels Read + Use: https://platform.openai.com/settings/organization/api-keys
-          Leave empty while the OpenAI tunnel is disabled.
       tunnel_id:
         name: "OpenAI Tunnel ID"
         description: >-
           Tunnel ID starts with tunnel_. Find it in OpenAI Tunnel settings:
           https://platform.openai.com/settings/organization/tunnels
-          Do not use an API key Tracking ID.
       tunnel_mcp_path:
         name: "OpenAI MCP route"
         description: >-
@@ -37,7 +35,7 @@ configuration:
           Cloudflare Tunnel.
       cloudflare_tunnel_token:
         name: "Cloudflare Tunnel token"
-        description: "Connector token from a remotely managed Cloudflare Tunnel."
+        description: "Connector token from Cloudflare Zero Trust: https://one.dash.cloudflare.com/"
       cloudflare_mcp_path:
         name: "Cloudflare MCP route"
         description: >-
