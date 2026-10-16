@@ -5,7 +5,7 @@ MCPHub bleibt im Container auf Port **3000**. Der direkte Netzwerkzugang ist sta
 ## Aktivieren
 
 1. In Home Assistant **Einstellungen → Apps → MCPHub → Netzwerk** öffnen.
-2. Beim Eintrag **LAN-Zugriff** links den gewünschten **Host-Port** eintragen, zum Beispiel **3000**. Die rechts angezeigte Angabe `3001/tcp` bezeichnet den festen **internen Containerport** und ist keine Eingabeaufforderung. Bleibt das linke Feld leer, ist der LAN-Zugriff deaktiviert.
+2. Beim Eintrag **„LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen. Keinen Port eintragen um den LAN Zugriff zu deaktivieren.“** links den gewünschten **Host-Port** eintragen, zum Beispiel **3000**. Die rechts angezeigte Angabe `3001/tcp` bezeichnet den festen **internen Containerport** und ist keine Eingabeaufforderung. Bleibt das linke Feld leer, ist der LAN-Zugriff deaktiviert.
 3. MCPHub bei Bedarf neu starten.
 4. Die Oberfläche über `http://<HA-IP>:3000` öffnen. Für diesen direkten Zugang gilt **MCPHubs eigene Benutzeranmeldung**, nicht die Home-Assistant-Anmeldung.
 5. In MCPHub unter **Keys** einen eigenen Bearer-Key erstellen und den MCP-Client auf `http://<HA-IP>:3000/mcp` mit `Authorization: Bearer <KEY>` einrichten.
