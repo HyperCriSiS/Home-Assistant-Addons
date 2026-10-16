@@ -7,6 +7,16 @@ on:
       - Validate MCPHub
     types:
       - completed
+  workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: "Upstream version for a first-party update PR"
+        type: string
+        required: true
+      head_sha:
+        description: "Exact update PR commit SHA to validate"
+        type: string
+        required: true
 
 permissions:
   actions: write
@@ -22,13 +32,15 @@ jobs:
     name: Merge CI-green upstream update into dev-mcphub
     if: >-
       ${{
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         (github.event.workflow_run.event == 'pull_request' ||
          github.event.workflow_run.event == 'workflow_dispatch') &&
-        startsWith(github.event.workflow_run.head_branch, 'automation/mcphub-')
+        startsWith(github.event.workflow_run.head_branch, 'automation/mcphub-'))
       }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 45
     env:
       GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
 
