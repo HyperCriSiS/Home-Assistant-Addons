@@ -45,6 +45,12 @@ class AutomationGateTests(unittest.TestCase):
     def test_trusted_success_accepted(self):
         self.assertEqual(MODULE.validate_run(event(), REPO), ("1.2.3", SHA))
 
+    def test_trusted_dispatch_success_accepted(self):
+        self.assertEqual(
+            MODULE.validate_run(event(event="workflow_dispatch"), REPO),
+            ("1.2.3", SHA),
+        )
+
     def test_other_events_are_skipped(self):
         for overrides in (
             {"conclusion": "failure"},
