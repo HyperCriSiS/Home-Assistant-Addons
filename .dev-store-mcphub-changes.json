@@ -1,5 +1,17 @@
 [
   {
+    "revision": 98,
+    "version": "v2026.10.12-1-dev.98",
+    "source_sha": "aaac13a8b83ba375c25ec58fcbcce5ccbfae09ab",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "aaac13a8b83ba375c25ec58fcbcce5ccbfae09ab",
+        "subject": "fix(mcphub): simplify configuration descriptions and link Cloudflare"
+      }
+    ]
+  },
+  {
     "revision": 97,
     "version": "v2026.10.12-1-dev.97",
     "source_sha": "65e9166050d01d8889b87a37902dc15212812220",
