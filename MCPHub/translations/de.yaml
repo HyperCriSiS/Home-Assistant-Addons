@@ -12,13 +12,11 @@ configuration:
         description: >-
           Runtime-Key für Secure MCP Tunnel. Restricted-Key mit Tunnels Read + Use
           erstellen: https://platform.openai.com/settings/organization/api-keys
-          Ohne aktivierten Tunnel kann das Feld leer bleiben.
       tunnel_id:
         name: "OpenAI Tunnel-ID"
         description: >-
           Die Tunnel-ID beginnt mit tunnel_. Du findest sie in den OpenAI-Tunnel-Einstellungen:
           https://platform.openai.com/settings/organization/tunnels
-          Nicht die Tracking ID eines API-Keys verwenden.
       tunnel_mcp_path:
         name: "OpenAI MCP-Route"
         description: "MCPHub-Endpunkt für ChatGPT, zum Beispiel /mcp, /mcp/$smart oder /mcp/<gruppe>."
@@ -31,7 +29,7 @@ configuration:
         description: "Stellt eine gewählte MCPHub-Route über Cloudflare bereit."
       cloudflare_tunnel_token:
         name: "Cloudflare Tunnel-Token"
-        description: "Connector-Token aus dem Cloudflare-Tunnel."
+        description: "Connector-Token aus Cloudflare Zero Trust: https://one.dash.cloudflare.com/"
       cloudflare_mcp_path:
         name: "Cloudflare MCP-Route"
         description: "Die über Cloudflare bereitgestellte MCPHub-Route."
