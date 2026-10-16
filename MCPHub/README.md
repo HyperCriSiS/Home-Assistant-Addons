@@ -66,6 +66,8 @@ The development App is shown as **MCPHub (Dev)** under
 - Home Assistant Ingress dashboard
 - Optional OpenAI Secure MCP Tunnel for ChatGPT / OpenAI clients
 - Optional Cloudflare Tunnel for Claude, Cursor, VS Code, and other remote MCP clients
+- Integrated ingress-only tunnel controls with auto-generated, rotatable client key
+- Optional authenticated LAN MCP access (disabled by default)
 - No public MCPHub port required
 - No Home Assistant Docker socket access
 - No privileged mode
@@ -151,7 +153,9 @@ The Home Assistant App configuration contains only tunnel-related options:
 | `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
 | `cloudflare_tunnel_token` | empty | Connector token for a remotely managed Cloudflare Tunnel |
 | `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
-| `cloudflare_access_token` | empty | Client key required from remote MCP clients |
+| `lan_mcp_path` | `/mcp` | Exact authenticated LAN MCP route |
+
+The Client Key is generated automatically. Open **Netzwerk & Tunnel** in the authenticated Home Assistant MCPHub UI to copy or rotate it and control both tunnels. To enable LAN, set a host port (e.g. `3000`) in the app’s **Network** section; leave it empty to disable LAN. The published LAN port is protected by the same Client Key and does not expose the dashboard.
 
 MCP server configuration itself is managed from the MCPHub Web UI.
 
