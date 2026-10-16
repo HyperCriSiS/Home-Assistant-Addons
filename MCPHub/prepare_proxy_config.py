@@ -18,6 +18,7 @@ OUTPUT_FILE = Path("/etc/nginx/conf.d/mcphub.conf")
 
 HA_INGRESS_PROXY_SECRET_FILE = Path("/data/secrets/mcphub_ha_ingress_proxy_secret")
 CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
+CLOUDFLARE_CLIENT_KEY_FILE = Path("/data/secrets/mcphub_cloudflare_client_key")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 HA_MCP_PATH_PATTERN = re.compile(r"^/api/mcp(?:/[A-Za-z0-9._~-]+)?$")
@@ -285,7 +286,7 @@ def main() -> None:
     cloudflare_block = cloudflare_server_block(
         enabled=bool(options.get("cloudflare_tunnel_enabled", False)),
         mcp_path=str(options.get("cloudflare_mcp_path", "/mcp")),
-        client_token=str(options.get("cloudflare_access_token", "")),
+        client_token=read_secret(CLOUDFLARE_CLIENT_KEY_FILE),
         internal_token=cloudflare_internal_token,
     )
 
@@ -304,8 +305,16 @@ def main() -> None:
         )
     )
 
-    OUTPUT_FILE.write_text(rendered, encoding="utf-8")
-    OUTPUT_FILE.chmod(0o600)
+    # Atomic configuration swap for safe live rotation of the external client key.
+    tmp = OUTPUT_FILE.with_suffix(".conf.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, OUTPUT_FILE)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ GROUPS = {
     ),
     "cloudflare": (
         "cloudflare_tunnel_enabled", "cloudflare_tunnel_token",
-        "cloudflare_mcp_path", "cloudflare_access_token",
+        "cloudflare_mcp_path",
     ),
     "home_assistant": (
         "home_assistant_mcp_enabled", "home_assistant_mcp_server_name",

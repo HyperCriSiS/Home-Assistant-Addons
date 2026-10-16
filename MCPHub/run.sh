@@ -81,7 +81,6 @@ cloudflare_tunnel_enabled="$(option cloudflare_tunnel_enabled)"
 cloudflare_tunnel_enabled="${cloudflare_tunnel_enabled:-false}"
 cloudflare_mcp_path="$(option cloudflare_mcp_path)"
 cloudflare_mcp_path="${cloudflare_mcp_path:-/mcp}"
-cloudflare_access_token="$(option cloudflare_access_token)"
 
 home_assistant_mcp_enabled="$(option home_assistant_mcp_enabled)"
 home_assistant_mcp_enabled="${home_assistant_mcp_enabled:-false}"
@@ -94,11 +93,6 @@ chmod 0700 "${SECRET_DIR}"
 
 if [[ "${cloudflare_tunnel_enabled}" == "true" ]] && ! valid_mcp_path "${cloudflare_mcp_path}"; then
     log_warn "Invalid Cloudflare MCP path; tunnel stays disabled while MCPHub starts."
-    cloudflare_tunnel_enabled="false"
-fi
-
-if [[ "${cloudflare_tunnel_enabled}" == "true" ]]     && [[ ! "${cloudflare_access_token}" =~ ^[A-Za-z0-9_-]{32,256}$ ]]; then
-    log_warn "Invalid Cloudflare client token; tunnel stays disabled while MCPHub starts."
     cloudflare_tunnel_enabled="false"
 fi
 

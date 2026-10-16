@@ -10,6 +10,8 @@ class LanAccessTests(unittest.TestCase):
         config = yaml.safe_load((ROOT / "config.yaml").read_text())
         self.assertIsNone(config["ports"]["3001/tcp"])
         self.assertIn("3001/tcp", config["ports_description"])
+        self.assertIn("LAN Zugriff aktivieren", config["ports_description"]["3001/tcp"])
+        self.assertIn("Keinen Port eintragen", config["ports_description"]["3001/tcp"])
         self.assertTrue(config["ingress"])
         self.assertTrue(config["panel_admin"])
         self.assertFalse(config.get("host_network", False))
