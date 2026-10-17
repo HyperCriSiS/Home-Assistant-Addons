@@ -1,5 +1,17 @@
 [
   {
+    "revision": 109,
+    "version": "v2026.10.17-1-dev.109",
+    "source_sha": "bd3eb375807b1543d725248a9ae19ae3cb7052b6",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "bd3eb375807b1543d725248a9ae19ae3cb7052b6",
+        "subject": "docs(mcphub): remove redundant title beneath app logo (#74)"
+      }
+    ]
+  },
+  {
     "revision": 108,
     "version": "v2026.10.17-1-dev.108",
     "source_sha": "40786d4a75f6bb563025e172a0a8a5e5fa1d953a",
