@@ -94,6 +94,7 @@ COPY github_cli_mcp.sh /usr/local/bin/github_cli_mcp.sh
 COPY tunnel_manager.py /usr/local/bin/tunnel_manager.py
 COPY tunnel_control.py /usr/local/bin/tunnel_control.py
 COPY tunnel_diagnostics.py /usr/local/bin/tunnel_diagnostics.py
+COPY tailscale_gateway.py /usr/local/bin/tailscale_gateway.py
 # Standalone Ingress-only tunnel management console (no MCPHub SPA injection).
 COPY tunnel_dashboard.html /usr/local/bin/tunnel_dashboard.html
 COPY tunnel_dashboard.js /usr/local/bin/tunnel_dashboard.js
