@@ -151,6 +151,67 @@ assert not status['process_alive'], status
 assert 'openai_runtime_api_key' not in status, status
 PYTEST
 
+# The upgraded tunnel dashboard must be reachable only through HA Ingress.
+for _ in $(seq 1 20); do
+  if ingress_curl --fail --silent \
+    "http://${CONTAINER}:8099/_mcphub_tunnels/api/status" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+dashboard_html="$(ingress_curl --fail --silent --show-error \
+  "http://${CONTAINER}:8099/_mcphub_tunnels/")"
+grep -q 'id="t-openai"' <<<"${dashboard_html}"
+grep -q 'id="t-cloudflare"' <<<"${dashboard_html}"
+grep -q 'Live-Protokoll' <<<"${dashboard_html}"
+
+for mode in openai cloudflare; do
+  logs="$(ingress_curl --fail --silent --show-error \
+    "http://${CONTAINER}:8099/_mcphub_tunnels/api/logs/${mode}")"
+  python3 - "${logs}" <<'PYLOG'
+import json
+import sys
+value = json.loads(sys.argv[1])
+assert isinstance(value["lines"], list), value
+assert value.get("limited") is True, value
+PYLOG
+  details="$(ingress_curl --fail --silent --show-error \
+    "http://${CONTAINER}:8099/_mcphub_tunnels/api/diagnostics/${mode}")"
+  python3 - "${details}" <<'PYDETAIL'
+import json
+import sys
+assert isinstance(json.loads(sys.argv[1]), dict)
+PYDETAIL
+done
+
+# Only the Supervisor-authenticated frontend can surface the administration link.
+frontend_html="$(ingress_curl --fail --silent --show-error \
+  --header "X-Ingress-Path: ${INGRESS_PATH}" \
+  "http://${CONTAINER}:8099/")"
+grep -q 'mcphub-ha-nav.js' <<<"${frontend_html}"
+frontend_nav="$(ingress_curl --fail --silent --show-error \
+  "http://${CONTAINER}:8099/mcphub-ha-nav.js")"
+grep -q 'hassio_ingress' <<<"${frontend_nav}"
+grep -q '_mcphub_tunnels' <<<"${frontend_nav}"
+
+# Native LAN cannot reach the privileged Ingress tunnel API.
+lan_admin="$(curl --silent --show-error --max-time 5 \
+  "http://127.0.0.1:${lan_port}/_mcphub_tunnels/api/status")"
+if python3 - "${lan_admin}" <<'PYLANADMIN'
+import json
+import sys
+try:
+    payload = json.loads(sys.argv[1])
+except ValueError:
+    raise SystemExit(1)
+raise SystemExit(0 if 'openai' in payload and 'cloudflare' in payload else 1)
+PYLANADMIN
+then
+  echo 'LAN unexpectedly exposed tunnel administration JSON' >&2
+  exit 1
+fi
+
 # Browser form-like cross-origin requests must not be able to mutate the tunnel.
 response_code="$(ingress_curl --silent --output /dev/null --write-out '%{http_code}' \
   --request POST --header 'Content-Type: application/json' --data '{}' \

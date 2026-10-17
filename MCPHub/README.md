@@ -120,11 +120,13 @@ MCP APIs other than the built-in Assist API.
 
 ## Tunnel health and controls
 
-The Home Assistant Ingress-only page at `/_mcphub_tunnels/` provides
+The MCPHub top bar shows **Tunnelverwaltung** when opened through authenticated
+Home Assistant Ingress. The linked Ingress-only page at `/_mcphub_tunnels/` provides
 **Start**, **Stop**, **Reload** and local readiness monitoring for OpenAI and
 Cloudflare without restarting MCPHub. Administrators can also copy or rotate the
-automatically generated Cloudflare Client Key. The **LAN-Zugriff** navigation
-points to the App's **Network** port settings.
+automatically generated Cloudflare Client Key within the Cloudflare section.
+Each tunnel has its own local component diagnostics and bounded redacted live logs.
+LAN port settings remain under Home Assistant App **Network**.
 
 Local process health does not guarantee internet-side connectivity.
 
