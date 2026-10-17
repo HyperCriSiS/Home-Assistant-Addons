@@ -157,7 +157,7 @@ class TailscaleGateway:
                 note = "Lokaler Gateway-Port nicht bereit. Add-on- und Proxy-Konfiguration prüfen."
             else:
                 state = "gateway_ready"
-                note = "MCP-Gateway lokal bereit. Externer Funnel-Status unbekannt."
+                note = "MCP-Gateway im Container bereit. Host-Port und Funnel nicht bestätigt."
             try:
                 validate_public_url(url, route)
                 url_valid = True

@@ -150,6 +150,73 @@ class TunnelControllerTests(unittest.TestCase):
             controller.rotate_client_key()
         self.assertEqual(self.mod.CF_CLIENT_KEY.read_text(), original)
 
+    def test_tailscale_key_rotation_is_separate_and_rollback_safe(self):
+        controller = self.mod.Controls()
+        old_cf = self.mod.CF_CLIENT_KEY.read_text()
+        old_ts = self.mod.TS_CLIENT_KEY.read_text()
+        with patch.object(self.mod.subprocess, "run") as run:
+            self.assertEqual(controller.rotate_tailscale_client_key(), {"rotated": True})
+        new_ts = self.mod.TS_CLIENT_KEY.read_text()
+        self.assertNotEqual(old_ts, new_ts)
+        self.assertEqual(len(new_ts), 64)
+        self.assertEqual(self.mod.TS_CLIENT_KEY.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(controller.tailscale_client_key()["key"], new_ts)
+        self.assertEqual(self.mod.CF_CLIENT_KEY.read_text(), old_cf)
+        self.assertEqual(run.call_count, 3)
+        from subprocess import CalledProcessError
+        with patch.object(self.mod.subprocess, "run", side_effect=[
+            None, CalledProcessError(1, "nginx -t"), None, None
+        ]), self.assertRaises(RuntimeError):
+            controller.rotate_tailscale_client_key()
+        self.assertEqual(self.mod.TS_CLIENT_KEY.read_text(), new_ts)
+
+    def test_tailscale_control_http_safety(self):
+        manager = Mock()
+        manager.tailscale.authorized.return_value = False
+        manager.tailscale_client_key.return_value = {"key": "never_leak_without_header"}
+        manager.rotate_tailscale_client_key.return_value = {"rotated": True}
+        manager.command.return_value = {"state": "stopped"}
+        server = ThreadingHTTPServer(("127.0.0.1", 0), self.mod.handler_for(manager))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        def request(method, route, body=None, headers=None):
+            conn = HTTPConnection(*server.server_address, timeout=5)
+            try:
+                conn.request(method, route, body=body, headers=headers or {})
+                response = conn.getresponse()
+                return response.status, response.read()
+            finally:
+                conn.close()
+
+        allowed = {"X-MCPHub-Tunnel-Control": "1"}
+        post_headers = {**allowed, "Content-Type": "application/json"}
+        try:
+            self.assertEqual(request("GET", "/api/tailscale/client-key")[0], 403)
+            manager.tailscale_client_key.assert_not_called()
+            status, body = request("GET", "/api/tailscale/client-key", headers=allowed)
+            self.assertEqual(status, 200)
+            self.assertIn(b"never_leak_without_header", body)
+            self.assertEqual(request("GET", "/api/tailscale/https-check")[0], 403)
+            self.assertEqual(request("GET", "/api/tailscale/gate")[0], 403)
+            manager.tailscale.authorized.return_value = True
+            self.assertEqual(request("GET", "/api/tailscale/gate")[0], 204)
+            self.assertEqual(request("POST", "/api/tailscale/client-key/rotate",
+                                     "{}", {"Content-Type": "application/json"})[0], 403)
+            self.assertEqual(request("POST", "/api/tailscale/client-key/rotate",
+                                     "{}", post_headers)[0], 200)
+            manager.rotate_tailscale_client_key.assert_called_once()
+            self.assertEqual(request("POST", "/api/control/tailscale/stop",
+                                     "{}", post_headers)[0], 200)
+            manager.command.assert_called_once_with("tailscale", "stop")
+            self.assertEqual(request("POST", "/api/control/tailscale/reload",
+                                     "{}", post_headers)[0], 200)
+            # Route parsing allows legacy action spelling, but an actual
+            # TailscaleGateway rejects reload; controller uses that class.
+        finally:
+            server.shutdown()
+            server.server_close()
+
     def test_http_controls_deny_missing_headers_and_unknown_tunnels(self):
         manager = Mock()
         manager.snapshot.return_value = {"openai": {"state": "ready"}}

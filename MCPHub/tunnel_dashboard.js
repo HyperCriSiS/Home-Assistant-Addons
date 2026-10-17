@@ -43,7 +43,7 @@ function render(mode, state) {
   text(card.querySelector(".summary"), s.last_error || summary);
   if (mode === "tailscale") {
     text(card.querySelector('[data-field="gateway"]'),
-      s.gateway_ready ? "Lokal bereit" : s.configured ? "Nicht bereit" : "Deaktiviert");
+      s.gateway_ready ? "Im Add-on bereit" : s.configured ? "Nicht bereit" : "Deaktiviert");
     text(card.querySelector('[data-field="funnel"]'), "Externes Add-on · manuell");
     text(card.querySelector('[data-field="route"]'), s.route || "–");
     text(card.querySelector('[data-field="https"]'),

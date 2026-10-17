@@ -6,6 +6,9 @@
 - Automatically generate and persist Cloudflare remote MCP client key, migrating existing keys.
 - Add copy and confirmed rotation to protected Ingress tunnel management; retain independent tunnel lifecycle and health.
 - Update cloudflared to 2026.10.1, OpenAI tunnel client to v0.0.16; keep MCPHub upstream 1.1.5.
+- Prepare a separate, Ingress-only tunnel dashboard with one card each for OpenAI, Cloudflare, and Tailscale Funnel; remove the injected control from upstream MCPHub's header.
+- Add optional Tailscale MCP-only gateway (host port off by default), independent scoped keys, local gateway Start/Stop and rotation; the existing Tailscale Add-on continues to own Funnel.
+- Reject unsafe dot-segment MCP routes across all tunnel gateways and preserve the original Dev Store title and README.
 
 
 ## v2026.10.16
