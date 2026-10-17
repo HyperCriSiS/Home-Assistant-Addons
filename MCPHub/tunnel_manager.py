@@ -19,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
+from tunnel_diagnostics import TunnelLog
 
 OPTIONS_FILE = Path('/data/options.json')
 KEY_FILE = Path('/data/secrets/openai_runtime_api_key')
@@ -85,6 +86,8 @@ class TunnelManager:
         self.not_live_since = 0.0
         self.not_ready_since = 0.0
         self.last_checked = 0.0
+        self.logs = TunnelLog()
+        self.logs.add('OpenAI Tunnelverwaltung gestartet')
 
     def _stop(self) -> None:
         proc = self.process
@@ -108,6 +111,7 @@ class TunnelManager:
         self.next_attempt = now + delay
         self.state = 'retrying'
         self.last_error = reason
+        self.logs.add('Fehler: ' + reason)
         self.ready_since = self.not_live_since = self.not_ready_since = 0.0
         LOG.warning('%s; retry in %d seconds', reason, delay)
 
@@ -145,7 +149,11 @@ class TunnelManager:
             self.process = subprocess.Popen(
                 [CLIENT, 'run', f'--control-plane.api-key=file:{KEY_FILE}'],
                 env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, errors='replace', bufsize=1,
             )
+            self.logs.follow(self.process, (key, tunnel_id))
+            self.logs.add('Tunnelprozess gestartet')
             self.started = now
             self.ready_since = self.not_live_since = self.not_ready_since = 0.0
             self.state = 'starting'
@@ -157,6 +165,7 @@ class TunnelManager:
             self.state = 'error'
             self.requested = False
             self.last_error = str(exc)
+            self.logs.add('Start fehlgeschlagen (Einstellungen prüfen)')
             LOG.warning('OpenAI tunnel not started: %s', exc)
 
     def tick(self, now: float | None = None) -> None:
@@ -204,6 +213,7 @@ class TunnelManager:
                 raise ValueError('Unsupported action')
             if action in ('stop', 'reload'):
                 self._stop()
+            self.logs.add('Aktion: ' + action)
             if action == 'stop':
                 self.requested = False
                 self.state = 'stopped'
@@ -284,6 +294,8 @@ def handler_for(manager: TunnelManager):
                 self.send(SCRIPT.encode(), 'text/javascript; charset=utf-8')
             elif self.path == '/api/status':
                 self.send(json.dumps(manager.snapshot()).encode(), 'application/json')
+            elif self.path == '/api/logs':
+                self.send(json.dumps(manager.logs.snapshot()).encode(), 'application/json')
             else:
                 self.send(b'Not found', 'text/plain', 404)
 

@@ -1,12 +1,14 @@
 """Tests for isolated tunnel lifecycle, backoff, health and local controls."""
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from http.client import HTTPConnection
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 MODULE_PATH = Path(__file__).resolve().parents[1] / 'tunnel_manager.py'
 spec = importlib.util.spec_from_file_location('tunnel_manager', MODULE_PATH)
 manager_module = importlib.util.module_from_spec(spec)

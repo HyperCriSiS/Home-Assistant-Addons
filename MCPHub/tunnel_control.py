@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from tunnel_diagnostics import TunnelLog, redact
 
 OPTIONS = Path('/data/options.json')
 CF_SECRET = Path('/data/secrets/cloudflare_tunnel_token')
@@ -73,6 +74,8 @@ class Cloudflare:
         self.degraded_at = 0.0
         self.route = '/mcp'
         self.configured = False
+        self.logs = TunnelLog()
+        self.logs.add('Cloudflare Tunnelverwaltung gestartet')
         self.reload()
 
     def stop_process(self):
@@ -102,7 +105,11 @@ class Cloudflare:
                 '/usr/local/bin/cloudflared', 'tunnel', '--no-autoupdate',
                 '--metrics', '127.0.0.1:20091',
                 'run', '--token-file', str(CF_SECRET)
-            ], stdin=subprocess.DEVNULL)
+            ], stdin=subprocess.DEVNULL,
+               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+               text=True, errors='replace', bufsize=1)
+            self.logs.follow(self.proc, (token, key))
+            self.logs.add('Tunnelprozess gestartet')
             self.state = 'starting'
             self.started = now
             self.degraded_at = 0.0
@@ -112,6 +119,7 @@ class Cloudflare:
             self.desired = False
             self.state = 'error'
             self.error = str(error)
+            self.logs.add('Start fehlgeschlagen (Einstellungen prüfen)')
 
     def reload(self):
         self.stop_process()
@@ -128,6 +136,7 @@ class Cloudflare:
         self.state = 'starting' if self.desired else 'stopped'
 
     def command(self, action):
+        self.logs.add('Aktion: ' + action)
         if action == 'stop':
             self.desired = False
             self.stop_process()
@@ -151,6 +160,7 @@ class Cloudflare:
         delay = min(5 * 2 ** min(self.failed - 1, 6), 300)
         self.retry_at = now + delay
         self.error = message
+        self.logs.add('Fehler: ' + message)
         self.state = 'retrying'
         self.degraded_at = 0.0
         LOG.warning('Cloudflare: %s; retry in %s seconds', message, delay)
@@ -241,6 +251,65 @@ class Controls:
                 return self.cloudflare.status(time.monotonic())
             raise ValueError('Unknown tunnel')
 
+    def logs(self, mode):
+        """Return separately buffered logs; never expose the HA App log globally."""
+        with self.lock:
+            if mode == 'cloudflare':
+                return self.cloudflare.logs.snapshot()
+            if mode == 'openai':
+                try:
+                    with urlopen('http://127.0.0.1:8096/api/logs', timeout=3) as response:
+                        return json.loads(response.read(70000))
+                except (HTTPError, URLError, OSError, ValueError, TimeoutError):
+                    return {'lines': ['OpenAI-Protokoll aktuell nicht erreichbar'], 'limited': True}
+            raise ValueError('Unknown tunnel')
+
+    def diagnostics(self, mode):
+        """Bounded local component diagnostics; do not return raw configuration."""
+        if mode == 'openai':
+            if not self.openai().get('process_alive'):
+                return {'note': 'OpenAI-Tunnelprozess ist nicht aktiv'}
+            try:
+                with urlopen('http://127.0.0.1:8080/health?details=true', timeout=3) as response:
+                    report = json.loads(response.read(65536))
+                components = {}
+                for name in ('mcp', 'control-plane', 'response-delivery', 'queue', 'proxy'):
+                    item = report.get('components', {}).get(name)
+                    if isinstance(item, dict):
+                        components[name] = {
+                            k: item[k] for k in ('status', 'state', 'reason_code', 'observed_at')
+                            if k in item and isinstance(item[k], (str, bool, int))
+                        }
+                return {
+                    'live': report.get('live') is True,
+                    'ready': report.get('ready') is True,
+                    'components': components,
+                }
+            except (HTTPError, URLError, OSError, ValueError, TimeoutError):
+                return {'note': 'OpenAI-Komponentendiagnose nicht erreichbar'}
+        if mode == 'cloudflare':
+            if not self.cloudflare.proc or self.cloudflare.proc.poll() is not None:
+                return {'note': 'Cloudflare-Tunnelprozess ist nicht aktiv'}
+            try:
+                with urlopen('http://127.0.0.1:20091/diag/precheck', timeout=3) as response:
+                    if response.status == 204:
+                        return {'note': 'Precheck-Ergebnisse noch nicht verfügbar'}
+                    report = json.loads(response.read(32768))
+                results = []
+                for item in report.get('results', [])[:20]:
+                    if isinstance(item, dict):
+                        results.append({
+                            k: redact(item[k])
+                            for k in ('component', 'status', 'details', 'action')
+                            if isinstance(item.get(k), str)
+                        })
+                return {'hard_fail': report.get('hard_fail') is True,
+                        'suggested_protocol': redact(report.get('suggested_protocol', '')),
+                        'prechecks': results}
+            except (HTTPError, URLError, OSError, ValueError, TimeoutError):
+                return {'note': 'Cloudflare-Netzwerkdiagnose nicht verfügbar'}
+        raise ValueError('Unknown tunnel')
+
     def client_key(self):
         with self.lock:
             key = CF_CLIENT_KEY.read_text(encoding='utf-8').strip()
@@ -285,82 +354,112 @@ class Controls:
 
 PAGE = '''<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MCPHub – Tunnelverwaltung</title><style>
+<title>MCPHub – Tunnelverwaltung</title>
+<style>
 :root{font-family:system-ui,sans-serif;color-scheme:light dark}
-body{max-width:820px;margin:2rem auto;padding:0 1rem;line-height:1.5}
-nav{display:flex;gap:1.3rem;margin-bottom:1.5rem}nav a{color:inherit;text-underline-offset:.3rem}
-section{border:1px solid #9997;border-radius:8px;padding:1rem;margin:1rem 0}
-button{font:inherit;padding:.5rem;margin:.2rem;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}small{opacity:.8}
+body{max-width:900px;margin:1.5rem auto;padding:0 1rem 3rem;line-height:1.45}
+a{color:inherit}header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+.tunnel{border:1px solid #9997;border-radius:12px;margin:1.25rem 0;padding:1rem 1.25rem}
+.status{font-weight:650}.details{font-size:.9rem;opacity:.85}
+button{font:inherit;padding:.45rem .75rem;margin:.15rem;cursor:pointer;border-radius:7px}
+button:disabled{opacity:.6;cursor:wait}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:Canvas;border:1px solid #9995;
+border-radius:7px;padding:.7rem;max-height:230px;overflow:auto;font-size:.8rem}
+section h3{margin-bottom:.35rem}section{margin-top:1.15rem}
+small{opacity:.8}.tools{display:flex;gap:.35rem;flex-wrap:wrap}
 </style></head><body>
-<nav aria-label="MCPHub-Verwaltung"><a href="#tunnel">Tunnel</a><a href="#client-key">Client Key</a><a href="#lan">LAN-Zugriff</a></nav>
-<main><h1 id="tunnel">Tunnelverwaltung</h1>
-<p>OpenAI und Cloudflare unabhängig starten, stoppen und überwachen – ohne MCPHub neu zu starten.</p>
-<div id="items"></div>
-<section id="client-key"><h2>Cloudflare Client Key</h2>
-<p>MCPHub erzeugt diesen Schlüssel automatisch. Für Claude als HTTP-Header
-<code>Authorization: Bearer DEIN_KEY</code> eintragen.</p>
-<button id="copy-key" type="button">Client Key kopieren</button>
-<button id="rotate-key" type="button">Client Key erneuern</button>
-<p id="key-message" role="status" aria-live="polite"></p></section>
-<p><small>Health prüft die lokalen Tunnelprozesse, deren Readiness und bei Cloudflare den MCP-Ursprung.
-Die Erreichbarkeit aus dem öffentlichen Internet wird hier nicht geprüft.</small></p>
-<section id="lan"><h2>LAN-Zugriff</h2>
-<p>MCPHub unterstützt direkten Zugriff im lokalen Netzwerk. Die Portfreigabe erfolgt unten in
-<strong>Home Assistant → Apps → MCPHub → Netzwerk</strong>.</p>
-<p><small><strong>Bei Bedarf „Deaktivierte Ports einblenden“. Im Feld links lässt sich der Host-Port ändern oder zum Deaktivieren leeren.</strong>
-Der LAN-Zugriff ist standardmäßig auf Host-Port 3001 aktiv. Bei einem Portkonflikt einen freien Host-Port wählen. 3001/tcp ist der interne Port.
-Für LAN gilt die MCPHub-Anmeldung.</small></p></section>
-</main><script src="app.js" defer></script></body></html>'''
+<header><h1>Tunnelverwaltung</h1><a href="../">← Zurück zu MCPHub</a></header>
+<p>Beide Tunnel unabhängig verwalten. Die Hauptschalter und Zugangsdaten bleiben unter
+<strong>Home Assistant → Apps → MCPHub → Konfiguration</strong>.</p>
+<main>
+<article class="tunnel" id="t-openai">
+<h2>OpenAI Secure Tunnel</h2>
+<p class="status" aria-live="polite">Status wird geladen…</p>
+<p class="details"></p>
+<div class="tools">
+<button data-mode="openai" data-action="start">Start</button>
+<button data-mode="openai" data-action="stop">Stop</button>
+<button data-mode="openai" data-action="reload">Neu laden</button>
+</div>
+<section><h3>Health und Diagnose</h3><pre class="health">Wird geladen…</pre></section>
+<section><h3>Live-Protokoll</h3><pre class="logs" aria-live="off">Wird geladen…</pre></section>
+</article>
+<article class="tunnel" id="t-cloudflare">
+<h2>Cloudflare Tunnel</h2>
+<p class="status" aria-live="polite">Status wird geladen…</p>
+<p class="details"></p>
+<div class="tools">
+<button data-mode="cloudflare" data-action="start">Start</button>
+<button data-mode="cloudflare" data-action="stop">Stop</button>
+<button data-mode="cloudflare" data-action="reload">Neu laden</button>
+</div>
+<section><h3>Cloudflare Client Key</h3>
+<p><small>MCPHub erzeugt den Schlüssel automatisch. In Claude als HTTP-Header
+<code>Authorization: Bearer DEIN_KEY</code> eintragen.</small></p>
+<div class="tools"><button id="copy-key" type="button">Client Key kopieren</button>
+<button id="rotate-key" type="button">Client Key erneuern</button></div>
+<p id="key-message" role="status" aria-live="polite"></p>
+</section>
+<section><h3>Health und Netzwerkdiagnose</h3><pre class="health">Wird geladen…</pre></section>
+<section><h3>Live-Protokoll</h3><pre class="logs" aria-live="off">Wird geladen…</pre></section>
+</article>
+</main>
+<p><small>Diagnose und Logs zeigen lokale Beobachtungen, keine bestätigte externe
+Erreichbarkeit. Logs sind aus Sicherheitsgründen gekürzt und sensible Werte werden maskiert.</small></p>
+<script src="app.js" defer></script></body></html>'''
 
-SCRIPT = '''const tunnels=[['openai','OpenAI Secure Tunnel'],['cloudflare','Cloudflare Tunnel']];
-for(const [id,name] of tunnels){
-  const box=document.createElement('section');box.id='t-'+id;
-  const title=document.createElement('h2');title.textContent=name;box.append(title);
-  const status=document.createElement('p');status.className='status';status.setAttribute('aria-live','polite');box.append(status);
-  const info=document.createElement('p');info.className='detail';box.append(info);
-  for(const action of ['start','stop','reload']){
-    const button=document.createElement('button');button.textContent={start:'Start',stop:'Stop',reload:'Neu laden'}[action];
-    button.addEventListener('click',async()=>{
-      button.disabled=true;
-      try{
-        const response=await fetch('api/control/'+id+'/'+action,{
-          method:'POST',headers:{'Content-Type':'application/json','X-MCPHub-Tunnel-Control':'1'},body:'{}'
-        });
-        if(!response.ok)throw Error('HTTP '+response.status);
-        await refresh();
-      }catch(error){info.textContent='Steuerung fehlgeschlagen: '+error.message;}
-      finally{button.disabled=false;}
-    });box.append(button);
-  }
-  document.getElementById('items').append(box);
-}
-async function refresh(){
-  try{
-    const response=await fetch('api/status',{cache:'no-store'});
-    if(!response.ok)throw Error('HTTP '+response.status);
-    const all=await response.json();
-    for(const [id] of tunnels){
-      const el=document.getElementById('t-'+id),data=all[id]||{};
-      const ready=data.transport_ready===true?'lokal bereit':'nicht bereit';
-      const age=typeof data.health_age_seconds==='number'?' · Prüfung vor '+data.health_age_seconds+' s':'';
-      el.querySelector('.status').textContent='Status: '+(data.state||'unbekannt')+' · '+ready+age;
-      el.querySelector('.detail').textContent=data.last_error||(
-        data.state==='retrying'?'Neuer Versuch in '+data.retry_in_seconds+' s':''
-      );
-    }
-  }catch(error){
-    for(const [id] of tunnels)document.querySelector('#t-'+id+' .status').textContent='Status nicht erreichbar';
-  }
-}
-function keyMessage(text){document.getElementById('key-message').textContent=text;}
-function keyError(error){keyMessage('Vorgang fehlgeschlagen: '+error.message);}
-async function keyRequest(path,method){
-  const response=await fetch('api/client-key'+path,{method:method||'GET',cache:'no-store',
-    headers:{'X-MCPHub-Tunnel-Control':'1',...(method?{'Content-Type':'application/json'}:{})},
-    ...(method?{body:'{}'}:{})});
+SCRIPT = '''const tunnels=['openai','cloudflare'];
+const titles={openai:'OpenAI',cloudflare:'Cloudflare'};
+const format=(v)=>JSON.stringify(v,null,2);
+async function api(path,opts){
+  const response=await fetch(path,{cache:'no-store',...(opts||{})});
   if(!response.ok)throw Error('HTTP '+response.status);
   return response.json();
+}
+async function refresh(){
+  let statuses;
+  try{statuses=await api('api/status');}
+  catch(error){statuses={};}
+  for(const mode of tunnels){
+    const el=document.getElementById('t-'+mode),s=statuses[mode]||{};
+    const age=typeof s.health_age_seconds==='number'
+      ?' · letzte Prüfung vor '+s.health_age_seconds+' s':'';
+    el.querySelector('.status').textContent=
+      'Status: '+(s.state||'nicht erreichbar')+
+      ' · '+(s.transport_ready===true?'lokal bereit':'nicht bereit')+age;
+    el.querySelector('.details').textContent=s.last_error||
+      (s.state==='retrying'?'Erneuter Versuch in '+s.retry_in_seconds+' s':'');
+    try{
+      const info=await api('api/diagnostics/'+mode);
+      el.querySelector('.health').textContent=format(info);
+    }catch(error){el.querySelector('.health').textContent='Diagnose nicht erreichbar';}
+    try{
+      const data=await api('api/logs/'+mode);
+      const lines=data.lines||[];
+      el.querySelector('.logs').textContent=lines.join('\\n')||'Noch keine Protokolle';
+    }catch(error){el.querySelector('.logs').textContent='Protokolle nicht erreichbar';}
+  }
+}
+for(const button of document.querySelectorAll('button[data-mode]')){
+  button.addEventListener('click',async()=>{
+    const mode=button.dataset.mode,action=button.dataset.action;
+    button.disabled=true;
+    try{
+      await api('api/control/'+mode+'/'+action,{
+        method:'POST',headers:{'Content-Type':'application/json','X-MCPHub-Tunnel-Control':'1'},
+        body:'{}'
+      });
+      await refresh();
+    }catch(error){
+      document.querySelector('#t-'+mode+' .details').textContent='Aktion fehlgeschlagen: '+error.message;
+    }finally{button.disabled=false;}
+  });
+}
+function keyMessage(message){document.getElementById('key-message').textContent=message;}
+async function keyRequest(path,method){
+  return api('api/client-key'+path,{method:method||'GET',
+    headers:{'X-MCPHub-Tunnel-Control':'1',...(method?{'Content-Type':'application/json'}:{})},
+    ...(method?{body:'{}'}:{})});
 }
 document.getElementById('copy-key').onclick=async()=>{
   const button=document.getElementById('copy-key');button.disabled=true;
@@ -374,19 +473,20 @@ document.getElementById('copy-key').onclick=async()=>{
     if(!field){field=document.createElement('textarea');field.id='key-fallback';
       field.readOnly=true;field.rows=3;field.style.width='100%';button.after(field);}
     field.value=data.key;field.select();keyMessage('Markierten Key mit Strg+C kopieren.');
-  }catch(error){keyError(error);}finally{button.disabled=false;}
+  }catch(error){keyMessage('Client Key nicht verfügbar: '+error.message);}
+  finally{button.disabled=false;}
 };
 document.getElementById('rotate-key').onclick=async()=>{
-  if(!confirm('Neuen Client Key erstellen? Der bisherige Key funktioniert danach nicht mehr.'))return;
+  if(!confirm('Client Key erneuern? Der bisherige Key wird sofort ungültig.'))return;
   const button=document.getElementById('rotate-key');button.disabled=true;
-  try{await keyRequest('/rotate','POST');
+  try{
+    await keyRequest('/rotate','POST');
     const field=document.getElementById('key-fallback');if(field)field.remove();
-    keyMessage('Key erneuert. Den neuen Key kopieren und in Claude ersetzen.');
-  }catch(error){keyError(error);}finally{button.disabled=false;}
+    keyMessage('Key erneuert. Neuen Key kopieren und in Claude ersetzen.');
+  }catch(error){keyMessage('Erneuerung fehlgeschlagen: '+error.message);}
+  finally{button.disabled=false;}
 };
 refresh();setInterval(refresh,5000);'''
-
-
 def handler_for(manager):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -413,6 +513,10 @@ def handler_for(manager):
                 self.send(200, SCRIPT.encode(), 'text/javascript; charset=utf-8')
             elif self.path == '/api/status':
                 self.send(200, json.dumps(manager.snapshot()).encode())
+            elif self.path in ('/api/logs/openai', '/api/logs/cloudflare'):
+                self.send(200, json.dumps(manager.logs(self.path.rsplit('/', 1)[-1])).encode())
+            elif self.path in ('/api/diagnostics/openai', '/api/diagnostics/cloudflare'):
+                self.send(200, json.dumps(manager.diagnostics(self.path.rsplit('/', 1)[-1])).encode())
             elif self.path == '/api/client-key':
                 if self.headers.get('X-MCPHub-Tunnel-Control') != '1':
                     self.send(403, b'Forbidden', 'text/plain')

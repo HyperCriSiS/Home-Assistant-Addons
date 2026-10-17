@@ -1,5 +1,17 @@
 [
   {
+    "revision": 108,
+    "version": "v2026.10.17-1-dev.108",
+    "source_sha": "40786d4a75f6bb563025e172a0a8a5e5fa1d953a",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "40786d4a75f6bb563025e172a0a8a5e5fa1d953a",
+        "subject": "feat(mcphub): Ingress tunnel dashboard with separated live health and logs"
+      }
+    ]
+  },
+  {
     "revision": 107,
     "version": "v2026.10.17-1-dev.107",
     "source_sha": "015e16df44afbf340229a8dc589480220adb835f",
