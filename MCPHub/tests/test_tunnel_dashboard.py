@@ -24,24 +24,14 @@ def load(module_name, file):
 
 
 class NavigationTests(unittest.TestCase):
-    def test_build_shell_requires_exact_upstream_marker(self):
-        nav = load("mcphub_shell_nav", "inject_tunnel_nav.py")
-        shell = "<html><body><main>app</main></body></html>"
-        patched = nav.inject_shell(shell)
-        self.assertEqual(patched.count('mcphub-ha-nav.js'), 1)
-        with self.assertRaises(ValueError):
-            nav.inject_shell(patched)
-        with self.assertRaises(ValueError):
-            nav.inject_shell("<html><body>missing marker")
-
-    def test_topbar_link_is_ingress_only(self):
-        script = (ROOT / "ha_tunnel_nav.js").read_text(encoding="utf-8")
-        self.assertIn("hub-topbar", script)
-        self.assertIn("api", script)
-        self.assertIn("hassio_ingress", script)
-        self.assertIn("/_mcphub_tunnels/", script)
-        self.assertIn("if (!match) return;", script)
-        self.assertIn("Tunnelverwaltung", script)
+    def test_mcphub_shell_is_not_modified_for_tunnel_controls(self):
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertNotIn("inject_tunnel_nav.py", dockerfile)
+        self.assertNotIn("ha_tunnel_nav.js", dockerfile)
+        self.assertFalse((ROOT / "inject_tunnel_nav.py").exists())
+        self.assertFalse((ROOT / "ha_tunnel_nav.js").exists())
+        self.assertIn("COPY tunnel_dashboard.html", dockerfile)
+        self.assertIn("COPY tunnel_dashboard.js", dockerfile)
 
 
 class LiveLogsTests(unittest.TestCase):
@@ -77,18 +67,21 @@ class DashboardTests(unittest.TestCase):
     def setUp(self):
         self.dashboard = load("mcphub_dashboard_ui", "tunnel_control.py")
 
-    def test_sections_are_vertical_and_scoped(self):
+    def test_separate_cards_and_optional_diagnostics(self):
         page = self.dashboard.PAGE
+        script = self.dashboard.SCRIPT
         openai = page.index('id="t-openai"')
         cloud = page.index('id="t-cloudflare"')
         self.assertLess(openai, cloud)
         self.assertGreater(page.index("OpenAI Secure Tunnel"), openai)
         self.assertGreater(page.index('id="copy-key"'), cloud)
-        self.assertEqual(page.count('class="health"'), 2)
-        self.assertEqual(page.count('class="logs"'), 2)
-        self.assertEqual(page.count("data-action=\"start\""), 2)
-        self.assertIn("Live-Protokoll", page)
+        self.assertEqual(page.count('data-panel="diagnostics"'), 3)
+        self.assertEqual(page.count('data-panel="logs"'), 2)
+        self.assertEqual(page.count('data-action="start"'), 3)
+        self.assertIn("Protokoll anzeigen", page)
         self.assertIn('href="../"', page)
+        self.assertIn("if (!section.open) return;", script)
+        self.assertNotIn("JSON.stringify", script)
         self.assertNotIn("Cloudflare Access", page)
 
     def test_local_logs_endpoint_is_separate_and_unrecognized_modes_forbidden(self):

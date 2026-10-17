@@ -19,6 +19,8 @@ OUTPUT_FILE = Path("/etc/nginx/conf.d/mcphub.conf")
 HA_INGRESS_PROXY_SECRET_FILE = Path("/data/secrets/mcphub_ha_ingress_proxy_secret")
 CLOUDFLARE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_cloudflare_token")
 CLOUDFLARE_CLIENT_KEY_FILE = Path("/data/secrets/mcphub_cloudflare_client_key")
+TAILSCALE_INTERNAL_TOKEN_FILE = Path("/data/secrets/mcphub_tailscale_funnel_token")
+TAILSCALE_CLIENT_KEY_FILE = Path("/data/secrets/mcphub_tailscale_client_key")
 
 MCP_PATH_PATTERN = re.compile(r"^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$")
 HA_MCP_PATH_PATTERN = re.compile(r"^/api/mcp(?:/[A-Za-z0-9._~-]+)?$")
@@ -32,7 +34,7 @@ CUSTOM_CA_PATTERN = re.compile(r"^/ssl/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.pem
 def flatten_grouped_options(data: dict) -> dict:
     """Read legacy flat and grouped options."""
     result = dict(data)
-    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+    for group in ("openai", "cloudflare", "tailscale", "home_assistant", "github", "logging"):
         section = data.get(group)
         if isinstance(section, dict):
             result.update(section)
@@ -200,6 +202,11 @@ def home_assistant_mcp_server_block(options: dict) -> str:
 }}"""
 
 
+def valid_mcp_path(path: str) -> bool:
+    return (bool(MCP_PATH_PATTERN.fullmatch(path))
+            and all(part not in (".", "..") for part in path.split("/")[2:]))
+
+
 def cloudflare_server_block(
     *,
     enabled: bool,
@@ -218,7 +225,7 @@ def cloudflare_server_block(
     }
 }"""
 
-    if not MCP_PATH_PATTERN.fullmatch(mcp_path):
+    if not valid_mcp_path(mcp_path):
         print("[WARN] Invalid Cloudflare path; origin denies all requests", file=sys.stderr)
         return """server {
     listen 127.0.0.1:8098;
@@ -275,12 +282,91 @@ def cloudflare_server_block(
 }}"""
 
 
+def tailscale_gateway_server_block(
+    *, enabled: bool, mcp_path: str, client_token: str, internal_token: str
+) -> str:
+    """Serve exactly one MCP route. No Tailscale process and no HA identity.
+
+    The Home Assistant Tailscale App uses host_network and its CLI only proxies
+    localhost. The optional host mapping for container 3002 is OFF by default.
+    """
+    disabled = """server {
+    listen 3002;
+    access_log off;
+    add_header X-MCPHub-Tailscale-Gateway "mcphub-mcp-only" always;
+    location / { return 404; }
+}"""
+    if not enabled:
+        return disabled
+    if not valid_mcp_path(mcp_path):
+        print("[WARN] Invalid Tailscale route; gateway denies all", file=sys.stderr)
+        return disabled
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", client_token):
+        print("[WARN] Invalid Tailscale client key; gateway denies all", file=sys.stderr)
+        return disabled
+    if not re.fullmatch(r"mts_[A-Za-z0-9_-]{32,256}", internal_token):
+        print("[WARN] Invalid Tailscale internal key; gateway denies all", file=sys.stderr)
+        return disabled
+
+    return f"""server {{
+    listen 3002;
+    server_tokens off;
+    access_log /dev/stdout;
+    error_log /dev/stderr warn;
+    client_max_body_size 16m;
+    add_header X-MCPHub-Tailscale-Gateway "mcphub-mcp-only" always;
+
+    # Internal-only authorization subrequest; cannot be called externally.
+    location = /__mcphub_tailscale_gate {{
+        internal;
+        proxy_pass http://127.0.0.1:8093/api/tailscale/gate;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Authorization "";
+        proxy_set_header X-Remote-User-Id "";
+    }}
+
+    location ~ ^{re.escape(mcp_path)}$ {{
+        if ($http_authorization != "Bearer {client_token}") {{
+            return 401;
+        }}
+        auth_request /__mcphub_tailscale_gate;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Authorization "Bearer {internal_token}";
+
+        # Public clients are never trusted Home Assistant Ingress identities.
+        proxy_set_header X-MCPHub-HA-Proxy-Secret "";
+        proxy_set_header X-Remote-User-Id "";
+        proxy_set_header X-Remote-User-Name "";
+        proxy_set_header X-Remote-User-Display-Name "";
+        proxy_set_header X-Remote-User-Email "";
+        proxy_set_header X-Remote-User-Groups "";
+        proxy_set_header X-Forwarded-Prefix "";
+        proxy_set_header Proxy-Authorization "";
+
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }}
+
+    location / {{ return 404; }}
+}}"""
+
+
 def main() -> None:
     options = load_options()
     template = TEMPLATE_FILE.read_text(encoding="utf-8")
 
     ha_ingress_proxy_secret = read_secret(HA_INGRESS_PROXY_SECRET_FILE)
     cloudflare_internal_token = read_secret(CLOUDFLARE_INTERNAL_TOKEN_FILE)
+    tailscale_internal_token = read_secret(TAILSCALE_INTERNAL_TOKEN_FILE)
 
     home_assistant_block = home_assistant_mcp_server_block(options)
     cloudflare_block = cloudflare_server_block(
@@ -288,6 +374,13 @@ def main() -> None:
         mcp_path=str(options.get("cloudflare_mcp_path", "/mcp")),
         client_token=read_secret(CLOUDFLARE_CLIENT_KEY_FILE),
         internal_token=cloudflare_internal_token,
+    )
+
+    tailscale_block = tailscale_gateway_server_block(
+        enabled=bool(options.get("tailscale_funnel_enabled", False)),
+        mcp_path=str(options.get("tailscale_mcp_path", "/mcp")),
+        client_token=read_secret(TAILSCALE_CLIENT_KEY_FILE),
+        internal_token=tailscale_internal_token,
     )
 
     rendered = (
@@ -302,6 +395,10 @@ def main() -> None:
         .replace(
             "__CLOUDFLARE_SERVER_BLOCK__",
             cloudflare_block,
+        )
+        .replace(
+            "__TAILSCALE_SERVER_BLOCK__",
+            tailscale_block,
         )
     )
 

@@ -33,6 +33,7 @@ start_addon() {
     --network "${NETWORK}" \
     --ip 172.30.32.3 \
     --publish "127.0.0.1::3001/tcp" \
+    --publish "127.0.0.1::3002/tcp" \
     --volume "${VOLUME}:/data" \
     "${IMAGE}" >/dev/null
 }
@@ -164,9 +165,10 @@ dashboard_html="$(ingress_curl --fail --silent --show-error \
   "http://${CONTAINER}:8099/_mcphub_tunnels/")"
 grep -q 'id="t-openai"' <<<"${dashboard_html}"
 grep -q 'id="t-cloudflare"' <<<"${dashboard_html}"
-grep -q 'Live-Protokoll' <<<"${dashboard_html}"
+grep -q 'Protokoll anzeigen' <<<"${dashboard_html}"
+grep -q 'id="t-tailscale"' <<<"${dashboard_html}"
 
-for mode in openai cloudflare; do
+for mode in openai cloudflare tailscale; do
   logs="$(ingress_curl --fail --silent --show-error \
     "http://${CONTAINER}:8099/_mcphub_tunnels/api/logs/${mode}")"
   python3 - "${logs}" <<'PYLOG'
@@ -185,15 +187,27 @@ assert isinstance(json.loads(sys.argv[1]), dict)
 PYDETAIL
 done
 
-# Only the Supervisor-authenticated frontend can surface the administration link.
+# Tunnel administration is separate; MCPHub's upstream frontend must stay
+# unmodified and never inject a tunnel button into its topbar.
 frontend_html="$(ingress_curl --fail --silent --show-error \
   --header "X-Ingress-Path: ${INGRESS_PATH}" \
   "http://${CONTAINER}:8099/")"
-grep -q 'mcphub-ha-nav.js' <<<"${frontend_html}"
-frontend_nav="$(ingress_curl --fail --silent --show-error \
-  "http://${CONTAINER}:8099/mcphub-ha-nav.js")"
-grep -q 'hassio_ingress' <<<"${frontend_nav}"
-grep -q '_mcphub_tunnels' <<<"${frontend_nav}"
+if grep -q 'mcphub-ha-nav.js' <<<"${frontend_html}"; then
+  echo "Unexpected tunnel navigation injected into original MCPHub" >&2
+  exit 1
+fi
+
+# Even in the CI fixture (which explicitly publishes the test host port), the
+# Tailscale MCP gateway is disabled by default and must deny all routes.
+ts_host_port="$(docker port "${CONTAINER}" 3002/tcp)"
+[[ "${ts_host_port}" == 127.0.0.1:* ]]
+ts_host_port="${ts_host_port##*:}"
+ts_disabled_code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 5 "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${ts_disabled_code}" == "404" ]] || {
+  echo "Disabled Tailscale gateway returned HTTP ${ts_disabled_code}" >&2
+  exit 1
+}
 
 # Native LAN cannot reach the privileged Ingress tunnel API.
 lan_admin="$(curl --silent --show-error --max-time 5 \
@@ -324,6 +338,105 @@ wait_ready
 token_after="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tunnel_token)"
 [[ "${token_before}" == "${token_after}" ]] || {
   echo "Persistent internal bearer token changed after restart" >&2
+  exit 1
+}
+
+
+# Exercise the *same* gateway that a separate, host-networked Tailscale App
+# would reach. The actual Tailscale daemon is intentionally absent from CI.
+docker rm -f "${CONTAINER}" >/dev/null
+docker run --rm --volume "${VOLUME}:/data" alpine:3.22 sh -c 'cat > /data/options.json <<EOF
+{"tunnel_enabled":false,"cloudflare_tunnel_enabled":false,"tailscale_funnel_enabled":true,"tailscale_mcp_path":"/mcp","tailscale_funnel_url":""}
+EOF'
+start_addon
+wait_ready
+ts_host_port="$(docker port "${CONTAINER}" 3002/tcp)"
+[[ "${ts_host_port}" == 127.0.0.1:* ]]
+ts_host_port="${ts_host_port##*:}"
+tailscale_key="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tailscale_client_key)"
+[[ "${#tailscale_key}" -eq 64 ]]
+internal_key="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tailscale_funnel_token)"
+[[ "${tailscale_key}" != "${internal_key}" ]]
+test_initialize='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"tailscale-ci","version":"1.0"}}}'
+
+for forbidden in / /api/servers /health /_mcphub_tunnels/api/status; do
+  code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    --max-time 5 "http://127.0.0.1:${ts_host_port}${forbidden}")"
+  [[ "${code}" == "404" ]] || {
+    echo "Tailscale origin exposed forbidden path ${forbidden}: HTTP ${code}" >&2
+    exit 1
+  }
+done
+
+code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 5 --request POST -H 'Content-Type: application/json' \
+  --data "${test_initialize}" "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${code}" == "401" ]] || {
+  echo "Tailscale MCP origin accepted no key (HTTP ${code})" >&2
+  exit 1
+}
+
+code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 10 --request POST -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "Authorization: Bearer ${tailscale_key}" \
+  --data "${test_initialize}" "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${code}" != "000" && "${code}" != "401" && "${code}" != "403" && "${code}" != "404" && "${code}" != 5* ]] || {
+  echo "Tailscale bearer key could not reach MCPHub through gateway (HTTP ${code})" >&2
+  exit 1
+}
+
+# True runtime Stop/Start applies ONLY to the MCP-only gate, not Funnel itself.
+ingress_curl --fail --silent --show-error --request POST \
+  -H 'Content-Type: application/json' -H 'X-MCPHub-Tunnel-Control: 1' \
+  --data '{}' "http://${CONTAINER}:8099/_mcphub_tunnels/api/control/tailscale/stop" >/dev/null
+code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 5 -H "Authorization: Bearer ${tailscale_key}" \
+  "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${code}" == "403" ]] || {
+  echo "Stopped Tailscale gate still accepted the correct key: HTTP ${code}" >&2
+  exit 1
+}
+
+# Persist the STOP across MCPHub restarts.
+docker rm -f "${CONTAINER}" >/dev/null
+start_addon
+wait_ready
+ts_host_port="$(docker port "${CONTAINER}" 3002/tcp)"
+ts_host_port="${ts_host_port##*:}"
+code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 5 -H "Authorization: Bearer ${tailscale_key}" \
+  "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${code}" == "403" ]] || {
+  echo "Tailscale gate did not preserve stop across restart: HTTP ${code}" >&2
+  exit 1
+}
+ingress_curl --fail --silent --show-error --request POST \
+  -H 'Content-Type: application/json' -H 'X-MCPHub-Tunnel-Control: 1' \
+  --data '{}' "http://${CONTAINER}:8099/_mcphub_tunnels/api/control/tailscale/start" >/dev/null
+
+# Key rotation must invalidate the old *external* key without changing the
+# scoped internal MCPHub bearer key.
+ingress_curl --fail --silent --show-error --request POST \
+  -H 'Content-Type: application/json' -H 'X-MCPHub-Tunnel-Control: 1' \
+  --data '{}' "http://${CONTAINER}:8099/_mcphub_tunnels/api/tailscale/client-key/rotate" >/dev/null
+new_tailscale_key="$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tailscale_client_key)"
+[[ "${new_tailscale_key}" != "${tailscale_key}" ]]
+[[ "$(docker exec "${CONTAINER}" cat /data/secrets/mcphub_tailscale_funnel_token)" == "${internal_key}" ]]
+code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 5 -H "Authorization: Bearer ${tailscale_key}" \
+  "http://127.0.0.1:${ts_host_port}/mcp")"
+[[ "${code}" == "401" ]] || {
+  echo "Old Tailscale client key survived rotation: HTTP ${code}" >&2
+  exit 1
+}
+
+# Public HTTPS check must not accept an unspecified target.
+https_code="$(ingress_curl --silent --output /dev/null --write-out '%{http_code}' \
+  -H 'X-MCPHub-Tunnel-Control: 1' \
+  "http://${CONTAINER}:8099/_mcphub_tunnels/api/tailscale/https-check")"
+[[ "${https_code}" == "409" ]] || {
+  echo "Tailscale external check unexpectedly accepted no URL: HTTP ${https_code}" >&2
   exit 1
 }
 

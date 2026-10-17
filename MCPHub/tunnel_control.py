@@ -16,14 +16,21 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from tunnel_diagnostics import TunnelLog, redact
+from tailscale_gateway import TailscaleGateway
 
 OPTIONS = Path('/data/options.json')
 CF_SECRET = Path('/data/secrets/cloudflare_tunnel_token')
 CF_CLIENT_KEY = Path('/data/secrets/mcphub_cloudflare_client_key')
+TS_CLIENT_KEY = Path('/data/secrets/mcphub_tailscale_client_key')
 PORT = ('127.0.0.1', 8093)
 PATH = re.compile(r'^/mcp(?:/[A-Za-z0-9._$-]+){0,2}$')
 CLIENT_KEY = re.compile(r'^[A-Za-z0-9_-]{32,256}$')
 LOG = logging.getLogger('tunnel-control')
+
+
+def valid_mcp_route(route):
+    return bool(PATH.fullmatch(route)) and all(
+        part not in ('.', '..') for part in route.split('/')[2:])
 
 
 def options():
@@ -31,7 +38,7 @@ def options():
     if not isinstance(data, dict):
         raise ValueError('Invalid Home Assistant App options')
     value = dict(data)
-    for group in ('openai', 'cloudflare', 'home_assistant', 'github', 'logging'):
+    for group in ('openai', 'cloudflare', 'tailscale', 'home_assistant', 'github', 'logging'):
         if isinstance(data.get(group), dict):
             value.update(data[group])
     return value
@@ -98,7 +105,7 @@ class Cloudflare:
             self.route = str(opts.get('cloudflare_mcp_path') or '/mcp')
             token = str(opts.get('cloudflare_tunnel_token') or '').strip()
             key = CF_CLIENT_KEY.read_text(encoding='utf-8').strip() if CF_CLIENT_KEY.is_file() else ''
-            if not self.configured or not token or not PATH.fullmatch(self.route) or not CLIENT_KEY.fullmatch(key):
+            if not self.configured or not token or not valid_mcp_route(self.route) or not CLIENT_KEY.fullmatch(key):
                 raise ValueError('Cloudflare tunnel configuration is incomplete or disabled')
             save_secret(CF_SECRET, token)
             self.proc = subprocess.Popen([
@@ -209,6 +216,7 @@ class Controls:
     def __init__(self):
         self.lock = threading.RLock()
         self.cloudflare = Cloudflare()
+        self.tailscale = TailscaleGateway(options)
 
     def openai(self, action=None):
         headers = {'Cache-Control': 'no-store'}
@@ -238,6 +246,7 @@ class Controls:
             return {
                 'openai': openai,
                 'cloudflare': self.cloudflare.status(time.monotonic()),
+                'tailscale': self.tailscale.status(),
             }
 
     def command(self, mode, action):
@@ -249,6 +258,8 @@ class Controls:
             if mode == 'cloudflare':
                 self.cloudflare.command(action)
                 return self.cloudflare.status(time.monotonic())
+            if mode == 'tailscale':
+                return self.tailscale.command(action)
             raise ValueError('Unknown tunnel')
 
     def logs(self, mode):
@@ -256,6 +267,8 @@ class Controls:
         with self.lock:
             if mode == 'cloudflare':
                 return self.cloudflare.logs.snapshot()
+            if mode == 'tailscale':
+                return {'lines': ['Tailscale-Daemon-Protokolle sind nur im Tailscale-Add-on abrufbar.'], 'limited': True}
             if mode == 'openai':
                 try:
                     with urlopen('http://127.0.0.1:8096/api/logs', timeout=3) as response:
@@ -287,6 +300,8 @@ class Controls:
                 }
             except (HTTPError, URLError, OSError, ValueError, TimeoutError):
                 return {'note': 'OpenAI-Komponentendiagnose nicht erreichbar'}
+        if mode == 'tailscale':
+            return {'note': 'Tailscale Funnel wird vom separaten Tailscale-Add-on betrieben. Das MCP-Gateway hier steuert nur den lokalen, authentifizierten Zugriff.'}
         if mode == 'cloudflare':
             if not self.cloudflare.proc or self.cloudflare.proc.poll() is not None:
                 return {'note': 'Cloudflare-Tunnelprozess ist nicht aktiv'}
@@ -347,146 +362,51 @@ class Controls:
             LOG.info('Cloudflare client key rotated')
             return {'rotated': True}
 
+    def tailscale_client_key(self):
+        with self.lock:
+            key = TS_CLIENT_KEY.read_text(encoding='utf-8').strip()
+            if not CLIENT_KEY.fullmatch(key):
+                raise ValueError('Tailscale client key missing or invalid')
+            return {'key': key}
+
+    def rotate_tailscale_client_key(self):
+        """Revoke old external key by reloading Nginx; fail closed on rollback problems."""
+        with self.lock:
+            old = TS_CLIENT_KEY.read_text(encoding='utf-8').strip()
+            if not CLIENT_KEY.fullmatch(old):
+                raise ValueError('Existing Tailscale client key invalid')
+            new = secrets.token_urlsafe(48)
+            save_secret(TS_CLIENT_KEY, new)
+            try:
+                subprocess.run(['/usr/local/bin/prepare_proxy_config.py'],
+                               check=True, timeout=15, capture_output=True)
+                subprocess.run(['nginx', '-t'], check=True, timeout=10, capture_output=True)
+                subprocess.run(['nginx', '-s', 'reload'],
+                               check=True, timeout=10, capture_output=True)
+            except (OSError, subprocess.SubprocessError) as error:
+                save_secret(TS_CLIENT_KEY, old)
+                try:
+                    subprocess.run(['/usr/local/bin/prepare_proxy_config.py'],
+                                   check=True, timeout=15, capture_output=True)
+                    subprocess.run(['nginx', '-s', 'reload'],
+                                   check=True, timeout=10, capture_output=True)
+                except (OSError, subprocess.SubprocessError):
+                    self.tailscale.command('stop')
+                    LOG.error('Tailscale key rollback failed; MCP gateway stopped')
+                raise RuntimeError('Tailscale client key rotation failed') from error
+            LOG.info('Tailscale client key rotated')
+            return {'rotated': True}
+
     def tick(self):
         with self.lock:
             self.cloudflare.tick(time.monotonic())
 
 
-PAGE = '''<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MCPHub – Tunnelverwaltung</title>
-<style>
-:root{font-family:system-ui,sans-serif;color-scheme:light dark}
-body{max-width:900px;margin:1.5rem auto;padding:0 1rem 3rem;line-height:1.45}
-a{color:inherit}header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
-.tunnel{border:1px solid #9997;border-radius:12px;margin:1.25rem 0;padding:1rem 1.25rem}
-.status{font-weight:650}.details{font-size:.9rem;opacity:.85}
-button{font:inherit;padding:.45rem .75rem;margin:.15rem;cursor:pointer;border-radius:7px}
-button:disabled{opacity:.6;cursor:wait}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:Canvas;border:1px solid #9995;
-border-radius:7px;padding:.7rem;max-height:230px;overflow:auto;font-size:.8rem}
-section h3{margin-bottom:.35rem}section{margin-top:1.15rem}
-small{opacity:.8}.tools{display:flex;gap:.35rem;flex-wrap:wrap}
-</style></head><body>
-<header><h1>Tunnelverwaltung</h1><a href="../">← Zurück zu MCPHub</a></header>
-<p>Beide Tunnel unabhängig verwalten. Die Hauptschalter und Zugangsdaten bleiben unter
-<strong>Home Assistant → Apps → MCPHub → Konfiguration</strong>.</p>
-<main>
-<article class="tunnel" id="t-openai">
-<h2>OpenAI Secure Tunnel</h2>
-<p class="status" aria-live="polite">Status wird geladen…</p>
-<p class="details"></p>
-<div class="tools">
-<button data-mode="openai" data-action="start">Start</button>
-<button data-mode="openai" data-action="stop">Stop</button>
-<button data-mode="openai" data-action="reload">Neu laden</button>
-</div>
-<section><h3>Health und Diagnose</h3><pre class="health">Wird geladen…</pre></section>
-<section><h3>Live-Protokoll</h3><pre class="logs" aria-live="off">Wird geladen…</pre></section>
-</article>
-<article class="tunnel" id="t-cloudflare">
-<h2>Cloudflare Tunnel</h2>
-<p class="status" aria-live="polite">Status wird geladen…</p>
-<p class="details"></p>
-<div class="tools">
-<button data-mode="cloudflare" data-action="start">Start</button>
-<button data-mode="cloudflare" data-action="stop">Stop</button>
-<button data-mode="cloudflare" data-action="reload">Neu laden</button>
-</div>
-<section><h3>Cloudflare Client Key</h3>
-<p><small>MCPHub erzeugt den Schlüssel automatisch. In Claude als HTTP-Header
-<code>Authorization: Bearer DEIN_KEY</code> eintragen.</small></p>
-<div class="tools"><button id="copy-key" type="button">Client Key kopieren</button>
-<button id="rotate-key" type="button">Client Key erneuern</button></div>
-<p id="key-message" role="status" aria-live="polite"></p>
-</section>
-<section><h3>Health und Netzwerkdiagnose</h3><pre class="health">Wird geladen…</pre></section>
-<section><h3>Live-Protokoll</h3><pre class="logs" aria-live="off">Wird geladen…</pre></section>
-</article>
-</main>
-<p><small>Diagnose und Logs zeigen lokale Beobachtungen, keine bestätigte externe
-Erreichbarkeit. Logs sind aus Sicherheitsgründen gekürzt und sensible Werte werden maskiert.</small></p>
-<script src="app.js" defer></script></body></html>'''
+# The standalone management console is never injected into MCPHub's SPA.
+PAGE = Path(__file__).with_name('tunnel_dashboard.html').read_text(encoding='utf-8')
+SCRIPT = Path(__file__).with_name('tunnel_dashboard.js').read_text(encoding='utf-8')
 
-SCRIPT = '''const tunnels=['openai','cloudflare'];
-const titles={openai:'OpenAI',cloudflare:'Cloudflare'};
-const format=(v)=>JSON.stringify(v,null,2);
-async function api(path,opts){
-  const response=await fetch(path,{cache:'no-store',...(opts||{})});
-  if(!response.ok)throw Error('HTTP '+response.status);
-  return response.json();
-}
-async function refresh(){
-  let statuses;
-  try{statuses=await api('api/status');}
-  catch(error){statuses={};}
-  for(const mode of tunnels){
-    const el=document.getElementById('t-'+mode),s=statuses[mode]||{};
-    const age=typeof s.health_age_seconds==='number'
-      ?' · letzte Prüfung vor '+s.health_age_seconds+' s':'';
-    el.querySelector('.status').textContent=
-      'Status: '+(s.state||'nicht erreichbar')+
-      ' · '+(s.transport_ready===true?'lokal bereit':'nicht bereit')+age;
-    el.querySelector('.details').textContent=s.last_error||
-      (s.state==='retrying'?'Erneuter Versuch in '+s.retry_in_seconds+' s':'');
-    try{
-      const info=await api('api/diagnostics/'+mode);
-      el.querySelector('.health').textContent=format(info);
-    }catch(error){el.querySelector('.health').textContent='Diagnose nicht erreichbar';}
-    try{
-      const data=await api('api/logs/'+mode);
-      const lines=data.lines||[];
-      el.querySelector('.logs').textContent=lines.join('\\n')||'Noch keine Protokolle';
-    }catch(error){el.querySelector('.logs').textContent='Protokolle nicht erreichbar';}
-  }
-}
-for(const button of document.querySelectorAll('button[data-mode]')){
-  button.addEventListener('click',async()=>{
-    const mode=button.dataset.mode,action=button.dataset.action;
-    button.disabled=true;
-    try{
-      await api('api/control/'+mode+'/'+action,{
-        method:'POST',headers:{'Content-Type':'application/json','X-MCPHub-Tunnel-Control':'1'},
-        body:'{}'
-      });
-      await refresh();
-    }catch(error){
-      document.querySelector('#t-'+mode+' .details').textContent='Aktion fehlgeschlagen: '+error.message;
-    }finally{button.disabled=false;}
-  });
-}
-function keyMessage(message){document.getElementById('key-message').textContent=message;}
-async function keyRequest(path,method){
-  return api('api/client-key'+path,{method:method||'GET',
-    headers:{'X-MCPHub-Tunnel-Control':'1',...(method?{'Content-Type':'application/json'}:{})},
-    ...(method?{body:'{}'}:{})});
-}
-document.getElementById('copy-key').onclick=async()=>{
-  const button=document.getElementById('copy-key');button.disabled=true;
-  try{
-    const data=await keyRequest('');
-    if(navigator.clipboard?.writeText){
-      try{await navigator.clipboard.writeText(data.key);keyMessage('Client Key kopiert.');return;}
-      catch(error){}
-    }
-    let field=document.getElementById('key-fallback');
-    if(!field){field=document.createElement('textarea');field.id='key-fallback';
-      field.readOnly=true;field.rows=3;field.style.width='100%';button.after(field);}
-    field.value=data.key;field.select();keyMessage('Markierten Key mit Strg+C kopieren.');
-  }catch(error){keyMessage('Client Key nicht verfügbar: '+error.message);}
-  finally{button.disabled=false;}
-};
-document.getElementById('rotate-key').onclick=async()=>{
-  if(!confirm('Client Key erneuern? Der bisherige Key wird sofort ungültig.'))return;
-  const button=document.getElementById('rotate-key');button.disabled=true;
-  try{
-    await keyRequest('/rotate','POST');
-    const field=document.getElementById('key-fallback');if(field)field.remove();
-    keyMessage('Key erneuert. Neuen Key kopieren und in Claude ersetzen.');
-  }catch(error){keyMessage('Erneuerung fehlgeschlagen: '+error.message);}
-  finally{button.disabled=false;}
-};
-refresh();setInterval(refresh,5000);'''
+
 def handler_for(manager):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -513,9 +433,29 @@ def handler_for(manager):
                 self.send(200, SCRIPT.encode(), 'text/javascript; charset=utf-8')
             elif self.path == '/api/status':
                 self.send(200, json.dumps(manager.snapshot()).encode())
-            elif self.path in ('/api/logs/openai', '/api/logs/cloudflare'):
+            elif self.path == '/api/tailscale/gate':
+                # This controller listens on container loopback only; Nginx
+                # exposes the subrequest location as internal, never public.
+                self.send(204 if manager.tailscale.authorized() else 403)
+            elif self.path == '/api/tailscale/https-check':
+                if self.headers.get('X-MCPHub-Tunnel-Control') != '1':
+                    self.send(403, b'Forbidden', 'text/plain')
+                    return
+                try:
+                    self.send(200, json.dumps(manager.tailscale.check_https()).encode())
+                except (OSError, ValueError):
+                    self.send(409, b'Invalid or missing Funnel URL', 'text/plain')
+            elif self.path == '/api/tailscale/client-key':
+                if self.headers.get('X-MCPHub-Tunnel-Control') != '1':
+                    self.send(403, b'Forbidden', 'text/plain')
+                    return
+                try:
+                    self.send(200, json.dumps(manager.tailscale_client_key()).encode())
+                except (OSError, ValueError):
+                    self.send(503, b'Key unavailable', 'text/plain')
+            elif self.path in ('/api/logs/openai', '/api/logs/cloudflare', '/api/logs/tailscale'):
                 self.send(200, json.dumps(manager.logs(self.path.rsplit('/', 1)[-1])).encode())
-            elif self.path in ('/api/diagnostics/openai', '/api/diagnostics/cloudflare'):
+            elif self.path in ('/api/diagnostics/openai', '/api/diagnostics/cloudflare', '/api/diagnostics/tailscale'):
                 self.send(200, json.dumps(manager.diagnostics(self.path.rsplit('/', 1)[-1])).encode())
             elif self.path == '/api/client-key':
                 if self.headers.get('X-MCPHub-Tunnel-Control') != '1':
@@ -529,6 +469,20 @@ def handler_for(manager):
                 self.send(404, b'Not found', 'text/plain')
 
         def do_POST(self):
+            if self.path == '/api/tailscale/client-key/rotate':
+                if (self.headers.get('X-MCPHub-Tunnel-Control') != '1'
+                    or self.headers.get('Content-Type', '').split(';')[0] != 'application/json'
+                    or self.headers.get('Content-Length') != '2'):
+                    self.send(403, b'Forbidden', 'text/plain')
+                    return
+                if self.rfile.read(2) != b'{}':
+                    self.send(400, b'Bad request', 'text/plain')
+                    return
+                try:
+                    self.send(200, json.dumps(manager.rotate_tailscale_client_key()).encode())
+                except (OSError, ValueError, RuntimeError):
+                    self.send(503, b'Key rotation failed', 'text/plain')
+                return
             if self.path == '/api/client-key/rotate':
                 if (self.headers.get('X-MCPHub-Tunnel-Control') != '1'
                     or self.headers.get('Content-Type', '').split(';')[0] != 'application/json'
@@ -545,7 +499,7 @@ def handler_for(manager):
                 return
             parts = self.path.split('/')
             if (len(parts) != 5 or parts[:3] != ['', 'api', 'control']
-                    or parts[3] not in ('openai', 'cloudflare')
+                    or parts[3] not in ('openai', 'cloudflare', 'tailscale')
                     or parts[4] not in ('start', 'stop', 'reload')
                     or self.headers.get('X-MCPHub-Tunnel-Control') != '1'
                     or self.headers.get('Content-Type', '').split(';')[0] != 'application/json'

@@ -24,11 +24,14 @@ HA_INGRESS_PROXY_SECRET_FILE = SECRET_DIR / "mcphub_ha_ingress_proxy_secret"
 LEGACY_INGRESS_TOKEN_FILE = SECRET_DIR / "mcphub_ingress_token"
 CLOUDFLARE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_cloudflare_token"
 CLOUDFLARE_CLIENT_KEY_FILE = SECRET_DIR / "mcphub_cloudflare_client_key"
+TAILSCALE_INTERNAL_TOKEN_FILE = SECRET_DIR / "mcphub_tailscale_funnel_token"
+TAILSCALE_CLIENT_KEY_FILE = SECRET_DIR / "mcphub_tailscale_client_key"
 GITHUB_TOKEN_FILE = SECRET_DIR / "github_token"
 
 OPENAI_KEY_NAME = "Home Assistant OpenAI Tunnel"
 INGRESS_KEY_NAME = "Home Assistant Ingress"
 CLOUDFLARE_KEY_NAME = "Home Assistant Cloudflare Tunnel"
+TAILSCALE_KEY_NAME = "Home Assistant Tailscale MCP Gateway"
 GITHUB_CLI_SERVER_NAME = "ha-github-cli"
 HOME_ASSISTANT_MCP_DEFAULT_NAME = "ha-home-assistant"
 HOME_ASSISTANT_MCP_DESCRIPTION = (
@@ -60,7 +63,7 @@ def ensure_secret(path: Path, factory) -> str:
 def flatten_grouped_options(data: dict) -> dict:
     """Read legacy flat and grouped options."""
     result = dict(data)
-    for group in ("openai", "cloudflare", "home_assistant", "github", "logging"):
+    for group in ("openai", "cloudflare", "tailscale", "home_assistant", "github", "logging"):
         section = data.get(group)
         if isinstance(section, dict):
             result.update(section)
@@ -102,9 +105,14 @@ def load_settings() -> dict:
     return data
 
 
+def valid_mcp_path(path: str) -> bool:
+    return (bool(MCP_PATH_PATTERN.fullmatch(path))
+            and all(part not in (".", "..") for part in path.split("/")[2:]))
+
+
 def scope_for_path(path: str) -> tuple[str, list[str], list[str]]:
     """Return the narrowest MCPHub system-key scope that can serve a route."""
-    if not MCP_PATH_PATTERN.fullmatch(path):
+    if not valid_mcp_path(path):
         raise ValueError(
             "MCP route must be /mcp or contain at most two safe path segments"
         )
@@ -210,6 +218,12 @@ def main() -> None:
         CLOUDFLARE_INTERNAL_TOKEN_FILE,
         lambda: "mcf_" + secrets.token_urlsafe(48),
     )
+    # Separate external and internal Tailscale keys; never share a Cloudflare key.
+    ensure_secret(TAILSCALE_CLIENT_KEY_FILE, lambda: secrets.token_urlsafe(48))
+    tailscale_internal_token = ensure_secret(
+        TAILSCALE_INTERNAL_TOKEN_FILE,
+        lambda: "mts_" + secrets.token_urlsafe(48),
+    )
 
     OPENAI_AUTH_FILE.write_text(f"Bearer {openai_token}", encoding="utf-8")
     os.chmod(OPENAI_AUTH_FILE, 0o600)
@@ -241,6 +255,8 @@ def main() -> None:
         ("OpenAI", "tunnel_enabled", "tunnel_mcp_path", OPENAI_KEY_NAME, openai_token),
         ("Cloudflare", "cloudflare_tunnel_enabled", "cloudflare_mcp_path",
          CLOUDFLARE_KEY_NAME, cloudflare_internal_token),
+        ("Tailscale", "tailscale_funnel_enabled", "tailscale_mcp_path",
+         TAILSCALE_KEY_NAME, tailscale_internal_token),
     ):
         bearer_keys[:] = [item for item in bearer_keys if item.get("name") != key_name]
         if not bool(options.get(enabled_flag, False)):
