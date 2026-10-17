@@ -71,11 +71,12 @@ jobs:
             exit 0
           fi
 
-          branch="automation/mcphub-tunnel-clients-$(printf '%s' "$OPENAI" | tr . _)-$(printf '%s' "$CLOUDFLARE" | tr . _)"
+          branch="automation/mcphub-tunnel-clients-$(printf '%s' "$OPENAI" | tr . _)"
+          branch="$branch-$(printf '%s' "$CLOUDFLARE" | tr . _)"
           pending="$(gh pr list \
             --repo "$GITHUB_REPOSITORY" --base dev-mcphub --state open \
             --json headRefName \
-            --jq '[.[] | select(.headRefName | startswith("automation/mcphub-tunnel-clients-"))] | .[0].headRefName // empty')"
+            --jq '[.[].headRefName | select(startswith("automation/mcphub-tunnel-clients-"))][0] // empty')"
           if [[ -n "$pending" && "$pending" != "$branch" ]]; then
             echo "An older tunnel update PR is still pending: $pending" >&2
             exit 1
@@ -96,7 +97,7 @@ jobs:
             gh pr create --repo "$GITHUB_REPOSITORY" \
               --head "$branch" --base dev-mcphub \
               --title "chore(mcphub): update OpenAI and Cloudflare tunnel clients" \
-              --body "Automated stable-release update of bundled OpenAI and Cloudflare tunnel binaries. Only Dockerfile version pins and the source changelog are modified. Full MCPHub architecture builds and integration tests must pass on the exact bot commit before automatic merging."
+              --body "Automated stable tunnel updates: only Dockerfile pins and changelog. Exact-SHA full CI required."
           fi
           [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || {
             echo "Cannot verify exact PR head SHA" >&2
