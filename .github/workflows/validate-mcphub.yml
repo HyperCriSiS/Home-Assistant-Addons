@@ -181,8 +181,24 @@ jobs:
           docker manifest inspect \
             "docker.io/samanhappy/mcphub:${MCPHUB_UPSTREAM_VERSION}" \
             > /tmp/mcphub-manifest.json
-          docker manifest inspect "ghcr.io/openai/tunnel-client:v0.0.15" > /tmp/tunnel-manifest.json
-          docker manifest inspect "docker.io/cloudflare/cloudflared:2026.9.3" > /tmp/cloudflared-manifest.json
+          # Read the exact tested image tags from the same Dockerfile that
+          # Buildx uses. Hardcoded versions silently test the wrong releases.
+          eval "$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path("MCPHub/Dockerfile").read_text(encoding="utf-8")
+          for name, pattern in (
+              ("OPENAI_TUNNEL_VERSION", r"v[0-9]+[.][0-9]+[.][0-9]+"),
+              ("CLOUDFLARED_VERSION", r"[0-9]{4}[.][0-9]+[.][0-9]+"),
+          ):
+              match = re.search(rf"^ARG {name}=({pattern})$", text, re.M)
+              if not match:
+                  raise SystemExit(f"Unexpected or missing {name} pin")
+              print(f"{name}={match.group(1)}")
+          PY
+          )"
+          docker manifest inspect "ghcr.io/openai/tunnel-client:${OPENAI_TUNNEL_VERSION}" > /tmp/tunnel-manifest.json
+          docker manifest inspect "docker.io/cloudflare/cloudflared:${CLOUDFLARED_VERSION}" > /tmp/cloudflared-manifest.json
 
           python3 - <<'PY'
           import json
