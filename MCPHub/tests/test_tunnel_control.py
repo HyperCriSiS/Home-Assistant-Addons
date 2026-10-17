@@ -1,6 +1,7 @@
 """Regression tests for independent OpenAI and Cloudflare controls."""
 import importlib.util
 import json
+import sys
 import tempfile
 import threading
 import unittest
@@ -10,6 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def load(name, file_name):

@@ -5,6 +5,7 @@ Data remains in memory, is never persisted, and is served only via HA Ingress.
 """
 from collections import deque
 from datetime import datetime, timezone
+import io
 import re
 import threading
 
@@ -41,7 +42,7 @@ class TunnelLog:
     def follow(self, proc, secrets=()):
         """Drain pipes independently so tunnel processes cannot block on stderr."""
         pipe = getattr(proc, "stdout", None)
-        if pipe is None:
+        if not isinstance(pipe, io.TextIOBase):
             return
 
         def reader():
