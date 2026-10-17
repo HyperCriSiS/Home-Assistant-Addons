@@ -219,7 +219,7 @@ document.getElementById("rotate-key").addEventListener("click", async () => {
   } finally { button.disabled = false; }
 });
 
-const funnelCommand = "tailscale funnel --bg --https=443 http://127.0.0.1:3002";
+const funnelCommand = "/opt/tailscale funnel --bg --https=443 http://127.0.0.1:3002";
 async function copyToClipboard(value) {
   if (!navigator.clipboard || !navigator.clipboard.writeText) return false;
   try { await navigator.clipboard.writeText(value); return true; }

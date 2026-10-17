@@ -343,11 +343,13 @@ MCPHub application code is unchanged.
    (native MCPHub admin-capable service) or 8099 (Home Assistant Ingress).
 4. In the Tailscale admin console enable MagicDNS, HTTPS and the Funnel
    permission for the existing Home Assistant Tailscale node.
-5. In the CLI **of the existing Tailscale App**, run:
+5. In the CLI **inside the existing Tailscale App container**, run
+   (the binary is installed as `/opt/tailscale` in this App; use the
+   Advanced SSH App to enter its container manually if needed):
 
    ```bash
-   tailscale funnel --bg --https=443 http://127.0.0.1:3002
-   tailscale funnel status
+   /opt/tailscale funnel --bg --https=443 http://127.0.0.1:3002
+   /opt/tailscale funnel status
    ```
 
    The Tailscale App uses host networking. The Funnel CLI only proxies

@@ -165,9 +165,9 @@
               und die MCPHub-App neu starten.</p>
             <p class="help">2. Im bestehenden <strong>Tailscale-Add-on</strong> <code>share_homeassistant: disabled</code> lassen.
               MagicDNS, HTTPS und Funnel-Berechtigung im Tailnet aktivieren. In der CLI dieses Add-ons einmalig ausführen:</p>
-            <code class="setup-command" id="tailscale-command">tailscale funnel --bg --https=443 http://127.0.0.1:3002</code>
+            <code class="setup-command" id="tailscale-command">/opt/tailscale funnel --bg --https=443 http://127.0.0.1:3002</code>
             <button type="button" id="copy-tailscale-command">Befehl kopieren</button>
-            <p class="help">3. Über <code>tailscale funnel status</code> dort die tatsächliche Funnel-Adresse ermitteln;
+            <p class="help">3. Über <code>/opt/tailscale funnel status</code> dort die tatsächliche Funnel-Adresse ermitteln;
               diese in der MCPHub-App-Konfiguration als HTTPS-Adresse inklusive MCP-Route eintragen.
               In Claude denselben Pfad und den unten angezeigten Client-Key als Bearer-Header verwenden.</p>
           </div>
