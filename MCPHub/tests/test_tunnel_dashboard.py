@@ -32,7 +32,7 @@ class NavigationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             nav.inject_shell(patched)
         with self.assertRaises(ValueError):
-            nav.inject_shell("<html><body>missing marker</body>")
+            nav.inject_shell("<html><body>missing marker")
 
     def test_topbar_link_is_ingress_only(self):
         script = (ROOT / "ha_tunnel_nav.js").read_text(encoding="utf-8")
