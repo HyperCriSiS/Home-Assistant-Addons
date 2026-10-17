@@ -1,3 +1,5 @@
+# MCPHub
+
 **Manage multiple MCP servers from one central dashboard inside Home Assistant.**
 
 The independent Ingress-only tunnel console is available at `/_mcphub_tunnels/`
