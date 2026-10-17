@@ -98,7 +98,7 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertIn('href="#lan"', self.mod.PAGE)
         self.assertIn("Deaktivierte Ports einblenden", self.mod.PAGE)
         self.assertIn("3001/tcp", self.mod.PAGE)
-        self.assertIn("3000", self.mod.PAGE)
+        self.assertIn("3001", self.mod.PAGE)
         self.assertNotIn("Tailscale", self.mod.PAGE + self.mod.SCRIPT)
 
     def test_key_rotation_reloads_proxy_and_rejects_previous_token(self):
