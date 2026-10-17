@@ -28,6 +28,11 @@ CLIENT_KEY = re.compile(r'^[A-Za-z0-9_-]{32,256}$')
 LOG = logging.getLogger('tunnel-control')
 
 
+def valid_mcp_route(route):
+    return bool(PATH.fullmatch(route)) and all(
+        part not in ('.', '..') for part in route.split('/')[2:])
+
+
 def options():
     data = json.loads(OPTIONS.read_text(encoding='utf-8'))
     if not isinstance(data, dict):
@@ -100,7 +105,7 @@ class Cloudflare:
             self.route = str(opts.get('cloudflare_mcp_path') or '/mcp')
             token = str(opts.get('cloudflare_tunnel_token') or '').strip()
             key = CF_CLIENT_KEY.read_text(encoding='utf-8').strip() if CF_CLIENT_KEY.is_file() else ''
-            if not self.configured or not token or not PATH.fullmatch(self.route) or not CLIENT_KEY.fullmatch(key):
+            if not self.configured or not token or not valid_mcp_route(self.route) or not CLIENT_KEY.fullmatch(key):
                 raise ValueError('Cloudflare tunnel configuration is incomplete or disabled')
             save_secret(CF_SECRET, token)
             self.proc = subprocess.Popen([

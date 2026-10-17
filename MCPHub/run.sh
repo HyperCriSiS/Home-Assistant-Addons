@@ -50,7 +50,13 @@ PY
 
 valid_mcp_path() {
     local path="$1"
-    [[ "${path}" =~ ^/mcp(/[A-Za-z0-9._\$-]+){0,2}$ ]]
+    [[ "${path}" =~ ^/mcp(/[A-Za-z0-9._\$-]+){0,2}$ ]] || return 1
+    local segments segment
+    IFS='/' read -r -a segments <<< "${path}"
+    for segment in "${segments[@]:2}"; do
+        [[ "${segment}" != "." && "${segment}" != ".." ]] || return 1
+    done
+    return 0
 }
 
 shutdown_processes() {

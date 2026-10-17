@@ -202,6 +202,11 @@ def home_assistant_mcp_server_block(options: dict) -> str:
 }}"""
 
 
+def valid_mcp_path(path: str) -> bool:
+    return (bool(MCP_PATH_PATTERN.fullmatch(path))
+            and all(part not in (".", "..") for part in path.split("/")[2:]))
+
+
 def cloudflare_server_block(
     *,
     enabled: bool,
@@ -220,7 +225,7 @@ def cloudflare_server_block(
     }
 }"""
 
-    if not MCP_PATH_PATTERN.fullmatch(mcp_path):
+    if not valid_mcp_path(mcp_path):
         print("[WARN] Invalid Cloudflare path; origin denies all requests", file=sys.stderr)
         return """server {
     listen 127.0.0.1:8098;
@@ -293,7 +298,7 @@ def tailscale_gateway_server_block(
 }"""
     if not enabled:
         return disabled
-    if not MCP_PATH_PATTERN.fullmatch(mcp_path):
+    if not valid_mcp_path(mcp_path):
         print("[WARN] Invalid Tailscale route; gateway denies all", file=sys.stderr)
         return disabled
     if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", client_token):

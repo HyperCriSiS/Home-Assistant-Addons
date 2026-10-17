@@ -22,6 +22,11 @@ MARKER = "mcphub-mcp-only"
 ORIGIN = "http://127.0.0.1:3002"
 
 
+def valid_mcp_route(route: str) -> bool:
+    return (bool(MCP_ROUTE.fullmatch(route))
+            and all(part not in (".", "..") for part in route.split("/")[2:]))
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -121,7 +126,7 @@ class TailscaleGateway:
             raise ValueError("Only local MCP gateway start/stop is supported")
         with self.lock:
             enabled, route, _url = self._configured()
-            if action == "start" and (not enabled or not MCP_ROUTE.fullmatch(route)):
+            if action == "start" and (not enabled or not valid_mcp_route(route)):
                 raise ValueError("Enable a valid Tailscale MCP origin in Home Assistant first")
             self._persist("running" if action == "start" else "stopped")
             self.running = action == "start"

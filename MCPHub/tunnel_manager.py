@@ -49,6 +49,11 @@ def options() -> dict:
     return result
 
 
+def valid_mcp_route(route):
+    return bool(MCP_PATH.fullmatch(route)) and all(
+        part not in ('.', '..') for part in route.split('/')[2:])
+
+
 def probe(route: str) -> bool:
     try:
         with urlopen(f'{HEALTH_BASE}{route}', timeout=2) as response:
@@ -126,7 +131,7 @@ class TunnelManager:
                 raise ValueError('OpenAI Runtime API Key or Tunnel ID is missing')
             if not TUNNEL_ID.fullmatch(tunnel_id):
                 raise ValueError('OpenAI Tunnel ID is invalid')
-            if not MCP_PATH.fullmatch(route):
+            if not valid_mcp_route(route):
                 raise ValueError('OpenAI MCP route is invalid')
             if level not in ('debug', 'info', 'warn'):
                 raise ValueError('OpenAI log level is invalid')

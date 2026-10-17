@@ -105,9 +105,14 @@ def load_settings() -> dict:
     return data
 
 
+def valid_mcp_path(path: str) -> bool:
+    return (bool(MCP_PATH_PATTERN.fullmatch(path))
+            and all(part not in (".", "..") for part in path.split("/")[2:]))
+
+
 def scope_for_path(path: str) -> tuple[str, list[str], list[str]]:
     """Return the narrowest MCPHub system-key scope that can serve a route."""
-    if not MCP_PATH_PATTERN.fullmatch(path):
+    if not valid_mcp_path(path):
         raise ValueError(
             "MCP route must be /mcp or contain at most two safe path segments"
         )
