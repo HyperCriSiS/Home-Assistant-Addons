@@ -197,8 +197,10 @@ jobs:
               print(f"{name}={match.group(1)}")
           PY
           )"
-          docker manifest inspect "ghcr.io/openai/tunnel-client:${OPENAI_TUNNEL_VERSION}" > /tmp/tunnel-manifest.json
-          docker manifest inspect "docker.io/cloudflare/cloudflared:${CLOUDFLARED_VERSION}" > /tmp/cloudflared-manifest.json
+          docker manifest inspect \
+            "ghcr.io/openai/tunnel-client:${OPENAI_TUNNEL_VERSION}" > /tmp/tunnel-manifest.json
+          docker manifest inspect \
+            "docker.io/cloudflare/cloudflared:${CLOUDFLARED_VERSION}" > /tmp/cloudflared-manifest.json
 
           python3 - <<'PY'
           import json
