@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from tunnel_diagnostics import TunnelLog, redact
 
 OPTIONS = Path('/data/options.json')
 CF_SECRET = Path('/data/secrets/cloudflare_tunnel_token')
@@ -73,6 +74,8 @@ class Cloudflare:
         self.degraded_at = 0.0
         self.route = '/mcp'
         self.configured = False
+        self.logs = TunnelLog()
+        self.logs.add('Cloudflare Tunnelverwaltung gestartet')
         self.reload()
 
     def stop_process(self):
@@ -102,7 +105,11 @@ class Cloudflare:
                 '/usr/local/bin/cloudflared', 'tunnel', '--no-autoupdate',
                 '--metrics', '127.0.0.1:20091',
                 'run', '--token-file', str(CF_SECRET)
-            ], stdin=subprocess.DEVNULL)
+            ], stdin=subprocess.DEVNULL,
+               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+               text=True, errors='replace', bufsize=1)
+            self.logs.follow(self.proc, (token, key))
+            self.logs.add('Tunnelprozess gestartet')
             self.state = 'starting'
             self.started = now
             self.degraded_at = 0.0
@@ -112,6 +119,7 @@ class Cloudflare:
             self.desired = False
             self.state = 'error'
             self.error = str(error)
+            self.logs.add('Start fehlgeschlagen (Einstellungen prüfen)')
 
     def reload(self):
         self.stop_process()
@@ -128,6 +136,7 @@ class Cloudflare:
         self.state = 'starting' if self.desired else 'stopped'
 
     def command(self, action):
+        self.logs.add('Aktion: ' + action)
         if action == 'stop':
             self.desired = False
             self.stop_process()
@@ -151,6 +160,7 @@ class Cloudflare:
         delay = min(5 * 2 ** min(self.failed - 1, 6), 300)
         self.retry_at = now + delay
         self.error = message
+        self.logs.add('Fehler: ' + message)
         self.state = 'retrying'
         self.degraded_at = 0.0
         LOG.warning('Cloudflare: %s; retry in %s seconds', message, delay)

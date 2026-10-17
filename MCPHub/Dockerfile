@@ -93,6 +93,10 @@ COPY prepare_proxy_config.py /usr/local/bin/prepare_proxy_config.py
 COPY github_cli_mcp.sh /usr/local/bin/github_cli_mcp.sh
 COPY tunnel_manager.py /usr/local/bin/tunnel_manager.py
 COPY tunnel_control.py /usr/local/bin/tunnel_control.py
+COPY tunnel_diagnostics.py /usr/local/bin/tunnel_diagnostics.py
+COPY inject_tunnel_nav.py /usr/local/bin/inject_tunnel_nav.py
+COPY ha_tunnel_nav.js /app/frontend/dist/mcphub-ha-nav.js
+RUN python3 /usr/local/bin/inject_tunnel_nav.py
 COPY run.sh /run.sh
 COPY .haos-source-revision /etc/mcphub-source-revision
 
@@ -102,6 +106,7 @@ RUN chmod 0755 \
     /usr/local/bin/prepare_proxy_config.py \
     /usr/local/bin/tunnel_manager.py \
     /usr/local/bin/tunnel_control.py \
+    /usr/local/bin/inject_tunnel_nav.py \
     /usr/local/bin/github_cli_mcp.sh
 
 ENTRYPOINT ["/run.sh"]
