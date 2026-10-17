@@ -1,0 +1,146 @@
+---
+name: Check MCPHub tunnel binaries
+
+on:
+  schedule:
+    - cron: "37 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: check-mcphub-tunnel-binaries
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Prepare and validate tunnel-client update
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      changed: ${{ steps.prepare.outputs.changed }}
+      branch: ${{ steps.prepare.outputs.branch }}
+      sha: ${{ steps.prepare.outputs.sha }}
+      openai: ${{ steps.releases.outputs.openai }}
+      cloudflare: ${{ steps.releases.outputs.cloudflare }}
+    steps:
+      - name: Check out trusted updater from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test updater and merge safety gates
+        run: python3 -m unittest discover -s .github/tests -p 'test_update_mcphub_tunnel_clients.py' -v
+
+      - name: Fetch current dev and official stable releases
+        id: releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp .github/scripts/update-mcphub-tunnel-clients.py /tmp/update-mcphub-tunnel-clients.py
+          git fetch --no-tags origin dev-mcphub
+          openai="$(gh api repos/openai/tunnel-client/releases/latest --jq '.tag_name')"
+          cloudflare="$(gh api repos/cloudflare/cloudflared/releases/latest --jq '.tag_name')"
+          {
+            echo "openai=$openai"
+            echo "cloudflare=$cloudflare"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or reuse versioned bot PR
+        id: prepare
+        env:
+          OPENAI: ${{ steps.releases.outputs.openai }}
+          CLOUDFLARE: ${{ steps.releases.outputs.cloudflare }}
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          # Use the main-branch updater, never code from a candidate PR.
+          git switch -C mcphub-dev-work origin/dev-mcphub
+          result="$(python3 /tmp/update-mcphub-tunnel-clients.py prepare \
+            --openai "$OPENAI" --cloudflare "$CLOUDFLARE")"
+          if [[ "$result" == "update=false" ]]; then
+            echo "No newer tunnel binaries available."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          branch="automation/mcphub-tunnel-clients-$(printf '%s' "$OPENAI" | tr . _)"
+          branch="$branch-$(printf '%s' "$CLOUDFLARE" | tr . _)"
+          pending="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" --base dev-mcphub --state open \
+            --json headRefName \
+            --jq '[.[].headRefName | select(startswith("automation/mcphub-tunnel-clients-"))][0] // empty')"
+          if [[ -n "$pending" && "$pending" != "$branch" ]]; then
+            echo "An older tunnel update PR is still pending: $pending" >&2
+            exit 1
+          fi
+
+          if [[ "$pending" == "$branch" ]]; then
+            sha="$(gh pr list \
+              --repo "$GITHUB_REPOSITORY" --base dev-mcphub --head "$branch" \
+              --state open --json headRefOid --jq '.[0].headRefOid // empty')"
+          else
+            git switch -c "$branch"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add MCPHub/Dockerfile MCPHub/CHANGELOG.md
+            git commit -m "chore(mcphub): update OpenAI and Cloudflare tunnel clients"
+            sha="$(git rev-parse HEAD)"
+            git push "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" "HEAD:refs/heads/$branch"
+            gh pr create --repo "$GITHUB_REPOSITORY" \
+              --head "$branch" --base dev-mcphub \
+              --title "chore(mcphub): update OpenAI and Cloudflare tunnel clients" \
+              --body "Automated stable tunnel updates: only Dockerfile pins and changelog. Exact-SHA full CI required."
+          fi
+          [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "Cannot verify exact PR head SHA" >&2
+            exit 1
+          }
+          {
+            echo "changed=true"
+            echo "branch=$branch"
+            echo "sha=$sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch full, read-only candidate validation
+        if: steps.prepare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+        run: gh workflow run validate-mcphub.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+  merge:
+    name: Merge only the exact CI-green tunnel update
+    if: needs.check.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+      OPENAI: ${{ needs.check.outputs.openai }}
+      CLOUDFLARE: ${{ needs.check.outputs.cloudflare }}
+      BRANCH: ${{ needs.check.outputs.branch }}
+      SHA: ${{ needs.check.outputs.sha }}
+    steps:
+      - name: Check out trusted merge guard from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test merge safety gates
+        run: python3 -m unittest discover -s .github/tests -p 'test_update_mcphub_tunnel_clients.py' -v
+
+      - name: Validate commit, contents, full CI and merge to dev-mcphub
+        run: |
+          python3 .github/scripts/update-mcphub-tunnel-clients.py merge \
+            --openai "$OPENAI" --cloudflare "$CLOUDFLARE" \
+            --branch "$BRANCH" --sha "$SHA"
