@@ -250,7 +250,7 @@ forwarding is required.
 4. Copy the tunnel connector token from Cloudflare.
 5. MCPHub automatically generates and persists a separate secure client key. Open the
    authenticated Home Assistant MCPHub Ingress page and visit `/_mcphub_tunnels/`;
-   select **Client Key kopieren** to get it. Cloudflare Access is not required.
+   select **Client Key kopieren** to get it.
 6. Configure the Cloudflare Tunnel connector token in the Home Assistant App and restart MCPHub.
 7. Configure the remote MCP client with the public URL plus the selected route, for
    example:
@@ -295,7 +295,7 @@ For least privilege, prefer a focused group such as:
 
 MCPHub creates a random 384-bit client key on first launch and keeps it in
 `/data/secrets/mcphub_cloudflare_client_key` (mode `0600`) across updates/backups.
-No manual key generation, Cloudflare Access subscription, or payment details are needed.
+Key generation and rotation are managed by MCPHub.
 
 Visit the authenticated Home Assistant Ingress route `/_mcphub_tunnels/` to
 **copy** the key, or **rotate** it (immediately replacing the key used by Nginx).
