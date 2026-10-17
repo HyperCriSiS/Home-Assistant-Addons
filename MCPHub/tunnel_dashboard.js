@@ -1,6 +1,7 @@
 "use strict";
-const modes = ["openai", "cloudflare"];
+const modes = ["openai", "cloudflare", "tailscale"];
 const stateNames = {
+  gateway_ready: ["Gateway bereit", "success", "Das MCP-Gateway ist bereit; der Funnel wird separat verwaltet."],
   ready: ["Bereit", "success", "Der lokale Tunnel ist verbunden."],
   starting: ["Startet", "warning", "Verbindung wird aufgebaut …"],
   retrying: ["Erneuter Versuch", "warning", "Verbindung wird wiederhergestellt …"],
@@ -40,13 +41,25 @@ function render(mode, state) {
   badge.dataset.tone = tone;
   text(badge, name);
   text(card.querySelector(".summary"), s.last_error || summary);
-  text(card.querySelector('[data-field="configured"]'),
-    typeof s.configured === "boolean" ? (s.configured ? "Ja" : "Nein") : "Unbekannt");
+  if (mode === "tailscale") {
+    text(card.querySelector('[data-field="gateway"]'),
+      s.gateway_ready ? "Lokal bereit" : s.configured ? "Nicht bereit" : "Deaktiviert");
+    text(card.querySelector('[data-field="funnel"]'), "Externes Add-on · manuell");
+    text(card.querySelector('[data-field="route"]'), s.route || "–");
+    text(card.querySelector('[data-field="https"]'),
+      s.public_check === "gateway_answered" ? "Gateway antwortet" :
+      s.public_check === "not_verified" ? "Nicht bestätigt" : "Nicht geprüft");
+    text(card.querySelector('[data-field="public-url"]'),
+      s.public_url || (s.public_url_invalid ? "Ungültige Adresse" : "Noch nicht eingetragen"));
+  } else {
+    text(card.querySelector('[data-field="configured"]'),
+      typeof s.configured === "boolean" ? (s.configured ? "Ja" : "Nein") : "Unbekannt");
   text(card.querySelector('[data-field="connection"]'),
     s.transport_ready ? "Lokal bereit" : "Nicht bereit");
   text(card.querySelector('[data-field="route"]'), s.route || "–");
   text(card.querySelector('[data-field="age"]'),
     typeof s.health_age_seconds === "number" ? "vor " + s.health_age_seconds + " s" : "–");
+  }
   for (const button of card.querySelectorAll("button[data-action]")) {
     const action = button.dataset.action;
     button.disabled = busy.has(mode) ||
@@ -83,6 +96,10 @@ async function loadDetails(mode, kind) {
     if (report.note) { message(target, report.note); return; }
     const list = document.createElement("ul");
     list.className = "diag-lines";
+    if (mode === "tailscale") {
+      message(target, report.note || "Tailscale-Diagnose nur im Tailscale-Add-on verfügbar.");
+      return;
+    }
     if (mode === "openai") {
       for (const [name, item] of Object.entries(report.components || {})) {
         if (!item || typeof item !== "object") continue;
@@ -133,8 +150,11 @@ for (const button of document.querySelectorAll("button[data-action]")) {
         headers:{"Content-Type":"application/json", "X-MCPHub-Tunnel-Control":"1"},
         body:"{}"
       });
-      feedback(mode, action === "stop" ? "Tunnel gestoppt." :
-        action === "reload" ? "Einstellungen neu geladen." : "Start angefordert.");
+      feedback(mode, mode === "tailscale"
+        ? (action === "stop" ? "Lokaler MCP-Zugang gestoppt. Funnel unverändert." :
+          "Lokaler MCP-Zugang gestartet. Funnel unverändert.")
+        : action === "stop" ? "Tunnel gestoppt." :
+          action === "reload" ? "Einstellungen neu geladen." : "Start angefordert.");
     } catch (error) {
       feedback(mode, "Aktion fehlgeschlagen: " + error.message, true);
     } finally {
@@ -198,5 +218,77 @@ document.getElementById("rotate-key").addEventListener("click", async () => {
     keyMessage("Key konnte nicht erneuert werden.");
   } finally { button.disabled = false; }
 });
+
+const funnelCommand = "tailscale funnel --bg --https=443 http://127.0.0.1:3002";
+async function copyToClipboard(value) {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return false;
+  try { await navigator.clipboard.writeText(value); return true; }
+  catch { return false; }
+}
+document.getElementById("copy-tailscale-command").addEventListener("click", async () => {
+  const done = await copyToClipboard(funnelCommand);
+  feedback("tailscale", done ? "CLI-Befehl kopiert." :
+    "Zwischenablage nicht verfügbar. Befehl oben manuell kopieren.", !done);
+});
+document.getElementById("tailscale-check").addEventListener("click", async () => {
+  const button = document.getElementById("tailscale-check");
+  button.disabled = true;
+  feedback("tailscale", "HTTPS-Verbindung wird ohne Zugangsdaten geprüft …");
+  try {
+    const report = await api("api/tailscale/https-check", {
+      headers: {"X-MCPHub-Tunnel-Control": "1"}
+    });
+    feedback("tailscale", report.result === "gateway_answered" ?
+      "HTTPS-Gateway antwortet. Öffentliche Erreichbarkeit aus fremdem Netz noch nicht bewiesen." :
+      "Keine bestätigte HTTPS-Antwort vom MCP-Gateway.", report.result !== "gateway_answered");
+    await refresh();
+  } catch {
+    feedback("tailscale", "Bitte zuerst eine gültige Funnel-URL in der App-Konfiguration eintragen.", true);
+  } finally { button.disabled = false; }
+});
+document.getElementById("tailscale-copy-key").addEventListener("click", async () => {
+  const button = document.getElementById("tailscale-copy-key");
+  button.disabled = true;
+  const target = document.getElementById("tailscale-key-message");
+  try {
+    const data = await api("api/tailscale/client-key", {
+      headers: {"X-MCPHub-Tunnel-Control": "1"}
+    });
+    if (!data.key) throw Error("Missing key");
+    if (await copyToClipboard(data.key)) {
+      text(target, "Client-Key kopiert.");
+    } else {
+      let field = document.getElementById("tailscale-key-fallback");
+      if (!field) {
+        field = document.createElement("textarea");
+        field.id = "tailscale-key-fallback"; field.readOnly = true; field.rows = 2;
+        field.style.width = "100%";
+        button.parentElement.after(field);
+      }
+      field.value = data.key; field.select();
+      text(target, "Schlüssel markieren und manuell kopieren.");
+    }
+  } catch { text(target, "Client-Key konnte nicht geladen werden."); }
+  finally { button.disabled = false; }
+});
+document.getElementById("tailscale-rotate-key").addEventListener("click", async () => {
+  if (!confirm("Tailscale Client-Key erneuern? Der bisherige Key wird sofort ungültig.")) return;
+  const button = document.getElementById("tailscale-rotate-key");
+  button.disabled = true;
+  try {
+    await api("api/tailscale/client-key/rotate", {
+      method: "POST", headers: {
+        "Content-Type": "application/json", "X-MCPHub-Tunnel-Control": "1"
+      }, body: "{}"
+    });
+    const field = document.getElementById("tailscale-key-fallback");
+    if (field) field.remove();
+    text(document.getElementById("tailscale-key-message"),
+      "Key erneuert. Bitte neu kopieren und in Claude ersetzen.");
+  } catch {
+    text(document.getElementById("tailscale-key-message"), "Schlüssel-Erneuerung fehlgeschlagen.");
+  } finally { button.disabled = false; }
+});
+
 refresh();
 setInterval(refresh, 10000);

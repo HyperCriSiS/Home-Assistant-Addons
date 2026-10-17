@@ -8,7 +8,7 @@
     :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark light}
     *{box-sizing:border-box}
     body{margin:0;background:Canvas;color:CanvasText;line-height:1.5}
-    .shell{max-width:1030px;margin:0 auto;padding:clamp(18px,4vw,40px) 18px 70px}
+    .shell{max-width:1260px;margin:0 auto;padding:clamp(18px,4vw,40px) 18px 70px}
     .masthead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
     .eyebrow{font-size:.82rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary-text-color,#94a3b8)}
     h1{font-size:clamp(1.65rem,3vw,2.2rem);line-height:1.2;margin:.35rem 0 .65rem}
@@ -18,7 +18,7 @@
     a{color:var(--primary-color,#51b3f5)}
     .back{color:inherit;font-weight:600;text-decoration:none;border:1px solid var(--divider-color,#64748b88);border-radius:9px;padding:.48rem .78rem}
     .back:hover,.back:focus-visible{text-decoration:underline}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
     .card{border:1px solid var(--divider-color,#64748b88);border-radius:16px;padding:clamp(17px,2.5vw,26px);background:var(--card-background-color,Canvas)}
     .card-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
     .badge{display:inline-flex;align-items:center;gap:7px;border:1px solid currentColor;border-radius:99px;padding:4px 11px;font-weight:750;font-size:.82rem}
@@ -50,8 +50,11 @@
     pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--secondary-background-color,#64748b12);padding:12px;border-radius:9px;max-height:245px;overflow:auto;font-size:.79rem}
     .help{color:var(--secondary-text-color,#94a3b8);font-size:.88rem}
     .footer{margin-top:22px;font-size:.85rem;color:var(--secondary-text-color,#94a3b8)}
-    #key-message{min-height:1.3rem}
+    #key-message,#tailscale-key-message{min-height:1.3rem}
+    .setup-command{display:block;overflow-wrap:anywhere;padding:12px;border-radius:9px;background:var(--secondary-background-color,#64748b12);font-size:.8rem;margin:12px 0}
+    .copy-helper{font-size:.81rem;color:var(--secondary-text-color,#94a3b8)}
     #key-fallback{width:100%;resize:vertical;min-height:65px;padding:9px;border-radius:9px;font:inherit}
+    @media(max-width:1020px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:700px){.grid{grid-template-columns:1fr}.metadata{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(prefers-reduced-motion:no-preference){button,.back{transition:filter .15s}}
   </style>
@@ -63,7 +66,7 @@
       <a class="back" href="../">MCPHub öffnen ↗</a>
     </div>
     <h1>Tunnelverwaltung</h1>
-    <p class="intro">OpenAI und Cloudflare unabhängig steuern. Aktivierung, Routen und Zugangsdaten
+    <p class="intro">OpenAI, Cloudflare und Tailscale verwalten. Aktivierung, Routen und Zugangsdaten
       bleiben in <strong>Home Assistant → Apps → MCPHub → Konfiguration</strong>.</p>
     <main class="grid">
       <article class="card" id="t-openai" aria-labelledby="openai-title">
@@ -133,8 +136,64 @@
           <pre class="detail-content" data-logs>Protokoll wird geladen …</pre>
         </details>
       </article>
+
+      <article class="card" id="t-tailscale" aria-labelledby="tailscale-title">
+        <div class="card-head">
+          <h2 id="tailscale-title">Tailscale Funnel</h2>
+          <span class="badge" data-tone="neutral" role="status" aria-live="polite">Lädt …</span>
+        </div>
+        <p class="summary">Lokaler MCP-Zugang wird geprüft …</p>
+        <dl class="metadata">
+          <div><dt>MCP-Gateway</dt><dd data-field="gateway">–</dd></div>
+          <div><dt>Funnel</dt><dd data-field="funnel">Nicht auslesbar</dd></div>
+          <div><dt>MCP-Route</dt><dd data-field="route">–</dd></div>
+          <div><dt>HTTPS-Prüfung</dt><dd data-field="https">Nicht geprüft</dd></div>
+        </dl>
+        <p class="help"><strong>Öffentliche Adresse:</strong>
+          <span data-field="public-url">Noch nicht eingetragen</span></p>
+        <div class="actions" aria-label="Lokalen Tailscale MCP-Zugang steuern">
+          <button type="button" class="primary" data-mode="tailscale" data-action="start">MCP-Zugang starten</button>
+          <button type="button" data-mode="tailscale" data-action="stop">MCP-Zugang stoppen</button>
+          <button type="button" id="tailscale-check">HTTPS prüfen</button>
+        </div>
+        <p class="feedback" role="status" aria-live="polite"></p>
+        <details data-panel="setup" data-mode="tailscale">
+          <summary>Tailscale Funnel einrichten</summary>
+          <div class="detail-content">
+            <p class="help">1. In der MCPHub-App <strong>Konfiguration → Tailscale</strong> aktivieren und die Route wählen.
+              Unter <strong>Netzwerk</strong> den zusätzlichen Host-Port <code>3002/tcp</code> auf <code>3002</code> setzen
+              und die MCPHub-App neu starten.</p>
+            <p class="help">2. Im bestehenden <strong>Tailscale-Add-on</strong> <code>share_homeassistant: disabled</code> lassen.
+              MagicDNS, HTTPS und Funnel-Berechtigung im Tailnet aktivieren. In der CLI dieses Add-ons einmalig ausführen:</p>
+            <code class="setup-command" id="tailscale-command">tailscale funnel --bg --https=443 http://127.0.0.1:3002</code>
+            <button type="button" id="copy-tailscale-command">Befehl kopieren</button>
+            <p class="help">3. Über <code>tailscale funnel status</code> dort die tatsächliche Funnel-Adresse ermitteln;
+              diese in der MCPHub-App-Konfiguration als HTTPS-Adresse inklusive MCP-Route eintragen.
+              In Claude denselben Pfad und den unten angezeigten Client-Key als Bearer-Header verwenden.</p>
+          </div>
+        </details>
+        <details data-panel="key" data-mode="tailscale">
+          <summary>Client-Key verwalten</summary>
+          <div class="detail-content">
+            <p class="help">Für Claude: <code>Authorization: Bearer DEIN_KEY</code>.
+              Ein neuer Key macht den bisherigen Key sofort ungültig.</p>
+            <div class="actions">
+              <button type="button" id="tailscale-copy-key">Client-Key kopieren</button>
+              <button type="button" id="tailscale-rotate-key">Client-Key erneuern</button>
+            </div>
+            <p id="tailscale-key-message" role="status" aria-live="polite"></p>
+          </div>
+        </details>
+        <details data-panel="diagnostics" data-mode="tailscale">
+          <summary>Diagnose anzeigen</summary>
+          <div class="detail-content" data-diagnostics>Wird geladen …</div>
+          <p class="help">MCPHub steuert nur seinen MCP-Zugang. Der tatsächliche Funnel-Status und die Funnel-Protokolle
+            werden ausschließlich vom bestehenden Tailscale-Add-on verwaltet.
+            Die HTTPS-Prüfung von Home Assistant aus ist kein Beweis für öffentliche Erreichbarkeit.</p>
+        </details>
+      </article>
     </main>
-    <p class="footer">„Bereit“ bestätigt nur die lokale Verbindung, nicht die externe Erreichbarkeit.
+    <p class="footer">Statusanzeigen bestätigen nur überprüfbare Teilfunktionen. Sie beweisen nicht automatisch die öffentliche Erreichbarkeit.
       Diagnosen und Protokolle werden erst beim Aufklappen geladen und enthalten keine absichtlich ausgegebenen Zugangsdaten.</p>
   </div>
   <script src="app.js" defer></script>
