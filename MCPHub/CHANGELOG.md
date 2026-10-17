@@ -1,7 +1,7 @@
 # Changelog
 
-## v2026.10.17-1-dev.106
+## v2026.10.17-1-dev.107
 
 ### Commits in this Dev build
 
-- [`ae66454`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/ae66454327ca5a8bfef2de44c5c7d19e48e61ebf) feat(mcphub): enable native LAN access on host port 3001 by default
+- [`015e16d`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/015e16df44afbf340229a8dc589480220adb835f) fix(mcphub): remove unnecessary Cloudflare Access hints
