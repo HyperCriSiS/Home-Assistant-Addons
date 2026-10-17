@@ -298,9 +298,8 @@ button:disabled{opacity:.6;cursor:wait}small{opacity:.8}
 <p>OpenAI und Cloudflare unabhängig starten, stoppen und überwachen – ohne MCPHub neu zu starten.</p>
 <div id="items"></div>
 <section id="client-key"><h2>Cloudflare Client Key</h2>
-<p>Wird automatisch und sicher in MCPHub erzeugt. Er ist <strong>kein</strong> Cloudflare Access Token;
-keine Zahlungsdaten oder Zero Trust erforderlich. Trage ihn in Claude als HTTP-Header
-<code>Authorization: Bearer DEIN_KEY</code> ein.</p>
+<p>MCPHub erzeugt diesen Schlüssel automatisch. Für Claude als HTTP-Header
+<code>Authorization: Bearer DEIN_KEY</code> eintragen.</p>
 <button id="copy-key" type="button">Client Key kopieren</button>
 <button id="rotate-key" type="button">Client Key erneuern</button>
 <p id="key-message" role="status" aria-live="polite"></p></section>

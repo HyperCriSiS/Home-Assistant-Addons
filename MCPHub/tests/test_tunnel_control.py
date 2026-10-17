@@ -100,6 +100,8 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertIn("3001/tcp", self.mod.PAGE)
         self.assertIn("3001", self.mod.PAGE)
         self.assertNotIn("Tailscale", self.mod.PAGE + self.mod.SCRIPT)
+        self.assertNotIn("Cloudflare Access", self.mod.PAGE)
+        self.assertNotIn("Zero Trust erforderlich", self.mod.PAGE)
 
     def test_key_rotation_reloads_proxy_and_rejects_previous_token(self):
         controller = self.mod.Controls()

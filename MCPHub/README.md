@@ -122,10 +122,9 @@ MCP APIs other than the built-in Assist API.
 
 The Home Assistant Ingress-only page at `/_mcphub_tunnels/` provides
 **Start**, **Stop**, **Reload** and local readiness monitoring for OpenAI and
-Cloudflare without restarting MCPHub. The same protected page lets administrators copy
-or rotate the Cloudflare Client Key without Cloudflare Access. The same protected page allows copying or
-rotating the automatically generated Cloudflare Client Key without Cloudflare Access. The **LAN-Zugriff** navigation points
-to the App's **Network** port settings.
+Cloudflare without restarting MCPHub. Administrators can also copy or rotate the
+automatically generated Cloudflare Client Key. The **LAN-Zugriff** navigation
+points to the App's **Network** port settings.
 
 Local process health does not guarantee internet-side connectivity.
 
@@ -220,7 +219,7 @@ The Home Assistant App configuration contains Home Assistant MCP and remote-acce
 | `cloudflare_tunnel_enabled` | `false` | Enables Cloudflare Tunnel |
 | `cloudflare_tunnel_token` | empty | Connector token for a remotely managed Cloudflare Tunnel |
 | `cloudflare_mcp_path` | `/mcp` | Exact MCPHub route exposed through Cloudflare |
-| Cloudflare Client Key | generated automatically | Copy/rotate through the protected Ingress-only Tunnel Control page; no separate Cloudflare Access service |
+| Cloudflare Client Key | generated automatically | Copy/rotate through the protected Ingress-only Tunnel Control page |
 
 MCP server configuration itself is managed from the MCPHub Web UI. Changing
 `home_assistant_mcp_server_name` removes the old managed entry; update any
