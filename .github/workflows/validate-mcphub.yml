@@ -74,6 +74,13 @@ jobs:
           python3 -m py_compile "MCPHub/patch_home_assistant_auth.py"
           python3 -m py_compile ".github/scripts/update-mcphub-upstream.py"
 
+      - name: Test trusted tunnel-client update and merge guards
+        run: >-
+          python3 -m unittest discover
+          -s .github/tests
+          -p test_update_mcphub_tunnel_clients.py
+          -v
+
       - name: Lint MCPHub Dockerfile
         run: |
           image="ghcr.io/hadolint/hadolint:v2.15.0-debian"
