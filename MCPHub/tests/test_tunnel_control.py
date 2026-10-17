@@ -1,4 +1,4 @@
-"""Regression tests for independent OpenAI and Cloudflare controls."""
+"""Regression tests for independent OpenAI, Cloudflare and Tailscale access."""
 import importlib.util
 import json
 import sys
@@ -30,8 +30,10 @@ class TunnelControllerTests(unittest.TestCase):
         self.mod.OPTIONS = directory / "options.json"
         self.mod.CF_SECRET = directory / "secret" / "token"
         self.mod.CF_CLIENT_KEY = directory / "secret" / "client_key"
+        self.mod.TS_CLIENT_KEY = directory / "secret" / "tailscale_key"
         self.mod.CF_CLIENT_KEY.parent.mkdir()
         self.mod.CF_CLIENT_KEY.write_text("c" * 48, encoding="utf-8")
+        self.mod.TS_CLIENT_KEY.write_text("t" * 48, encoding="utf-8")
         self.set_options()
 
     def set_options(self, **options):
@@ -81,14 +83,14 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertFalse(cloudflare.desired)
         self.assertNotIn("token", json.dumps(cloudflare.status(2.0)).lower())
 
-    def test_two_tunnels_only_and_stale_openai_is_unhealthy(self):
+    def test_three_cards_and_stale_openai_is_unhealthy(self):
         controller = self.mod.Controls()
         controller.cloudflare.status = Mock(return_value={"state": "stopped"})
         controller.openai = Mock(return_value={
             "state": "ready", "health_age_seconds": 35, "last_error": ""
         })
         snapshot = controller.snapshot()
-        self.assertEqual(set(snapshot), {"openai", "cloudflare"})
+        self.assertEqual(set(snapshot), {"openai", "cloudflare", "tailscale"})
         self.assertEqual(snapshot["openai"]["state"], "stale")
         self.assertFalse(snapshot["openai"]["transport_ready"])
         with self.assertRaises(ValueError):
@@ -96,11 +98,13 @@ class TunnelControllerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             controller.command("serve", "stop")
 
-    def test_page_contains_lan_navigation_without_tailscale(self):
+    def test_dashboard_contains_one_tailscale_card(self):
         self.assertIn('id="t-openai"', self.mod.PAGE)
         self.assertIn('id="t-cloudflare"', self.mod.PAGE)
         self.assertIn("Konfiguration", self.mod.PAGE)
-        self.assertNotIn("Tailscale", self.mod.PAGE + self.mod.SCRIPT)
+        self.assertEqual(self.mod.PAGE.count('id="t-tailscale"'), 1)
+        self.assertIn("Tailscale Funnel", self.mod.PAGE)
+        self.assertNotIn("Tailscale Serve</h2>", self.mod.PAGE)
         self.assertNotIn("Cloudflare Access", self.mod.PAGE)
         self.assertNotIn("Zero Trust erforderlich", self.mod.PAGE)
 

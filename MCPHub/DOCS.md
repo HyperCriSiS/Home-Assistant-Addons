@@ -321,6 +321,69 @@ option in the App configuration.
 Remote MCP clients still send `Authorization: Bearer <your-client-key>`.
 The key is local to MCPHub; it is not a Cloudflare dashboard credential.
 
+## Tailscale Funnel through the EXISTING Home Assistant Tailscale App
+
+The optional Tailscale integration **does not install or run Tailscale** inside
+MCPHub and does not control the separate Tailscale App. It adds one restricted
+origin in the MCPHub *wrapper* on container port `3002`, protected by an
+independent 384-bit external client key and a separate MCPHub system key
+scoped to the exact configured MCP route. All other HTTP paths return 404.
+Home Assistant Ingress identity headers are stripped. The original upstream
+MCPHub application code is unchanged.
+
+### Setup
+
+1. Leave `share_homeassistant: disabled` in the existing Home Assistant
+   Tailscale App. Its `services` setting is **not** a public Funnel.
+2. In **MCPHub → Configuration → Tailscale**, enable
+   `tailscale_funnel_enabled` and choose the exact `tailscale_mcp_path`.
+3. In **MCPHub → Network**, explicitly map `3002/tcp` to host port `3002`
+   (default is **disabled**). Restart MCPHub so the wrapper can register its
+   path-scoped system key and Nginx gateway. Never point Funnel at 3001
+   (native MCPHub admin-capable service) or 8099 (Home Assistant Ingress).
+4. In the Tailscale admin console enable MagicDNS, HTTPS and the Funnel
+   permission for the existing Home Assistant Tailscale node.
+5. In the CLI **of the existing Tailscale App**, run:
+
+   ```bash
+   tailscale funnel --bg --https=443 http://127.0.0.1:3002
+   tailscale funnel status
+   ```
+
+   The Tailscale App uses host networking. The Funnel CLI only proxies
+   localhost on that host, which is why the optional host port is needed.
+   `--bg` persists Tailscale's setting independently across restarts.
+   The public hostname is assigned under `*.ts.net`; no Hetzner DNS
+   changes are necessary.
+6. Paste the public URL including the exact MCP route into
+   `tailscale_funnel_url`, e.g. `https://node.tailnet.ts.net/mcp`.
+   The tunnel dashboard's **HTTPS prüfen** button makes an *unauthenticated*
+   HTTPS request and looks for a 401 reply with our gateway marker. It never
+   transmits the client key to the configured URL. **A check from the HA host
+   cannot prove public Internet reachability:** it may use tailnet routing.
+7. In Claude configure `https://node.tailnet.ts.net/mcp` and send the
+   request header `Authorization: Bearer <key-from-tunnel-dashboard>`.
+   Test from Claude or another device outside the tailnet to prove public access.
+
+### Dashboard and security boundaries
+
+The dedicated Ingress-only dashboard contains **one Tailscale card**, not a
+separate Serve and Funnel panel. Its Start/Stop buttons affect **only the local
+MCP gateway**, not the real Tailscale Funnel daemon, listener, or settings.
+The gate persists across MCPHub restarts; disabled options always fail closed.
+Its client key can be copied and rotated independently of Cloudflare. Key
+rotation reloads Nginx, with rollback and gateway stop on unrecoverable error.
+
+Funnel configuration and its actual status/logs remain in the existing
+Tailscale App (`tailscale funnel status`). A local gateway-health check or
+HTTPS reply must never be mislabeled as a confirmed active public Funnel.
+
+**Network caveat:** Mapping `3002/tcp` to a Home Assistant host port can make
+it reachable from the LAN as well as from localhost. The gateway requires its
+dedicated bearer key even on LAN, allows only the configured MCP route, and
+rejects everything else. Use appropriate host/network firewall rules if LAN
+access should also be restricted. Default host mapping is off.
+
 ## Dashboard and local proxy architecture
 
 MCPHub is patched to bind to `127.0.0.1:3000` inside the App container.

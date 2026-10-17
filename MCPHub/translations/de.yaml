@@ -34,6 +34,24 @@ configuration:
       cloudflare_mcp_path:
         name: "Cloudflare MCP-Route"
         description: "Die über Cloudflare bereitgestellte MCPHub-Route."
+  tailscale:
+    name: "Tailscale Funnel"
+    description: "Verwendet das vorhandene Home-Assistant-Tailscale-Add-on. Funnel wird dort eingerichtet."
+    fields:
+      tailscale_funnel_enabled:
+        name: "Tailscale MCP-Gateway aktivieren"
+        description: >-
+          Aktiviert einen eigenen, nur auf MCP beschränkten Proxy mit Bearer-Schutz.
+          Zusätzlich unter Netzwerk den Host-Port 3002 ausdrücklich freigeben und
+          Funnel manuell im vorhandenen Tailscale-Add-on einrichten.
+      tailscale_mcp_path:
+        name: "Tailscale MCP-Route"
+        description: "Exakte MCPHub-Route, zum Beispiel /mcp oder /mcp/home."
+      tailscale_funnel_url:
+        name: "Öffentliche Tailscale-Funnel-URL (optional)"
+        description: >-
+          HTTPS-Adresse aus tailscale funnel status einschließlich MCP-Route,
+          z. B. https://node.tailnet.ts.net/mcp. Dient nur einer Prüfung ohne Zugangsdaten.
   home_assistant:
     name: "Home Assistant MCP"
     description: "Einstellungen für Home Assistant MCP"
