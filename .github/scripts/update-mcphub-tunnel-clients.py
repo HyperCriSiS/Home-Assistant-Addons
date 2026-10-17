@@ -29,7 +29,7 @@ def gh(*arguments: str) -> str:
 
 
 def git(*arguments: str) -> str:
-    return subprocess.check_output(["git", *arguments], text=True).strip()
+    return subprocess.check_output(["git", *arguments], text=True)
 
 
 def pins(dockerfile: str) -> tuple[str, str]:
@@ -81,7 +81,6 @@ def prepare(dockerfile: str, changelog: str, openai: str, cloudflare: str) -> tu
     )
     if not re.match(r"^# Changelog\n\n## v[0-9]{4}[.][0-9]{2}[.][0-9]{2}(?:-[1-9][0-9]*)?\n", changelog):
         raise ValueError("Unexpected MCPHub source changelog header")
-    header, rest = changelog.split("\n", 3)[0:3], changelog.split("\n", 3)[3]
     first_break = changelog.find("\n", len("# Changelog\n\n"))
     note = "- Updated bundled tunnel binaries: " + "; ".join(changes) + ".\n"
     new_changelog = changelog[:first_break + 1] + "\n" + note + changelog[first_break + 1:]
@@ -125,19 +124,18 @@ def verify_candidate(repository: str, branch: str, sha: str, openai: str, cloudf
     # Verify every byte of the generated update against the current dev base.
     # A successful build alone is not permission to merge unrelated code.
     git("fetch", "--no-tags", "origin", "dev-mcphub", branch)
-    current_docker = git("show", "origin/dev-mcphub:MCPHub/Dockerfile") + "\n"
-    current_notes = git("show", "origin/dev-mcphub:MCPHub/CHANGELOG.md") + "\n"
+    current_docker = git("show", "origin/dev-mcphub:MCPHub/Dockerfile")
+    current_notes = git("show", "origin/dev-mcphub:MCPHub/CHANGELOG.md")
     desired_docker, desired_notes, changed = prepare(
         current_docker, current_notes, openai, cloudflare
     )
     if not changed:
         raise ValueError("Tunnel update is already on dev-mcphub")
-    candidate_docker = git("show", f"{sha}:MCPHub/Dockerfile") + "\n"
-    candidate_notes = git("show", f"{sha}:MCPHub/CHANGELOG.md") + "\n"
+    candidate_docker = git("show", f"{sha}:MCPHub/Dockerfile")
+    candidate_notes = git("show", f"{sha}:MCPHub/CHANGELOG.md")
     if candidate_docker != desired_docker or candidate_notes != desired_notes:
         raise ValueError("Candidate content differs from trusted version updater")
-    if not git("merge-base", "--is-ancestor", "origin/dev-mcphub", sha) == "":
-        raise ValueError("Candidate is not based on current dev")
+    git("merge-base", "--is-ancestor", "origin/dev-mcphub", sha)
     return number
 
 
