@@ -97,7 +97,7 @@ class TailscaleGatewayTests(unittest.TestCase):
 
 class TailscaleProxyTests(unittest.TestCase):
     def setUp(self):
-        self.proxy = load("prepare_proxy_tailscale_test", "prepare_proxy_config")
+        self.proxy = load("prepare_proxy_tailscale_test", "prepare_proxy_config.py")
 
     def server(self, route="/mcp/home", enabled=True, client=None, internal=None):
         return self.proxy.tailscale_gateway_server_block(
