@@ -72,9 +72,9 @@ The development App is shown as **MCPHub (Dev)** under
 
 ## Direct access from your home network
 
-Direct access is **off by default**. In Home Assistant, open **MCPHub → Network** and enter the host port **3000** into the **left-hand field**. The displayed `3001/tcp` on the right is the app's internal proxy port; you do not need to change it.
+Direct LAN access is **enabled by default** on host port **3001**. Open `http://<HA-IP>:3001` for MCPHub's own login, or connect an MCP client to `http://<HA-IP>:3001/mcp` with a MCPHub Bearer key.
 
-Then open `http://<HA-IP>:3000` for MCPHub's own login, or use `http://<HA-IP>:3000/mcp` with a MCPHub Bearer key in an MCP client. Leave the field empty to disable LAN access. Direct access uses **MCPHub authentication**, not Home Assistant Ingress login.
+In Home Assistant, go to **MCPHub → Network** to change the **left-hand host port** if 3001 is occupied (3000 is also possible if free). The displayed `3001/tcp` on the right is the internal proxy port. Leave the host-port field empty to turn direct LAN access off. Ingress remains independent and uses Home Assistant authentication; direct LAN access uses **MCPHub's own authentication**. Only use HTTP on a trusted local network.
 
 See [LAN access instructions](LAN_ACCESS.md) for details and security notes.
 

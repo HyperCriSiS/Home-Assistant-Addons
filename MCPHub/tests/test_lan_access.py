@@ -6,12 +6,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 class LanAccessTests(unittest.TestCase):
-    def test_host_port_disabled_by_default(self):
+    def test_native_lan_port_enabled_by_default(self):
         config = yaml.safe_load((ROOT / "config.yaml").read_text())
-        self.assertIsNone(config["ports"]["3001/tcp"])
+        self.assertEqual(config["ports"]["3001/tcp"], 3001)
         self.assertIn("3001/tcp", config["ports_description"])
-        self.assertIn("LAN Zugriff aktivieren", config["ports_description"]["3001/tcp"])
-        self.assertIn("Keinen Port eintragen", config["ports_description"]["3001/tcp"])
+        self.assertIn("Standardport 3001", config["ports_description"]["3001/tcp"])
+        self.assertIn("Feld leeren", config["ports_description"]["3001/tcp"])
         self.assertTrue(config["ingress"])
         self.assertTrue(config["panel_admin"])
         self.assertFalse(config.get("host_network", False))

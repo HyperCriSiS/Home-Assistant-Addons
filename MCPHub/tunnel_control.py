@@ -309,9 +309,8 @@ Die Erreichbarkeit aus dem öffentlichen Internet wird hier nicht geprüft.</sma
 <section id="lan"><h2>LAN-Zugriff</h2>
 <p>MCPHub unterstützt direkten Zugriff im lokalen Netzwerk. Die Portfreigabe erfolgt unten in
 <strong>Home Assistant → Apps → MCPHub → Netzwerk</strong>.</p>
-<p><small><strong>LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen.
-Keinen Port eintragen um den LAN Zugriff zu deaktivieren.</strong>
-Dazu „Deaktivierte Ports einblenden“ nutzen. 3001/tcp ist der interne Port.
+<p><small><strong>Im Feld links lässt sich der Host-Port ändern oder zum Deaktivieren leeren.</strong>
+Der LAN-Zugriff ist standardmäßig auf Host-Port 3001 aktiv. Bei einem Portkonflikt einen freien Host-Port wählen. 3001/tcp ist der interne Port.
 Für LAN gilt die MCPHub-Anmeldung.</small></p></section>
 </main><script src="app.js" defer></script></body></html>'''
 

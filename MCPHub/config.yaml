@@ -22,13 +22,13 @@ panel_admin: true
 watchdog: "http://[HOST]:[PORT:8099]/health"
 homeassistant_api: true
 backup: cold
-# Off by default. Enable and choose the host port in the Home Assistant Network tab.
+# Direct LAN access defaults to host port 3001. Set null to disable or choose another free host port.
 ports:
-  3001/tcp: null
+  3001/tcp: 3001
 ports_description:
   3001/tcp: >-
-    LAN Zugriff aktivieren: Port 3000 oder anderen freien Port eintragen.
-    Keinen Port eintragen um den LAN Zugriff zu deaktivieren.
+    LAN-Zugriff: Standardport 3001. Bei Portkonflikt einen anderen freien Port wählen.
+    Feld leeren zum Deaktivieren.
 map:
   - type: ssl
     read_only: true
