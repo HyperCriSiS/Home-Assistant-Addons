@@ -1,5 +1,17 @@
 [
   {
+    "revision": 106,
+    "version": "v2026.10.17-1-dev.106",
+    "source_sha": "ae66454327ca5a8bfef2de44c5c7d19e48e61ebf",
+    "baseline": false,
+    "commits": [
+      {
+        "sha": "ae66454327ca5a8bfef2de44c5c7d19e48e61ebf",
+        "subject": "feat(mcphub): enable native LAN access on host port 3001 by default"
+      }
+    ]
+  },
+  {
     "revision": 105,
     "version": "v2026.10.17-1-dev.105",
     "source_sha": "7bc86f517d07099e8e200c3f0d2e333724b44d85",

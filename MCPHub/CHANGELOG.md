@@ -1,7 +1,7 @@
 # Changelog
 
-## v2026.10.17-1-dev.105
+## v2026.10.17-1-dev.106
 
 ### Commits in this Dev build
 
-- [`7bc86f5`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/7bc86f517d07099e8e200c3f0d2e333724b44d85) feat(MCPHub): Cloudflare Client Key automatisch verwalten, LAN-Beschriftung und aktuelle Tunnel-Clients (#69)
+- [`ae66454`](https://github.com/HyperCriSiS/Home-Assistant-Apps/commit/ae66454327ca5a8bfef2de44c5c7d19e48e61ebf) feat(mcphub): enable native LAN access on host port 3001 by default
