@@ -1,3 +1,5 @@
+# MCPHub
+
 **Manage multiple MCP servers from one central dashboard inside Home Assistant.**
 
 [![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml)
