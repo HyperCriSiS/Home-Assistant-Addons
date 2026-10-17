@@ -104,6 +104,23 @@ class TunnelControllerTests(unittest.TestCase):
         self.assertNotIn("Cloudflare Access", self.mod.PAGE)
         self.assertNotIn("Zero Trust erforderlich", self.mod.PAGE)
 
+    def test_dashboard_is_independent_and_diagnostics_are_optional(self):
+        page, script = self.mod.PAGE, self.mod.SCRIPT
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn('href="../"', page)
+        self.assertIn("Tunnelverwaltung", page)
+        self.assertIn("Diagnose anzeigen", page)
+        self.assertIn("Protokoll anzeigen", page)
+        self.assertIn('data-panel="diagnostics"', page)
+        self.assertIn('data-panel="logs"', page)
+        self.assertIn("setInterval(refresh, 10000)", script)
+        self.assertIn("if (!section.open) return;", script)
+        self.assertNotIn("JSON.stringify", script)
+        self.assertNotIn("inject_tunnel_nav.py", dockerfile)
+        self.assertNotIn("ha_tunnel_nav.js", dockerfile)
+        self.assertIn("COPY tunnel_dashboard.html", dockerfile)
+        self.assertIn("COPY tunnel_dashboard.js", dockerfile)
+
     def test_key_rotation_reloads_proxy_and_rejects_previous_token(self):
         controller = self.mod.Controls()
         original = self.mod.CF_CLIENT_KEY.read_text()

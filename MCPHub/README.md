@@ -1,5 +1,12 @@
 **Manage multiple MCP servers from one central dashboard inside Home Assistant.**
 
+The independent Ingress-only tunnel console is available at `/_mcphub_tunnels/`
+relative to the app's current Ingress root. The MCPHub dashboard itself has no
+tunnel-management link or additional controls. Home Assistant's built-in
+**Configuration** tab cannot be extended with custom buttons by an app;
+credentials and enable switches remain there. See [documentation](DOCS.md).
+
+
 [![Validate MCPHub](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml/badge.svg?branch=main)](https://github.com/HyperCriSiS/Home-Assistant-Apps/actions/workflows/validate-mcphub.yml)
 ![Architecture amd64](https://img.shields.io/badge/amd64-supported-success)
 ![Architecture aarch64](https://img.shields.io/badge/aarch64-supported-success)

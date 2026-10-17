@@ -297,6 +297,21 @@ MCPHub creates a random 384-bit client key on first launch and keeps it in
 `/data/secrets/mcphub_cloudflare_client_key` (mode `0600`) across updates/backups.
 Key generation and rotation are managed by MCPHub.
 
+### Eigenständiges Tunnel-Dashboard
+
+Die Tunnelverwaltung liegt unter `/_mcphub_tunnels/` **innerhalb der authentifizierten
+Home-Assistant-Ingress-Adresse**. Sie ist eine separate App-interne Seite und
+wird nicht mehr in MCPHubs Navigation oder Frontend eingeblendet. Beide Tunnel
+werden unabhängig verwaltet; Diagnose und Protokoll öffnen sich bei Bedarf.
+
+Im nativen Tab **Konfiguration** bietet Home Assistant laut App-Optionsschema
+leider keine Erweiterungsmöglichkeit für einen eigenen Dashboard-Button oder
+frei definierbaren Link. Der Ingress-Token ist pro Installation unterschiedlich,
+sodass der Pfad nicht als vollständige statische URL in die Konfiguration
+eingetragen werden kann. Die App-Web-UI bleibt weiterhin das originale MCPHub.
+Eine separate Ingress-Seite kann aus einer bestehenden Ingress-Sitzung unter
+`_mcphub_tunnels/` geöffnet werden.
+
 Visit the authenticated Home Assistant Ingress route `/_mcphub_tunnels/` to
 **copy** the key, or **rotate** it (immediately replacing the key used by Nginx).
 Existing valid `cloudflare_access_token` values from older installations are imported
